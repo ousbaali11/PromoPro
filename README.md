@@ -251,11 +251,19 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
 - **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
   (schéma + seed de démo) avec `DATABASE_URL` forcé à vide, puis Playwright
   démarre lui-même `next dev` sur le port 3100 en mode SQLite forcé
-  (`SQLITE_PATH=data/test.db`) et joue : connexion de chaque rôle et refus
-  d'un mauvais mot de passe, contrôle d'accès (PDG hors Équipe, Commercial
-  hors `/admin`, client hors `/dashboard`), recrutement par pôle (statuts
-  proposés, rôle forcé refusé), workflow de vente complet (projet → blocage
-  PDG → proposition → acceptation → « Vendu » → notification du commercial).
+  (`SQLITE_PATH=data/test.db`) et joue, spec par spec : connexion de chaque
+  rôle et refus d'un mauvais mot de passe ; contrôle d'accès (PDG hors
+  Équipe, Commercial hors `/admin`, client hors `/dashboard`) ; recrutement
+  par pôle (statuts proposés, rôle forcé refusé) ; workflow de vente (projet
+  → blocage PDG → proposition → acceptation → « Vendu » → notification) ;
+  paiements (saisie commerciale → validation comptable → reçu → contrat
+  régénéré → espace client) ; désistements (bien remis à zéro, vérification,
+  remboursement) ; espace client (rendez-vous, visite et créneaux, paiement
+  avec trop-perçu, photos d'avancement) ; SAV (livraison, notaire, syndic) ;
+  recouvrement (filtres, paiement pour le compte du client, trésorerie).
+  Les specs partagent la base recréée au début du run et tournent en série
+  dans l'ordre alphabétique des fichiers : chacune n'agit que sur « ses »
+  tranches ou biens pour rester indépendante des autres.
 - Première installation : `npx playwright install chromium` (le navigateur
   n'est pas dans `node_modules`). Arrêtez votre `npm run dev` avant
   `test:e2e` : Next.js n'accepte qu'un serveur de dev par dossier.
