@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { FileDown } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { contrats, biens, projets, clients } from "@/db/schema";
@@ -63,9 +64,21 @@ export default async function ContratsPage() {
                     <Badge className={COLORS[contrat.statut]}>{LABELS[contrat.statut]}</Badge>
                   </td>
                   <td className="px-5 py-3 text-right">
-                    {contrat.statut === "EN_ATTENTE" && session.role === "RESPONSABLE_ADMINISTRATIF" && (
-                      <ConfirmerButton contratId={contrat.id} />
-                    )}
+                    <span className="inline-flex items-center gap-3">
+                      {contrat.pdfUrl && (
+                        <a
+                          href={contrat.pdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 hover:underline"
+                        >
+                          <FileDown className="h-3.5 w-3.5" /> Contrat PDF
+                        </a>
+                      )}
+                      {contrat.statut === "EN_ATTENTE" && session.role === "RESPONSABLE_ADMINISTRATIF" && (
+                        <ConfirmerButton contratId={contrat.id} />
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
