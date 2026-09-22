@@ -221,12 +221,25 @@ async function main() {
   });
 
   console.log("→ Proposition en attente de décision PDG (Appartement A02)...");
-  await db.insert(propositions).values({
-    bienId: insertedBiens[1].id,
-    commercialId: insertedUsers.com2.id,
-    clientId: demoClient.id,
-    statut: "ENVOYEE",
-  });
+  const [propA02] = await db
+    .insert(propositions)
+    .values({
+      bienId: insertedBiens[1].id,
+      commercialId: insertedUsers.com2.id,
+      clientId: demoClient.id,
+      statut: "ENVOYEE",
+    })
+    .returning();
+  for (const e of defaultEcheancier(insertedBiens[1].prix, new Date())) {
+    await db.insert(echeances).values({
+      propositionId: propA02.id,
+      bienId: insertedBiens[1].id,
+      numero: e.numero,
+      pourcentage: e.pourcentage,
+      montant: e.montant,
+      dateEcheance: e.dateEcheance,
+    });
+  }
   await db.update(biens).set({ statut: "PROPOSITION_EN_COURS", commercialId: insertedUsers.com2.id }).where(eq(biens.id, insertedBiens[1].id));
 
   console.log("→ Prospects de démonstration...");

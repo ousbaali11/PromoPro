@@ -31,12 +31,15 @@ export function PaiementForm({
   echeances,
   submitLabel = "Enregistrer le paiement",
   intro,
+  withReference = false,
 }: {
   action: (prev: PaiementFormState, formData: FormData) => Promise<PaiementFormState>;
   bienId: string;
   echeances: EcheanceOption[];
   submitLabel?: string;
   intro?: string;
+  /** Champ « Référence de l'opération » (saisie directe par le Recouvrement, sans étape comptable). */
+  withReference?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [nature, setNature] = useState("virement local");
@@ -111,6 +114,11 @@ export function PaiementForm({
         <Field label="Porteur de l'opération" htmlFor="porteur" hint="Personne physique ayant réalisé le paiement.">
           <Input id="porteur" name="porteur" required />
         </Field>
+        {withReference && (
+          <Field label="Référence de l'opération" htmlFor="reference">
+            <Input id="reference" name="reference" placeholder="ex. VIR-2026-00123" required />
+          </Field>
+        )}
       </div>
 
       <FileUpload name="preuveUrl" type="preuves-paiement" label="Preuve de paiement" required />
