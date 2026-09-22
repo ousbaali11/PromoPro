@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { eq } from "drizzle-orm";
-import { db, sqlite } from "./client";
+import { db, client as libsqlClient } from "./client";
 import {
   promoteurs,
   users,
@@ -34,7 +34,7 @@ async function main() {
     "users",
     "promoteurs",
   ]) {
-    sqlite.exec(`DELETE FROM ${table};`);
+    await libsqlClient.execute(`DELETE FROM ${table};`);
   }
 
   console.log("→ Création du promoteur PromoPro...");
@@ -119,7 +119,7 @@ async function main() {
     .where(eq(biens.id, insertedBiens[3].id));
 
   console.log("→ Création du client de démonstration...");
-  const [client] = await db
+  const [demoClient] = await db
     .insert(clients)
     .values({
       promoteurId: promopro.id,
@@ -145,13 +145,13 @@ async function main() {
     .values({
       bienId: bienVendu.id,
       commercialId: insertedUsers.com1.id,
-      clientId: client.id,
+      clientId: demoClient.id,
       statut: "ACCEPTEE",
       decidedAt: new Date(),
     })
     .returning();
 
-  await db.update(biens).set({ statut: "VENDU", commercialId: insertedUsers.com1.id, clientId: client.id }).where(eq(biens.id, bienVendu.id));
+  await db.update(biens).set({ statut: "VENDU", commercialId: insertedUsers.com1.id, clientId: demoClient.id }).where(eq(biens.id, bienVendu.id));
 
   const echeancier = defaultEcheancier(bienVendu.prix, new Date(Date.now() - 40 * 24 * 3600 * 1000));
   for (const [i, e] of echeancier.entries()) {
@@ -172,7 +172,7 @@ async function main() {
   );
   await db.insert(paiements).values({
     bienId: bienVendu.id,
-    clientId: client.id,
+    clientId: demoClient.id,
     echeanceId: firstEcheance?.id,
     trancheNumero: 1,
     montant: Math.round(bienVendu.prix * 0.4),
@@ -192,7 +192,7 @@ async function main() {
   await db.insert(propositions).values({
     bienId: insertedBiens[1].id,
     commercialId: insertedUsers.com2.id,
-    clientId: client.id,
+    clientId: demoClient.id,
     statut: "ENVOYEE",
   });
   await db.update(biens).set({ statut: "PROPOSITION_EN_COURS", commercialId: insertedUsers.com2.id }).where(eq(biens.id, insertedBiens[1].id));
@@ -226,5 +226,5 @@ main()
     process.exit(1);
   })
   .finally(() => {
-    sqlite.close();
+    libsqlClient.close();
   });

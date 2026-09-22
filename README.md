@@ -15,7 +15,7 @@ développement avec Claude Code.
 
 - **Next.js 16** (App Router, Server Actions, Turbopack) + **TypeScript**
 - **Tailwind CSS v4** pour le design (tokens dans `src/app/globals.css`)
-- **Drizzle ORM** + **SQLite** (`better-sqlite3`) pour la base de données locale
+- **Drizzle ORM** + **SQLite** via **`@libsql/client`** pour la base de données locale
 - **jose** (JWT) + **bcryptjs** pour l'authentification par cookie de session
   (compatible avec le runtime Node et Edge, utilisé aussi bien dans les Server
   Actions que dans `src/proxy.ts`, le middleware de protection des routes)
@@ -25,24 +25,54 @@ développement avec Claude Code.
 > (`src/db/schema.ts`) est volontairement simple à migrer vers Postgres pour la
 > production : voir la dernière section de ce fichier.
 
+> **Pourquoi `@libsql/client` plutôt que `better-sqlite3` ?** `better-sqlite3`
+> n'est pas construit sur N-API : il a besoin d'un binaire précompilé différent
+> pour chaque version majeure de Node, et sur une version de Node très récente
+> (ou un environnement Windows sans Python/Visual Studio Build Tools), l'install
+> peut échouer et tenter une compilation locale (`node-gyp`) qui échoue à son
+> tour. `@libsql/client` utilise des binaires N-API (compatibles avec toutes les
+> versions récentes de Node, sur Windows/macOS/Linux) et ne nécessite jamais de
+> compilation. C'est un remplacement direct, le reste du code ne change pas.
+
 > **Pourquoi Drizzle plutôt que Prisma ?** Choix pragmatique fait pendant le
 > développement initial : le CLI Prisma télécharge ses moteurs binaires depuis
 > `binaries.prisma.sh`, injoignable dans l'environnement où ce projet a été amorcé.
-> Drizzle + `better-sqlite3` ne nécessite aucun binaire externe. Si vous préférez
-> Prisma pour la suite du projet (Claude Code s'en sort très bien avec les deux),
-> rien n'empêche de migrer.
+> Si vous préférez Prisma pour la suite du projet (Claude Code s'en sort très
+> bien avec les deux), rien n'empêche de migrer.
 
 ## Démarrage rapide
 
-```bash
-npm install
-npm run db:push      # crée data/promopro.db à partir du schéma
-npm run db:seed      # peuple un promoteur de démo avec un compte par rôle
-npm run dev           # http://localhost:3000
 ```
+npm install
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+Sous **PowerShell** (Windows), lancez ces quatre commandes une par une (appuyez
+sur Entrée après chacune) plutôt que de les enchaîner avec `&&`, qui n'est pas
+supporté par PowerShell 5 (celui ouvert par défaut depuis l'explorateur de
+fichiers). Sous un terminal bash/zsh (macOS, Linux, ou PowerShell 7+ / `pwsh`),
+vous pouvez les enchaîner avec `&&` si vous préférez.
+
+- `npm install` — installe les dépendances
+- `npm run db:push` — crée `data/promopro.db` à partir du schéma
+- `npm run db:seed` — peuple un promoteur de démo avec un compte par rôle
+- `npm run dev` — démarre le serveur de développement sur http://localhost:3000
 
 Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 `JWT_SECRET` (une valeur de repli est fournie pour le développement).
+
+### En cas de souci à l'installation
+
+- **`npm install` échoue en essayant de compiler un module natif** (mention de
+  `node-gyp`, `python`, `Visual Studio`) : vérifiez que vous êtes bien sur la
+  version du projet qui utilise `@libsql/client` (`package.json` ne doit
+  contenir ni `better-sqlite3` ni `@prisma/client`). Si le problème vient d'un
+  autre paquet, relancez avec `npm install --legacy-peer-deps`.
+- **`'next' n'est pas reconnu...`** : `npm install` n'est pas allé au bout (regardez
+  l'erreur juste au-dessus dans le terminal) — corrigez cette erreur puis
+  relancez `npm install` avant `npm run dev`.
 
 ### Comptes de démonstration (mot de passe entre parenthèses)
 
@@ -134,7 +164,7 @@ l'interactivité (boutons, formulaires avec `useActionState`).
 
 ## Migrer vers PostgreSQL pour la production
 
-1. `npm install pg` puis remplacer `drizzle-orm/better-sqlite3` par
+1. `npm install pg` puis remplacer `drizzle-orm/libsql` (et `@libsql/client`) par
    `drizzle-orm/node-postgres` dans `src/db/client.ts`
 2. Adapter `src/db/schema.ts` : `sqliteTable` → `pgTable`, `integer(..., {mode:
    "timestamp"})` → `timestamp(...)`, `integer(..., {mode: "boolean"})` →
