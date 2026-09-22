@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, users, contrats, paiements } from "@/db/schema";
+import { biens, projets, users, contrats, paiements, visites } from "@/db/schema";
 import { Card, Badge } from "@/components/ui/Primitives";
 import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
+import { VisiteSection } from "./VisiteSection";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_COLOR: Record<string, string> = {
@@ -49,6 +50,10 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
   const mesPaiements = await db.query.paiements.findMany({
     where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, session.clientId)),
     orderBy: [desc(paiements.createdAt)],
+  });
+  const derniereVisite = await db.query.visites.findFirst({
+    where: and(eq(visites.bienId, bien.id), eq(visites.clientId, session.clientId)),
+    orderBy: [desc(visites.createdAt)],
   });
 
   const totalPaye = ech.reduce((s, e) => s + Math.min(e.montantPaye, e.montant), 0);
@@ -208,6 +213,25 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="space-y-4">
+          {/* 11.7 — demande de visite */}
+          <Card className="p-5">
+            <p className="mb-3 text-sm font-medium text-navy-900">Visite du bien</p>
+            <VisiteSection
+              bienId={bien.id}
+              visite={
+                derniereVisite
+                  ? {
+                      id: derniereVisite.id,
+                      statut: derniereVisite.statut,
+                      dateVisite: derniereVisite.dateVisite?.toISOString() ?? null,
+                      autorisationUrl: derniereVisite.autorisationUrl,
+                      motifRefus: derniereVisite.motifRefus,
+                    }
+                  : null
+              }
+            />
+          </Card>
+
           <Card className="p-5">
             <p className="text-xs text-navy-400">Prix</p>
             <p className="mt-1 text-lg font-semibold text-navy-900">{formatMoney(bien.prix)}</p>

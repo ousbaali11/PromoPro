@@ -1,6 +1,6 @@
 import { eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, desistements, paiements, syndics } from "@/db/schema";
+import { biens, clients, contrats, desistements, paiements, syndics, visites } from "@/db/schema";
 
 /**
  * Un client ne peut lire qu'un fichier rattaché à son propre dossier :
@@ -25,6 +25,9 @@ export async function clientCanAccessFile(clientId: string, url: string): Promis
 
   const desistement = await db.query.desistements.findFirst({ where: eq(desistements.documentUrl, url) });
   if (desistement) return desistement.clientId === clientId;
+
+  const visite = await db.query.visites.findFirst({ where: eq(visites.autorisationUrl, url) });
+  if (visite) return visite.clientId === clientId;
 
   const mesBiens = await db.query.biens.findMany({ where: eq(biens.clientId, clientId) });
   if (mesBiens.some((b) => b.planUrl === url)) return true;

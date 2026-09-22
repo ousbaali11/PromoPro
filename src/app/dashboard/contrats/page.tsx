@@ -7,6 +7,7 @@ import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
 import { TodoModule } from "@/components/layout/TodoModule";
 import { ConfirmerButton } from "./ConfirmerButton";
 import { CopieSigneeForm } from "./CopieSigneeForm";
+import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
 const LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -47,6 +48,12 @@ export default async function ContratsPage() {
       description="Contrats en attente et suivi de génération."
       specSection="section 7 — Responsable Administratif"
     >
+      {session.role === "RESPONSABLE_ADMINISTRATIF" && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous (service administratif)</h2>
+          <RendezVousSection service="ADMINISTRATIF" session={session} canAct />
+        </section>
+      )}
       {rows.length === 0 ? (
         <EmptyState
           title="Aucun contrat"

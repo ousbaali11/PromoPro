@@ -260,17 +260,42 @@ export const prospects = sqliteTable("prospects", {
 // ---------------------------------------------------------------------------
 // Rendez-vous
 // ---------------------------------------------------------------------------
-// PROPOSE | ACCEPTE | REPROPOSE
+// PROPOSE | ACCEPTE | REPROPOSE — `dernierAuteur` indique qui a fait la dernière
+// proposition (CLIENT ou SERVICE) : c'est à l'autre partie d'accepter ou de reproposer.
 export const rendezvous = sqliteTable("rendezvous", {
   id: id(),
   clientId: text("client_id")
     .notNull()
     .references(() => clients.id),
+  bienId: text("bien_id").references(() => biens.id), // rendez-vous rattaché à un bien (cloisonnement 11.11)
   service: text("service").notNull(), // COMMERCIAL | SAV | ADMINISTRATIF | RECOUVREMENT
   dateProposee: integer("date_proposee", { mode: "timestamp" }).notNull(),
   statut: text("statut").notNull().default("PROPOSE"),
+  dernierAuteur: text("dernier_auteur").notNull().default("CLIENT"), // CLIENT | SERVICE
   notes: text("notes"),
+  traiteParId: text("traite_par_id").references(() => users.id),
   createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Demandes de visite du bien (11.7 / 12.3)
+// ---------------------------------------------------------------------------
+// DEMANDEE | ACCEPTEE (autorisation émise, créneau à choisir) | PLANIFIEE | REFUSEE
+export const visites = sqliteTable("visites", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => clients.id),
+  statut: text("statut").notNull().default("DEMANDEE"),
+  dateVisite: integer("date_visite", { mode: "timestamp" }),
+  autorisationUrl: text("autorisation_url"), // PDF « Autorisation de visite »
+  motifRefus: text("motif_refus"),
+  traiteParId: text("traite_par_id").references(() => users.id),
+  createdAt: createdAt(),
+  decidedAt: integer("decided_at", { mode: "timestamp" }),
 });
 
 // ---------------------------------------------------------------------------

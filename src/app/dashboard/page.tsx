@@ -5,6 +5,7 @@ import { biens, projets, propositions, prospects } from "@/db/schema";
 import { Card, PageHeader } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
+import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
 async function countBiensByStatut(promoteurId: string, statut: string) {
   const rows = await db
@@ -65,6 +66,13 @@ export default async function DashboardHome() {
           <Stat label="Prospects non traités" value={prospectsNonTraites} accent />
         )}
       </div>
+
+      {["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && (
+        <section className="mt-6">
+          <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous de mes clients</h2>
+          <RendezVousSection service="COMMERCIAL" session={session} canAct />
+        </section>
+      )}
 
       <Card className="mt-6 p-6">
         <h2 className="text-sm font-medium text-navy-900">Accès rapide</h2>

@@ -5,6 +5,7 @@ import { biens, projets, clients } from "@/db/schema";
 import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
 import { TodoModule } from "@/components/layout/TodoModule";
 import { formatMoney, formatDate } from "@/lib/utils";
+import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
 export default async function RecouvrementPage() {
   const session = await requireStaffSession();
@@ -25,6 +26,10 @@ export default async function RecouvrementPage() {
       description="Suivi des échéanciers de paiement de tous les clients — statut vert (payé) / rouge (en retard)."
       specSection="section 13 — Recouvrement"
     >
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous</h2>
+        <RendezVousSection service="RECOUVREMENT" session={session} canAct={session.role === "RECOUVREMENT"} />
+      </section>
       {rows.length === 0 ? (
         <EmptyState title="Aucun échéancier" description="Les échéanciers des ventes conclues apparaîtront ici." />
       ) : (

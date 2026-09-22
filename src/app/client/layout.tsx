@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { Building2 } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
@@ -38,6 +39,23 @@ export default async function ClientLayout({ children }: { children: React.React
           </form>
         </div>
       </header>
+      <nav className="border-b border-navy-100 bg-white">
+        <div className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 sm:px-6">
+          {[
+            { href: "/client", label: "Mes biens" },
+            { href: "/client/rendez-vous", label: "Rendez-vous" },
+            { href: "/client/contact", label: "Contacter un service" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm text-navy-400 hover:border-gold hover:text-navy-900"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </nav>
       <main className="mx-auto max-w-3xl p-4 sm:p-6">{children}</main>
     </div>
   );
