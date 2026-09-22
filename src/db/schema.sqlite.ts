@@ -100,6 +100,18 @@ export const biens = sqliteTable("biens", {
   createdAt: createdAt(),
 });
 
+// Biens épinglés par un utilisateur interne pour un accès rapide depuis son tableau de bord
+export const epingles = sqliteTable("epingles", {
+  id: id(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  createdAt: createdAt(),
+});
+
 // ---------------------------------------------------------------------------
 // Clients (acquéreurs)
 // ---------------------------------------------------------------------------

@@ -60,7 +60,7 @@ test("syndic : défini par le SAV → payé par le client → validé par le com
 
   await login(page, "CLIENT");
   await ouvrirBienClient(page, "Appartement A01");
-  const carte = page.locator("div.rounded-xl", { hasText: "Syndic" }).filter({ hasText: /12.000 MAD/ });
+  const carte = page.locator("[data-card]", { hasText: "Syndic" }).filter({ hasText: /12.000 MAD/ });
   await expect(carte.getByText("À payer")).toBeVisible();
   await carte.getByRole("button", { name: "Déclarer mon paiement" }).click();
   await carte.locator("#syndic-banque").fill("CIH Bank");
@@ -85,5 +85,5 @@ test("syndic : défini par le SAV → payé par le client → validé par le com
 
   await login(page, "CLIENT");
   await ouvrirBienClient(page, "Appartement A01");
-  await expect(page.locator("div.rounded-xl", { hasText: "Syndic" }).filter({ hasText: /12.000 MAD/ }).getByText("Payé", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-card]", { hasText: "Syndic" }).filter({ hasText: /12.000 MAD/ }).getByText("Payé", { exact: true })).toBeVisible();
 });

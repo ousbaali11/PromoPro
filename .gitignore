@@ -50,3 +50,6 @@ next-env.d.ts
 # tests
 /test-results/
 /playwright-report/
+
+# captures d ecran de revue design (generees par scripts/captures-biens.mjs)
+/docs/captures/

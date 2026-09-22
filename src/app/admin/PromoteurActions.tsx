@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { activerAbonnement, suspendrePromoteur } from "./actions";
-import { Button } from "@/components/ui/Button";
+import { Button, ConfirmButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Primitives";
 
 export function PromoteurActions({ promoteurId, statut }: { promoteurId: string; statut: string }) {
@@ -10,15 +10,11 @@ export function PromoteurActions({ promoteurId, statut }: { promoteurId: string;
   const [duree, setDuree] = useState("12");
 
   if (statut === "ACTIF") {
+    // Action destructive : confirmation inline à deux temps (pas de confirm() navigateur)
     return (
-      <Button
-        size="sm"
-        variant="danger"
-        disabled={pending}
-        onClick={() => startTransition(() => suspendrePromoteur(promoteurId))}
-      >
+      <ConfirmButton size="sm" variant="danger" confirmLabel="Confirmer la suspension ?" onConfirm={() => suspendrePromoteur(promoteurId)}>
         Suspendre
-      </Button>
+      </ConfirmButton>
     );
   }
 
@@ -31,7 +27,7 @@ export function PromoteurActions({ promoteurId, statut }: { promoteurId: string;
       <Button
         size="sm"
         variant="gold"
-        disabled={pending}
+        loading={pending}
         onClick={() =>
           startTransition(() =>
             activerAbonnement(promoteurId, duree === "1" ? "Mensuel" : "Annuel", Number(duree)),

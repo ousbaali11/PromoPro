@@ -15,7 +15,7 @@ let hrefA02 = "";
 test("préambule : le PDG accepte la proposition sur A02", async ({ page }) => {
   await login(page, "PDG");
   await page.goto("/dashboard/propositions");
-  const carte = page.locator("div.rounded-xl", { hasText: "Appartement A02" });
+  const carte = page.locator("[data-card]", { hasText: "Appartement A02" });
   await expect(carte).toHaveCount(1);
   await carte.getByRole("button", { name: "Accepter" }).click();
   await expect(carte.getByText("Acceptée")).toBeVisible();
@@ -49,7 +49,7 @@ test("le commercial enregistre le désistement : bien remis à zéro et tracé d
 test("le Responsable Administratif vérifie les papiers puis marque le remboursement", async ({ page }) => {
   await login(page, "RESPADM");
   await page.goto("/dashboard/desistements");
-  const carte = page.locator("div.rounded-xl", { hasText: "Appartement A02" });
+  const carte = page.locator("[data-card]", { hasText: "Appartement A02" });
   await expect(carte).toHaveCount(1);
   await expect(carte.getByText("À vérifier")).toBeVisible();
   await expect(carte.getByRole("link", { name: "Document de désistement légalisé" })).toBeVisible();
@@ -62,7 +62,7 @@ test("le Responsable Administratif vérifie les papiers puis marque le rembourse
   await carte.getByRole("button", { name: "Marquer remboursé" }).click();
 
   await expect(page.getByText("Aucun désistement en attente")).toBeVisible();
-  const historique = page.locator("section", { hasText: "Historique" }).locator("div.rounded-xl", { hasText: "Appartement A02" });
+  const historique = page.locator("section", { hasText: "Historique" }).locator("[data-card]", { hasText: "Appartement A02" });
   await expect(historique.getByText("Remboursé", { exact: true })).toBeVisible();
   await expect(historique.getByText(/Décharge : Payeur identique/)).toBeVisible();
 

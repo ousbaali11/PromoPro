@@ -22,9 +22,9 @@ test("workflow de vente : projet → blocage → proposition → acceptation →
   await expect(page).toHaveURL(/\/dashboard\/projets\/[^/]+$/);
 
   for (const designation of [lotA, lotB]) {
-    await page.getByLabel("Désignation").fill(designation);
-    await page.getByLabel(/Prix/).fill("500000");
-    await page.getByLabel(/Surface/).fill("60");
+    await page.getByTestId("form-ajout-bien").getByLabel("Désignation").fill(designation);
+    await page.getByTestId("form-ajout-bien").getByLabel(/Prix/).fill("500000");
+    await page.getByTestId("form-ajout-bien").getByLabel(/Surface/).fill("60");
     await page.getByRole("button", { name: "Ajouter le bien" }).click();
     await expect(page.getByRole("link", { name: designation })).toBeVisible();
   }
@@ -60,7 +60,7 @@ test("workflow de vente : projet → blocage → proposition → acceptation →
   // 4. PDG : acceptation
   await login(page, "PDG");
   await page.goto("/dashboard/propositions");
-  const carte = page.locator("div.rounded-xl", { hasText: lotA });
+  const carte = page.locator("[data-card]", { hasText: lotA });
   await expect(carte).toHaveCount(1);
   await expect(carte.getByText("En attente")).toBeVisible();
   await carte.getByRole("button", { name: "Accepter" }).click();

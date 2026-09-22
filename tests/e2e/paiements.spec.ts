@@ -44,7 +44,7 @@ test("le commercial saisit l'encaissement de la tranche 2 avec preuve", async ({
 test("le Comptable Interne complète la référence et valide : reçu PDF et tranche payée", async ({ page }) => {
   await login(page, "COMPTA");
   await page.goto("/dashboard/paiements");
-  const carte = page.locator("div.rounded-xl", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 2" });
+  const carte = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 2" });
   await expect(carte).toHaveCount(1);
   await expect(carte.getByRole("link", { name: "Preuve de paiement" })).toBeVisible();
 

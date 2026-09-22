@@ -69,7 +69,7 @@ test("paiement constaté pour le compte du client : validé immédiatement, reç
   await page.goto("/dashboard/paiements");
   const ligne = page.locator("table tbody tr", { hasText: REFERENCE });
   await expect(ligne.getByText("Validé")).toBeVisible();
-  await expect(page.locator("div.rounded-xl", { hasText: REFERENCE }).filter({ hasText: "Valider" })).toHaveCount(0);
+  await expect(page.locator("[data-card]", { hasText: REFERENCE }).filter({ hasText: "Valider" })).toHaveCount(0);
 
   // Visible aussitôt côté client, avec le reçu
   await login(page, "CLIENT");

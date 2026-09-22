@@ -1,10 +1,11 @@
 import { eq, and, count } from "drizzle-orm";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, propositions, prospects, users } from "@/db/schema";
+import { biens, projets, propositions, prospects, users, epingles as epinglesTable } from "@/db/schema";
 import { Card, PageHeader } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
+import { STATUT_BIEN_LABELS } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
 async function countBiensByStatut(promoteurId: string, statut: string) {
@@ -51,6 +52,15 @@ export default async function DashboardHome() {
     prospectsNonTraites = rows[0]?.n ?? 0;
   }
 
+  // Biens épinglés par l'utilisateur (accès rapide)
+  const epingles = (
+    await db
+      .select({ id: epinglesTable.id, bienId: biens.id, designation: biens.designation, statut: biens.statut })
+      .from(epinglesTable)
+      .innerJoin(biens, eq(epinglesTable.bienId, biens.id))
+      .where(eq(epinglesTable.userId, session.userId))
+  ).slice(0, 12);
+
   return (
     <div>
       <PageHeader
@@ -67,6 +77,23 @@ export default async function DashboardHome() {
           <Stat label="Prospects non traités" value={prospectsNonTraites} accent />
         )}
       </div>
+
+      {epingles.length > 0 && (
+        <Card className="mt-6 p-6">
+          <h2 className="text-sm font-medium text-navy-900">Biens épinglés</h2>
+          <p className="mt-1 text-xs text-navy-400">Vos accès rapides, choisis depuis la liste des biens d&apos;un projet.</p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {epingles.map((e) => (
+              <li key={e.id}>
+                <LinkButton href={`/dashboard/biens/${e.bienId}`} variant="secondary" size="sm">
+                  {e.designation}
+                  <span className="text-navy-400">· {STATUT_BIEN_LABELS[e.statut]}</span>
+                </LinkButton>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && (
         <section className="mt-6">

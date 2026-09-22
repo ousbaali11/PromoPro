@@ -96,7 +96,7 @@ test("paiement déclaré par le client avec trop-perçu : validé par le comptab
 
   await login(page, "COMPTA");
   await page.goto("/dashboard/paiements");
-  const carte = page.locator("div.rounded-xl", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 3" });
+  const carte = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 3" });
   await expect(carte).toHaveCount(1);
   await expect(carte.getByText("saisi par Client")).toBeVisible();
   await carte.getByLabel("Référence").fill("VIR-E2E-T3-0002");

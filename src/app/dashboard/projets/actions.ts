@@ -1,11 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { projets, biens } from "@/db/schema";
-import { requireRole } from "@/lib/session";
+import { projets, biens, epingles } from "@/db/schema";
+import { requireRole, requireStaffSession } from "@/lib/session";
 
 export async function createProjet(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
@@ -50,6 +50,29 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
 
   revalidatePath(`/dashboard/projets/${projetId}`);
   return { error: undefined };
+}
+
+/**
+ * Épingle / désépingle un bien pour l'utilisateur connecté (accès rapide
+ * depuis son tableau de bord). Simple présence d'une ligne `epingles`.
+ */
+export async function toggleEpingle(bienId: string): Promise<{ epingle: boolean; error?: string }> {
+  const session = await requireStaffSession();
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  if (!bien || !(await projetDuPromoteur(bien.projetId, session.promoteurId))) {
+    return { epingle: false, error: "Bien introuvable." };
+  }
+  const existante = await db.query.epingles.findFirst({
+    where: and(eq(epingles.userId, session.userId), eq(epingles.bienId, bienId)),
+  });
+  if (existante) {
+    await db.delete(epingles).where(eq(epingles.id, existante.id));
+  } else {
+    await db.insert(epingles).values({ userId: session.userId, bienId });
+  }
+  revalidatePath(`/dashboard/projets/${bien.projetId}`);
+  revalidatePath("/dashboard");
+  return { epingle: !existante };
 }
 
 export async function deleteBien(bienId: string, projetId: string) {

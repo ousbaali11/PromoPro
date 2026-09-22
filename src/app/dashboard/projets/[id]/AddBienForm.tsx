@@ -16,7 +16,7 @@ export function AddBienForm({ projetId }: { projetId: string }) {
   return (
     <Card className="p-5">
       <h2 className="mb-4 text-sm font-medium text-navy-900">Ajouter un bien au tableau de contenance</h2>
-      <form ref={formRef} action={formAction} className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <form ref={formRef} action={formAction} data-testid="form-ajout-bien" className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <input type="hidden" name="projetId" value={projetId} />
         <Field label="Désignation" htmlFor="designation">
           <Input id="designation" name="designation" placeholder="ex. Appartement C03" required />

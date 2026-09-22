@@ -105,6 +105,18 @@ export const biens = pgTable("biens", {
   createdAt: createdAt(),
 });
 
+// Biens épinglés par un utilisateur interne pour un accès rapide depuis son tableau de bord
+export const epingles = pgTable("epingles", {
+  id: id(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  createdAt: createdAt(),
+});
+
 // ---------------------------------------------------------------------------
 // Clients (acquéreurs)
 // ---------------------------------------------------------------------------

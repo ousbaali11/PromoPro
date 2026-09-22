@@ -29,6 +29,7 @@ export const promoteurs = s.promoteurs;
 export const users = s.users;
 export const projets = s.projets;
 export const biens = s.biens;
+export const epingles = s.epingles;
 export const clients = s.clients;
 export const propositions = s.propositions;
 export const echeances = s.echeances;
