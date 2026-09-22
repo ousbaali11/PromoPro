@@ -65,12 +65,14 @@ export async function ouvrirBienClient(page: Page, designation: string) {
     await page.getByRole("link", { name: new RegExp(designation) }).first().click();
     await expect(page).toHaveURL(/\/client\/biens\/[^/]+$/);
   }
-  const titre = page.getByRole("heading", { name: designation });
-  if (!(await titre.isVisible().catch(() => false))) {
+  // Attendre le rendu du titre de la page bien, puis vérifier qu'il s'agit du bon bien
+  const h1 = page.locator("h1").first();
+  await expect(h1).toBeVisible();
+  if ((await h1.textContent())?.trim() !== designation) {
     // Redirigé vers un autre bien : passer par le sélecteur de biens
     await page.getByRole("link", { name: designation, exact: true }).first().click();
   }
-  await expect(titre).toBeVisible();
+  await expect(page.getByRole("heading", { name: designation })).toBeVisible();
 }
 
 /** Id (uuid) d'un bien depuis la page projet côté staff, par sa désignation. */
