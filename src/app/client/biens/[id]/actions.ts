@@ -1,15 +1,15 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, clients, projets, promoteurs, visites } from "@/db/schema";
+import { biens, clients, demandesPhotos, projets, promoteurs, visites } from "@/db/schema";
 import { requireClientSession } from "@/lib/session";
 import { creerPaiement, lirePaiementForm, notifierComptable } from "@/lib/paiements";
 import { notifyRole } from "@/lib/notifications";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
-import { formatDateTime } from "@/lib/utils";
+import { addMonths, formatDate, formatDateTime, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
 /**
@@ -60,6 +60,40 @@ export async function demanderVisite(bienId: string): Promise<{ error?: string }
     type: "VISITE_DEMANDEE",
     titre: "Demande de visite",
     message: `${session.prenom} ${session.nom} souhaite visiter ${bien.designation}. À accepter ou refuser.`,
+    lien: "/dashboard/sav",
+  });
+
+  revalidatePath(`/client/biens/${bien.id}`);
+  revalidatePath("/dashboard/sav");
+  return undefined;
+}
+/**
+ * Section 11.3 — demande de photos d'avancement, une fois tous les 6 mois par
+ * bien (contrôle serveur ; le bouton est grisé côté client avec un compte à
+ * rebours). Le Service Après-Vente est notifié.
+ */
+export async function demanderPhotos(bienId: string): Promise<{ error?: string } | undefined> {
+  const r = await monBien(bienId);
+  if ("error" in r) return { error: r.error };
+  const { session, bien } = r;
+
+  const derniere = await db.query.demandesPhotos.findFirst({
+    where: and(eq(demandesPhotos.bienId, bien.id), eq(demandesPhotos.clientId, session.clientId)),
+    orderBy: [desc(demandesPhotos.createdAt)],
+  });
+  if (derniere?.createdAt) {
+    const prochaine = addMonths(derniere.createdAt, DELAI_PHOTOS_MOIS);
+    if (prochaine.getTime() > Date.now()) {
+      return { error: `Prochaine demande possible le ${formatDate(prochaine)}.` };
+    }
+  }
+
+  await db.insert(demandesPhotos).values({ bienId: bien.id, clientId: session.clientId, statut: "EN_ATTENTE" });
+
+  await notifyRole(session.promoteurId, "SERVICE_APRES_VENTE", {
+    type: "PHOTOS_DEMANDEES",
+    titre: "Demande de photos d'avancement",
+    message: `${session.prenom} ${session.nom} demande des photos de l'avancement de ${bien.designation}.`,
     lien: "/dashboard/sav",
   });
 

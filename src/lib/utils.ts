@@ -32,6 +32,9 @@ export function addMonths(date: Date, months: number) {
   return d;
 }
 
+/** Délai minimum entre deux demandes de photos d'avancement d'un même bien (section 11.3). */
+export const DELAI_PHOTOS_MOIS = 6;
+
 /** Échéancier par défaut : 40% le jour du blocage, puis 20% tous les 6 mois (x3). */
 export function defaultEcheancier(prix: number, dateBlocage: Date) {
   return [

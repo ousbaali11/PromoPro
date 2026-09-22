@@ -299,6 +299,36 @@ export const visites = sqliteTable("visites", {
 });
 
 // ---------------------------------------------------------------------------
+// Photos d'avancement (11.3 / 12.4) — une demande tous les 6 mois par bien
+// ---------------------------------------------------------------------------
+// EN_ATTENTE | TRAITEE
+export const demandesPhotos = sqliteTable("demandes_photos", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => clients.id),
+  statut: text("statut").notNull().default("EN_ATTENTE"),
+  traiteParId: text("traite_par_id").references(() => users.id),
+  traiteAt: integer("traite_at", { mode: "timestamp" }),
+  createdAt: createdAt(),
+});
+
+export const photosAvancement = sqliteTable("photos_avancement", {
+  id: id(),
+  demandeId: text("demande_id").references(() => demandesPhotos.id),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  url: text("url").notNull(),
+  legende: text("legende"),
+  deposeParId: text("depose_par_id").references(() => users.id),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
 // Syndic (2 ans obligatoire)
 // ---------------------------------------------------------------------------
 // A_PAYER | EN_ATTENTE_VALIDATION | PAYE

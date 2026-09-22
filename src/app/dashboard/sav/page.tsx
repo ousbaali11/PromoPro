@@ -3,11 +3,12 @@ import { desc, eq, inArray } from "drizzle-orm";
 import { FileDown } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
-import { syndics, clients, visites, biens, projets } from "@/db/schema";
+import { syndics, clients, visites, biens, projets, demandesPhotos } from "@/db/schema";
 import { EmptyState, Card, Badge, PageHeader } from "@/components/ui/Primitives";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 import { VisiteActions } from "./VisiteActions";
+import { DeposerPhotosForm } from "./DeposerPhotosForm";
 
 const VISITE_STATUT: Record<string, { label: string; cls: string }> = {
   DEMANDEE: { label: "À traiter", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
@@ -35,6 +36,16 @@ export default async function SavPage() {
   const visitesAutres = listeVisites.filter((v) => v.statut !== "DEMANDEE").slice(0, 15);
 
   const listeSyndics = clientIds.length ? await db.query.syndics.findMany({ where: inArray(syndics.clientId, clientIds) }) : [];
+
+  const demandes = clientIds.length
+    ? await db.query.demandesPhotos.findMany({ where: inArray(demandesPhotos.clientId, clientIds), orderBy: [desc(demandesPhotos.createdAt)] })
+    : [];
+  const demandesEnAttente = demandes.filter((d) => d.statut === "EN_ATTENTE");
+  const demandesTraitees = demandes.filter((d) => d.statut === "TRAITEE").slice(0, 10);
+  const photosParDemande = new Map<string, number>();
+  for (const p of await db.query.photosAvancement.findMany()) {
+    if (p.demandeId) photosParDemande.set(p.demandeId, (photosParDemande.get(p.demandeId) ?? 0) + 1);
+  }
 
   const VisiteLigne = ({ v }: { v: (typeof listeVisites)[number] }) => {
     const client = clientById.get(v.clientId);
@@ -111,6 +122,56 @@ export default async function SavPage() {
               </Card>
             )}
           </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-navy-900">
+          Demandes de photos d&apos;avancement{" "}
+          <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            {demandesEnAttente.length}
+          </span>
+        </h2>
+        {demandes.length === 0 ? (
+          <EmptyState title="Aucune demande de photos" description="Les demandes des clients (une par bien tous les 6 mois) apparaîtront ici." />
+        ) : (
+          <Card className="divide-y divide-navy-50">
+            {[...demandesEnAttente, ...demandesTraitees].map((d) => {
+              const client = clientById.get(d.clientId);
+              const bien = bienById.get(d.bienId);
+              return (
+                <div key={d.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      {bien ? (
+                        <Link href={`/dashboard/biens/${bien.id}`} className="hover:underline">
+                          {bien.designation}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                      {bien && <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
+                    </p>
+                    <p className="text-xs text-navy-400">
+                      {client ? `${client.prenom} ${client.nom}` : "—"} · demandé le {formatDate(d.createdAt)}
+                      {d.traiteAt && ` · ${photosParDemande.get(d.id) ?? 0} photo(s) déposée(s) le ${formatDate(d.traiteAt)}`}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {d.statut === "EN_ATTENTE" ? (
+                      isSav ? (
+                        <DeposerPhotosForm demandeId={d.id} />
+                      ) : (
+                        <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">En attente</Badge>
+                      )
+                    ) : (
+                      <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">Traitée</Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
         )}
       </section>
 

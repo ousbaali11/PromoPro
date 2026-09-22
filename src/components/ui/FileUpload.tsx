@@ -14,10 +14,14 @@ type UploadType =
   | "recus"
   | "autorisations-visite";
 
+type Uploaded = { path: string; name: string };
+
 /**
  * Zone de dépôt + bouton. Envoie le fichier à `POST /api/upload` dès sa
  * sélection, puis expose le chemin retourné dans un `<input type="hidden">`
  * portant `name`, pour qu'il parte avec le formulaire parent (Server Action).
+ * En mode `multiple`, un input caché par fichier (côté serveur :
+ * `formData.getAll(name)`).
  */
 export function FileUpload({
   name,
@@ -26,6 +30,7 @@ export function FileUpload({
   hint,
   required,
   defaultValue,
+  multiple = false,
   accept = ".pdf,.jpg,.jpeg,.png",
   className,
   onUploaded,
@@ -36,55 +41,63 @@ export function FileUpload({
   hint?: string;
   required?: boolean;
   defaultValue?: string | null;
+  multiple?: boolean;
   accept?: string;
   className?: string;
   onUploaded?: (path: string | null) => void;
 }) {
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [path, setPath] = useState<string | null>(defaultValue ?? null);
-  const [fileName, setFileName] = useState<string | null>(defaultValue ? "Document déjà importé" : null);
+  const [files, setFiles] = useState<Uploaded[]>(defaultValue ? [{ path: defaultValue, name: "Document déjà importé" }] : []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  async function upload(file: File) {
+  async function uploadOne(file: File): Promise<Uploaded> {
+    const body = new FormData();
+    body.append("file", file);
+    body.append("type", type);
+    const res = await fetch("/api/upload", { method: "POST", body });
+    const json = (await res.json()) as { path?: string; error?: string };
+    if (!res.ok || !json.path) throw new Error(json.error ?? "Échec de l'envoi du fichier.");
+    return { path: json.path, name: file.name };
+  }
+
+  async function upload(list: FileList | File[]) {
+    const selected = Array.from(list);
+    if (selected.length === 0) return;
     setError(null);
     setLoading(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("type", type);
-      const res = await fetch("/api/upload", { method: "POST", body });
-      const json = (await res.json()) as { path?: string; error?: string };
-      if (!res.ok || !json.path) throw new Error(json.error ?? "Échec de l'envoi du fichier.");
-      setPath(json.path);
-      setFileName(file.name);
-      onUploaded?.(json.path);
+      const done: Uploaded[] = [];
+      for (const f of multiple ? selected : selected.slice(0, 1)) done.push(await uploadOne(f));
+      setFiles((prev) => (multiple ? [...prev, ...done] : done));
+      onUploaded?.(done[done.length - 1]?.path ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Échec de l'envoi du fichier.");
-      setPath(null);
-      setFileName(null);
-      onUploaded?.(null);
+      if (!multiple) {
+        setFiles([]);
+        onUploaded?.(null);
+      }
     } finally {
       setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
   function onDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) void upload(file);
+    if (e.dataTransfer.files?.length) void upload(e.dataTransfer.files);
   }
 
-  function clear() {
-    setPath(null);
-    setFileName(null);
+  function remove(path: string) {
+    setFiles((prev) => prev.filter((f) => f.path !== path));
     setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
     onUploaded?.(null);
   }
+
+  const showZone = multiple || files.length === 0;
 
   return (
     <div className={cn("block", className)}>
@@ -95,9 +108,13 @@ export function FileUpload({
         </span>
       )}
 
-      {/* Valeur soumise avec le formulaire parent */}
-      <input type="hidden" name={name} value={path ?? ""} />
-      {required && !path && (
+      {/* Valeur(s) soumise(s) avec le formulaire parent */}
+      {multiple ? (
+        files.map((f) => <input key={f.path} type="hidden" name={name} value={f.path} />)
+      ) : (
+        <input type="hidden" name={name} value={files[0]?.path ?? ""} />
+      )}
+      {required && files.length === 0 && (
         // Champ invisible mais requis : bloque la soumission native tant qu'aucun fichier n'est importé.
         <input
           tabIndex={-1}
@@ -109,22 +126,31 @@ export function FileUpload({
         />
       )}
 
-      {path ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
-          <span className="flex min-w-0 items-center gap-2 text-emerald-800">
-            <FileCheck2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">{fileName}</span>
-          </span>
-          <button
-            type="button"
-            onClick={clear}
-            className="shrink-0 rounded p-1 text-emerald-700 hover:bg-emerald-100"
-            aria-label="Retirer le fichier"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
+      {files.length > 0 && (
+        <ul className={cn("space-y-1.5", showZone && "mb-2")}>
+          {files.map((f) => (
+            <li
+              key={f.path}
+              className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm"
+            >
+              <span className="flex min-w-0 items-center gap-2 text-emerald-800">
+                <FileCheck2 className="h-4 w-4 shrink-0" />
+                <span className="truncate">{f.name}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => remove(f.path)}
+                className="shrink-0 rounded p-1 text-emerald-700 hover:bg-emerald-100"
+                aria-label="Retirer le fichier"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showZone && (
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -143,7 +169,7 @@ export function FileUpload({
             <UploadCloud className="h-6 w-6 text-navy-400" />
           )}
           <p className="text-xs text-navy-400">
-            {loading ? "Envoi en cours..." : "Glissez un fichier ici, ou"}
+            {loading ? "Envoi en cours..." : multiple ? "Glissez vos fichiers ici, ou" : "Glissez un fichier ici, ou"}
           </p>
           <label
             htmlFor={inputId}
@@ -152,21 +178,21 @@ export function FileUpload({
               loading && "pointer-events-none opacity-60",
             )}
           >
-            Choisir un fichier
+            {multiple ? "Choisir des fichiers" : "Choisir un fichier"}
           </label>
           <input
             ref={fileInputRef}
             id={inputId}
             type="file"
             accept={accept}
+            multiple={multiple}
             className="sr-only"
             disabled={loading}
             onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void upload(file);
+              if (e.target.files?.length) void upload(e.target.files);
             }}
           />
-          <p className="text-[11px] text-navy-400/70">PDF, JPG ou PNG · 10 Mo max.</p>
+          <p className="text-[11px] text-navy-400/70">PDF, JPG ou PNG · 10 Mo max{multiple ? " par fichier" : ""}.</p>
         </div>
       )}
 

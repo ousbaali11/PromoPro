@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, users, contrats, paiements, visites } from "@/db/schema";
+import { biens, projets, users, contrats, paiements, visites, demandesPhotos, photosAvancement } from "@/db/schema";
 import { Card, Badge } from "@/components/ui/Primitives";
-import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS } from "@/lib/utils";
+import { addMonths, cn, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
+import { DemandePhotosButton } from "./PhotosSection";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_COLOR: Record<string, string> = {
@@ -55,6 +56,19 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
     where: and(eq(visites.bienId, bien.id), eq(visites.clientId, session.clientId)),
     orderBy: [desc(visites.createdAt)],
   });
+  const derniereDemandePhotos = await db.query.demandesPhotos.findFirst({
+    where: and(eq(demandesPhotos.bienId, bien.id), eq(demandesPhotos.clientId, session.clientId)),
+    orderBy: [desc(demandesPhotos.createdAt)],
+  });
+  const prochaineDemandePhotos = derniereDemandePhotos?.createdAt
+    ? addMonths(derniereDemandePhotos.createdAt, DELAI_PHOTOS_MOIS)
+    : null;
+  const photos = await db.query.photosAvancement.findMany({
+    where: eq(photosAvancement.bienId, bien.id),
+    orderBy: [desc(photosAvancement.createdAt)],
+  });
+  // 11.11 — navigation entre les biens du client, sans mélange des données
+  const mesBiens = await db.query.biens.findMany({ where: eq(biens.clientId, session.clientId) });
 
   const totalPaye = ech.reduce((s, e) => s + Math.min(e.montantPaye, e.montant), 0);
   const excedent = ech.reduce((s, e) => s + Math.max(0, e.montantPaye - e.montant), 0);
@@ -66,9 +80,27 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <Link href="/client" className="mb-4 inline-block text-sm text-navy-400 hover:text-navy-900">
-        ← Mes biens
-      </Link>
+      {mesBiens.length > 1 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-navy-400">Mes biens :</span>
+          {mesBiens.map((b) => (
+            <Link
+              key={b.id}
+              href={`/client/biens/${b.id}`}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset",
+                b.id === bien.id ? "bg-navy text-white ring-navy" : "bg-white text-navy ring-navy-100 hover:bg-navy-50",
+              )}
+            >
+              {b.designation}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Link href="/client" className="mb-4 inline-block text-sm text-navy-400 hover:text-navy-900">
+          ← Mes biens
+        </Link>
+      )}
 
       <div className="mb-6 flex items-start justify-between">
         <div>
@@ -213,6 +245,43 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="space-y-4">
+          {/* 11.3 — photos d'avancement */}
+          <Card className="p-5">
+            <p className="mb-3 text-sm font-medium text-navy-900">Avancement des travaux</p>
+            <DemandePhotosButton
+              bienId={bien.id}
+              prochaineDisponibiliteISO={prochaineDemandePhotos?.toISOString() ?? null}
+              demandeEnAttente={derniereDemandePhotos?.statut === "EN_ATTENTE"}
+            />
+            {photos.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {photos.map((p) => (
+                  <a
+                    key={p.id}
+                    href={p.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`${p.legende ? `${p.legende} · ` : ""}${formatDate(p.createdAt)}`}
+                    className="group relative aspect-square overflow-hidden rounded-md bg-navy-50 ring-1 ring-navy-100"
+                  >
+                    {p.url.toLowerCase().endsWith(".pdf") ? (
+                      <span className="flex h-full items-center justify-center text-[10px] text-navy-400">PDF</span>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.url} alt={p.legende ?? "Photo d'avancement"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
+            {photos.length > 0 && (
+              <p className="mt-2 text-[11px] text-navy-400">
+                Dernières photos déposées le {formatDate(photos[0].createdAt)}
+                {photos[0].legende && ` · ${photos[0].legende}`}
+              </p>
+            )}
+          </Card>
+
           {/* 11.7 — demande de visite */}
           <Card className="p-5">
             <p className="mb-3 text-sm font-medium text-navy-900">Visite du bien</p>
