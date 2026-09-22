@@ -196,13 +196,18 @@ export const paiements = sqliteTable("paiements", {
   dateOperation: integer("date_operation", { mode: "timestamp" }),
   dateEncaissementCheque: integer("date_encaissement_cheque", { mode: "timestamp" }),
   porteur: text("porteur"),
+  porteurPieceUrl: text("porteur_piece_url"), // pièce d'identité du porteur s'il diffère du client (6.8)
   preuveUrl: text("preuve_url"),
   reference: text("reference"),
   montantExact: real("montant_exact"),
   dateReception: integer("date_reception", { mode: "timestamp" }),
   statut: text("statut").notNull().default("EN_ATTENTE_COMPTABLE"),
   recuPdfUrl: text("recu_pdf_url"),
+  // Auteur de la saisie : un utilisateur interne (commercial, recouvrement...) OU le client lui-même
   saisiParId: text("saisi_par_id").references(() => users.id),
+  saisiParClientId: text("saisi_par_client_id").references(() => clients.id),
+  valideParId: text("valide_par_id").references(() => users.id),
+  validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
@@ -279,11 +284,13 @@ export const syndics = sqliteTable("syndics", {
 // ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
+// Destinataire : un utilisateur interne (recipientType = STAFF, userId) ou un
+// client (recipientType = CLIENT, clientId).
 export const notifications = sqliteTable("notifications", {
   id: id(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id),
+  recipientType: text("recipient_type").notNull().default("STAFF"), // STAFF | CLIENT
+  userId: text("user_id").references(() => users.id),
+  clientId: text("client_id").references(() => clients.id),
   type: text("type").notNull(),
   titre: text("titre").notNull(),
   message: text("message"),

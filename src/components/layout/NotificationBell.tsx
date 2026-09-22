@@ -15,7 +15,7 @@ type Notif = {
   createdAt: Date | number | string | null;
 };
 
-export function NotificationBell({ notifications }: { notifications: Notif[] }) {
+export function NotificationBell({ notifications, dark = false }: { notifications: Notif[]; dark?: boolean }) {
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
   const unread = notifications.filter((n) => !n.lu).length;
@@ -24,7 +24,10 @@ export function NotificationBell({ notifications }: { notifications: Notif[] }) 
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-navy-600 hover:bg-navy-50"
+        className={cn(
+          "relative flex h-9 w-9 items-center justify-center rounded-full",
+          dark ? "text-navy-100/80 hover:bg-white/10 hover:text-white" : "text-navy-600 hover:bg-navy-50",
+        )}
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />

@@ -16,7 +16,7 @@ export async function clientCanAccessFile(clientId: string, url: string): Promis
   if (client.pieceDocUrl === url) return true;
 
   const paiement = await db.query.paiements.findFirst({
-    where: or(eq(paiements.preuveUrl, url), eq(paiements.recuPdfUrl, url)),
+    where: or(eq(paiements.preuveUrl, url), eq(paiements.recuPdfUrl, url), eq(paiements.porteurPieceUrl, url)),
   });
   if (paiement) return paiement.clientId === clientId;
 

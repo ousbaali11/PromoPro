@@ -76,13 +76,25 @@ leur `projet`/`commercial`.
 
 ## Notifications
 
-`src/lib/notifications.ts` expose `notify({ userId, type, titre, message?,
-lien? })` et `notifyMany(userIds, {...})`. Utilisé dans toutes les Server
-Actions qui doivent prévenir un ou plusieurs rôles (voir le tableau
-récapitulatif des notifications dans le cahier des charges, section 15, pour
-la liste complète attendue). Les notifications ne sont pour l'instant
-adressées qu'aux utilisateurs internes (`users.id`) ; les notifications
-côté client restent à faire (voir `PROMPTS.md`, prompt 3).
+`src/lib/notifications.ts` expose `notify({ userId, ... })` (un utilisateur
+interne), `notifyMany(userIds, {...})`, `notifyRole(promoteurId, role, {...})`
+(tous les utilisateurs actifs d'un rôle) et `notifyClient({ clientId, ... })`
+(un client, visible dans la cloche de son espace). La table `notifications`
+porte un `recipientType` (`STAFF` → `userId`, `CLIENT` → `clientId`). Utilisé
+dans toutes les Server Actions qui doivent prévenir un ou plusieurs rôles
+(voir le tableau récapitulatif des notifications dans le cahier des charges,
+section 15).
+
+## Paiements
+
+`src/lib/paiements.ts` centralise la logique métier : lecture/validation du
+formulaire (`lirePaiementForm`), création d'une ligne (`creerPaiement`),
+notification du comptable, imputation d'un montant sur l'échéancier avec
+report du trop-perçu (`imputerSurEcheancier`, section 11.9) et validation
+comptable avec reçu PDF + notification client (`validerPaiement`). Les Server
+Actions par rôle (commercial, client, recouvrement, comptable) ne font que
+vérifier le rôle et déléguer. Le formulaire `PaiementForm`
+(`src/components/paiements/`) est partagé et reçoit l'action en prop.
 
 ## Formulaires et Server Actions
 
