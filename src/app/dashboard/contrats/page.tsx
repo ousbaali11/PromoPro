@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
-import { FileDown } from "lucide-react";
+import { FileDown, FileCheck2 } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { contrats, biens, projets, clients } from "@/db/schema";
 import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
 import { TodoModule } from "@/components/layout/TodoModule";
 import { ConfirmerButton } from "./ConfirmerButton";
+import { CopieSigneeForm } from "./CopieSigneeForm";
 
 const LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -82,8 +83,21 @@ export default async function ContratsPage() {
                           <FileDown className="h-3.5 w-3.5" /> Contrat PDF
                         </a>
                       )}
+                      {contrat.copieSigneeUrl && (
+                        <a
+                          href={contrat.copieSigneeUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 hover:underline"
+                        >
+                          <FileCheck2 className="h-3.5 w-3.5" /> Copie signée
+                        </a>
+                      )}
                       {contrat.statut === "EN_ATTENTE" && session.role === "RESPONSABLE_ADMINISTRATIF" && (
                         <ConfirmerButton contratId={contrat.id} />
+                      )}
+                      {["PRET", "ENVOYE"].includes(contrat.statut) && session.role === "RESPONSABLE_ADMINISTRATIF" && (
+                        <CopieSigneeForm contratId={contrat.id} />
                       )}
                     </span>
                   </td>

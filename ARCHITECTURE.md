@@ -96,6 +96,25 @@ Actions par rôle (commercial, client, recouvrement, comptable) ne font que
 vérifier le rôle et déléguer. Le formulaire `PaiementForm`
 (`src/components/paiements/`) est partagé et reçoit l'action en prop.
 
+**Paiements fractionnés et trop-perçus (section 11.9) — choix retenu.** Un
+paiement est rattaché à une tranche (`echeanceId`, par défaut la première non
+soldée). À la validation comptable, `imputerSurEcheancier` ajoute le montant
+exact reçu à `montantPaye` de cette tranche (→ `PARTIELLE` ou `PAYEE`) ; si le
+montant dépasse le restant dû, l'excédent est reporté sur la tranche suivante
+(et ainsi de suite), ce qui réduit automatiquement son restant dû. Les
+versements complémentaires d'une tranche fractionnée sont saisis comme des
+paiements distincts (chacun avec sa preuve) sur la même tranche, et le cumul se
+met à jour à chaque validation. Un excédent restant après la dernière tranche
+est conservé sur celle-ci (`montantPaye > montant`) et affiché au client
+comme « excédent en votre faveur ». Les montants sont modifiés uniquement à la
+validation comptable : un paiement « en attente » n'affecte pas l'échéancier.
+
+## Tâches planifiées
+
+`src/app/api/cron/rappels-echeance/route.ts` envoie le rappel J-7 aux clients
+(section 11.8). Elle est idempotente (`echeances.rappelEnvoyeAt`) et protégée
+par `CRON_SECRET` — voir le README pour le déclenchement en production.
+
 ## Formulaires et Server Actions
 
 Le projet utilise `useActionState` (React 19) partout, pas de bibliothèque de

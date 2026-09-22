@@ -161,6 +161,7 @@ export const echeances = sqliteTable("echeances", {
   dateEcheance: integer("date_echeance", { mode: "timestamp" }).notNull(),
   montantPaye: real("montant_paye").notNull().default(0),
   statut: text("statut").notNull().default("EN_ATTENTE"),
+  rappelEnvoyeAt: integer("rappel_envoye_at", { mode: "timestamp" }), // rappel J-7 envoyé au client (11.8)
 });
 
 // ---------------------------------------------------------------------------

@@ -5,8 +5,43 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { contrats, biens, clients, projets, promoteurs, propositions, echeances, paiements } from "@/db/schema";
 import { requireRole } from "@/lib/session";
-import { notify } from "@/lib/notifications";
+import { notify, notifyClient } from "@/lib/notifications";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { parsePublicPath } from "@/lib/storage";
+
+/**
+ * Section 7.3 — le Responsable Administratif dépose le scan de la 4e copie
+ * signée et cachetée ; elle devient visible dans l'espace du client.
+ */
+export async function deposerCopieSignee(_prev: { error?: string } | undefined, formData: FormData) {
+  const session = await requireRole(["RESPONSABLE_ADMINISTRATIF"]);
+  const contratId = String(formData.get("contratId") ?? "");
+  const copieSigneeUrl = String(formData.get("copieSigneeUrl") ?? "");
+  if (!parsePublicPath(copieSigneeUrl)) return { error: "Merci d'importer le scan de la copie signée." };
+
+  const contrat = await db.query.contrats.findFirst({ where: eq(contrats.id, contratId) });
+  if (!contrat) return { error: "Contrat introuvable." };
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, contrat.bienId) });
+  const projet = bien ? await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) }) : null;
+  if (!bien || !projet || projet.promoteurId !== session.promoteurId) return { error: "Accès refusé." };
+  if (["EN_ATTENTE", "ANNULE"].includes(contrat.statut)) return { error: "Le contrat doit d'abord être confirmé." };
+
+  await db.update(contrats).set({ copieSigneeUrl, statut: "SIGNE" }).where(eq(contrats.id, contratId));
+
+  if (bien.clientId) {
+    await notifyClient({
+      clientId: bien.clientId,
+      type: "CONTRAT_SIGNE",
+      titre: "Copie signée de votre contrat disponible",
+      message: `La copie signée et cachetée du contrat de ${bien.designation} est consultable dans vos documents.`,
+      lien: `/client/biens/${bien.id}`,
+    });
+  }
+
+  revalidatePath("/dashboard/contrats");
+  revalidatePath(`/client/biens/${bien.id}`);
+  return { error: undefined };
+}
 
 /**
  * Le Responsable Administratif vérifie et confirme le contrat : le PDF est

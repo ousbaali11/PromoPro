@@ -12,9 +12,12 @@ import {
   paiements,
   prospects,
   notifications,
+  contrats,
 } from "./schema";
 import { hashPassword } from "../lib/auth";
 import { defaultEcheancier } from "../lib/utils";
+import { genererEtStockerContrat } from "../lib/pdf/contrat";
+import { genererEtStockerRecu } from "../lib/pdf/recu";
 
 async function main() {
   console.log("→ Nettoyage des tables...");
@@ -167,25 +170,51 @@ async function main() {
     });
   }
 
-  const firstEcheance = (await db.select().from(echeances)).find(
-    (e) => e.propositionId === propAcceptee.id && e.numero === 1,
-  );
-  await db.insert(paiements).values({
+  const echeancesA01 = (await db.select().from(echeances)).filter((e) => e.propositionId === propAcceptee.id);
+  const firstEcheance = echeancesA01.find((e) => e.numero === 1);
+  const [paiement1] = await db
+    .insert(paiements)
+    .values({
+      bienId: bienVendu.id,
+      clientId: demoClient.id,
+      echeanceId: firstEcheance?.id,
+      trancheNumero: 1,
+      montant: Math.round(bienVendu.prix * 0.4),
+      devise: "MAD",
+      natureOperation: "virement local",
+      banque: "Attijariwafa Bank",
+      dateOperation: new Date(Date.now() - 40 * 24 * 3600 * 1000),
+      porteur: "Hamid Naciri",
+      reference: "VIR-2026-00458",
+      montantExact: Math.round(bienVendu.prix * 0.4),
+      dateReception: new Date(Date.now() - 39 * 24 * 3600 * 1000),
+      statut: "VALIDE",
+      saisiParId: insertedUsers.com1.id,
+      valideParId: insertedUsers.compta.id,
+      validatedAt: new Date(Date.now() - 39 * 24 * 3600 * 1000),
+    })
+    .returning();
+
+  console.log("→ Génération du contrat et du reçu PDF de la vente A01...");
+  const bienA01 = (await db.query.biens.findFirst({ where: eq(biens.id, bienVendu.id) }))!;
+  const recuPdfUrl = await genererEtStockerRecu(paiement1, bienA01, demoClient, {
+    projet,
+    promoteur: promopro,
+    echeance: firstEcheance,
+    validePar: `${insertedUsers.compta.prenom} ${insertedUsers.compta.nom}`,
+  });
+  await db.update(paiements).set({ recuPdfUrl }).where(eq(paiements.id, paiement1.id));
+
+  const contratPdfUrl = await genererEtStockerContrat(bienA01, demoClient, echeancesA01, {
+    projet,
+    promoteur: promopro,
+    paiements: [{ ...paiement1, recuPdfUrl }],
+  });
+  await db.insert(contrats).values({
     bienId: bienVendu.id,
-    clientId: demoClient.id,
-    echeanceId: firstEcheance?.id,
-    trancheNumero: 1,
-    montant: Math.round(bienVendu.prix * 0.4),
-    devise: "MAD",
-    natureOperation: "virement local",
-    banque: "Attijariwafa Bank",
-    dateOperation: new Date(Date.now() - 40 * 24 * 3600 * 1000),
-    porteur: "Hamid Naciri",
-    reference: "VIR-2026-00458",
-    montantExact: Math.round(bienVendu.prix * 0.4),
-    dateReception: new Date(Date.now() - 39 * 24 * 3600 * 1000),
-    statut: "VALIDE",
-    saisiParId: insertedUsers.com1.id,
+    statut: "PRET",
+    pdfUrl: contratPdfUrl,
+    confirmedAt: new Date(Date.now() - 35 * 24 * 3600 * 1000),
   });
 
   console.log("→ Proposition en attente de décision PDG (Appartement A02)...");

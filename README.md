@@ -162,6 +162,23 @@ données), `actions.ts` (`"use server"`, écriture + vérification de rôle via
 `requireRole`), et de petits composants client (`"use client"`) pour
 l'interactivité (boutons, formulaires avec `useActionState`).
 
+## Tâches planifiées (rappel J-7 avant échéance)
+
+La route `GET /api/cron/rappels-echeance` notifie chaque client une semaine
+avant une échéance non soldée (date, montant, tranche, pourcentage). Elle doit
+être appelée **une fois par jour** et exige l'en-tête
+`Authorization: Bearer $CRON_SECRET` (variable d'environnement, obligatoire en
+production). Elle est idempotente : une échéance n'est jamais rappelée deux fois.
+
+- **Vercel** : ajouter à `vercel.json`
+  `{"crons":[{"path":"/api/cron/rappels-echeance","schedule":"0 8 * * *"}]}`
+  et définir `CRON_SECRET` dans les variables du projet (Vercel envoie
+  automatiquement `Authorization: Bearer $CRON_SECRET`).
+- **Serveur classique (cron / systemd timer)** :
+  `0 8 * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://votre-domaine/api/cron/rappels-echeance`
+- **En local** : `curl http://localhost:3000/api/cron/rappels-echeance`
+  (sans `CRON_SECRET` défini, la route est ouverte hors production).
+
 ## Migrer vers PostgreSQL pour la production
 
 1. `npm install pg` puis remplacer `drizzle-orm/libsql` (et `@libsql/client`) par
