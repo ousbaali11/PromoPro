@@ -191,3 +191,5 @@ production). Elle est idempotente : une échéance n'est jamais rappelée deux f
 4. `npm run db:push`
 
 Le reste du code (requêtes Drizzle, Server Actions) ne change pas.
+#   P r o m o P r o  
+ 
