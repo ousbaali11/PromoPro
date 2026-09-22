@@ -71,8 +71,10 @@ Server Action). Les cases cochées sont en place dans le code ; les points
 
 - [x] Stockage des fichiers isolé dans `src/lib/storage.ts` ; dossier
       configurable par `UPLOAD_DIR` (disque persistant en production).
-- [x] Base SQLite par défaut ; schéma PostgreSQL miroir et client prêts
-      (`src/db/schema.pg.ts`, `src/db/client.pg.ts`, `drizzle.config.pg.ts`).
+- [x] Base SQLite par défaut ; PostgreSQL activé automatiquement par
+      `DATABASE_URL` (`src/db/client.ts`, schéma miroir `src/db/schema.pg.ts`).
+      `DATABASE_URL` contient un mot de passe : variable d'environnement de la
+      plateforme uniquement, jamais dans un fichier commité.
 - [ ] **Au déploiement** : sauvegardes régulières de la base et du dossier
       des fichiers ; TLS (HTTPS) terminé par le reverse proxy ou la plateforme.
 

@@ -45,7 +45,26 @@ côté serveur. `src/proxy.ts` ne fait qu'une protection de premier niveau
 
 ## Base de données
 
-`src/db/schema.ts` définit toutes les tables avec Drizzle. Conventions :
+**Choix du driver (Phase 13).** `src/db/client.ts` est l'unique point d'entrée
+et choisit le dialecte au démarrage : si `DATABASE_URL` est défini et commence
+par `postgres`, il construit un client `drizzle-orm/node-postgres` (pool `pg`,
+TLS d'après `sslmode=` ou `PGSSLMODE`) sur `schema.pg.ts` ; sinon il retombe
+sur `@libsql/client` avec `data/promopro.db` et `schema.sqlite.ts`. `db` est
+typé avec le client SQLite : les types de lignes des deux schémas sont
+identiques et les API utilisées (`db.query.*`, `select/insert/update/delete`,
+`returning`) existent dans les deux dialectes, ce qui permet au reste du code
+d'ignorer la base réelle. `src/db/schema.ts` applique la même règle et
+ré-exporte les tables du dialecte actif.
+
+**Pourquoi deux fichiers de schéma ?** Drizzle n'a pas de définition de table
+indépendante du dialecte (`sqliteTable` ≠ `pgTable`, mapping des timestamps
+différent). `schema.sqlite.ts` est la source ; `schema.pg.ts` en est le miroir
+généré par `npm run db:pg-schema` (`scripts/gen-pg-schema.mjs`) — à relancer
+après toute modification du schéma, jamais à éditer à la main.
+`drizzle.config.ts` et le seed lisent `.env.local` / `.env` (`src/db/load-env.ts`)
+pour cibler la même base que l'application.
+
+`src/db/schema.sqlite.ts` définit toutes les tables avec Drizzle. Conventions :
 
 - Id : `text` + `crypto.randomUUID()` (voir le helper `id()` en haut du
   fichier)

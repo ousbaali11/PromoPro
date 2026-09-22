@@ -1,10 +1,10 @@
-// Régénère src/db/schema.pg.ts (PostgreSQL) à partir de src/db/schema.ts (SQLite).
+// Régénère src/db/schema.pg.ts (PostgreSQL) à partir de src/db/schema.sqlite.ts (SQLite).
 // Usage : npm run db:pg-schema
 // Les deux schémas doivent rester identiques colonne par colonne ; seul le
-// dialecte change. Lancez ce script après toute modification de schema.ts.
+// dialecte change. Lancez ce script après toute modification de schema.sqlite.ts.
 import { readFileSync, writeFileSync } from "node:fs";
 
-const src = readFileSync(new URL("../src/db/schema.ts", import.meta.url), "utf8");
+const src = readFileSync(new URL("../src/db/schema.sqlite.ts", import.meta.url), "utf8");
 
 const out = src
   .replace(
@@ -17,9 +17,9 @@ const out = src
   .replace(/\breal\(/g, "doublePrecision(");
 
 const header = `// ---------------------------------------------------------------------------
-// Schéma PostgreSQL — miroir exact de schema.ts (SQLite) pour la production.
+// Schéma PostgreSQL — miroir exact de schema.sqlite.ts (SQLite) pour la production.
 // Voir README « Migrer vers PostgreSQL ». Généré par scripts/gen-pg-schema.mjs
-// (\`npm run db:pg-schema\`) : ne pas éditer à la main, modifier schema.ts.
+// (\`npm run db:pg-schema\`) : ne pas éditer à la main, modifier schema.sqlite.ts.
 // ---------------------------------------------------------------------------
 `;
 

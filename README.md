@@ -197,24 +197,34 @@ S3-compatible (S3, R2, MinIO) : c'est le seul endroit du code qui touche au
 système de fichiers, les chemins publics `/api/files/...` et le contrôle
 d'accès restent identiques.
 
-## Migrer vers PostgreSQL pour la production
+## PostgreSQL en production (bascule par variable d'environnement)
 
-Tout est préparé ; la bascule est un remplacement de deux fichiers :
+Le driver est choisi au démarrage par `src/db/client.ts` :
 
-1. Créez la base et définissez `DATABASE_URL=postgres://user:pass@host:5432/promopro`
-   (`PGSSLMODE=disable` si le serveur est sans TLS sur un réseau privé).
-2. Remplacez le client et le schéma SQLite par leurs équivalents PostgreSQL :
-   `src/db/client.pg.ts` → `src/db/client.ts` et `src/db/schema.pg.ts` →
-   `src/db/schema.ts` (`schema.pg.ts` est un miroir colonne par colonne,
-   régénéré par `npm run db:pg-schema` ; le driver `pg` est déjà installé).
-3. `npm run db:push:pg` (utilise `drizzle.config.pg.ts`), puis éventuellement
-   `npm run db:seed` pour un jeu de démonstration.
+- `DATABASE_URL` défini et commençant par `postgres://` (ou `postgresql://`)
+  → PostgreSQL (`pg` + `drizzle-orm/node-postgres`, schéma `src/db/schema.pg.ts`) ;
+- sinon → SQLite locale (`data/promopro.db`), comportement inchangé.
 
-Le reste du code (requêtes Drizzle, Server Actions, PDF, stockage) ne change
-pas : les types TypeScript des deux schémas sont identiques. Cette procédure
-n'a pas pu être exécutée dans l'environnement de développement (pas de serveur
-PostgreSQL disponible) : validez-la sur votre instance avant la mise en
-production.
+`npm run db:push` et `npm run db:seed` suivent la même règle (ils lisent
+`.env.local` puis `.env`) : ils ciblent toujours la base que l'application
+utilise. Pour un déploiement complet sur Railway (Docker, volume, variables),
+voir **[DEPLOY.md](./DEPLOY.md)**.
+
+`schema.pg.ts` est un miroir colonne par colonne de `schema.sqlite.ts`,
+régénéré par `npm run db:pg-schema` après toute modification du schéma (ne
+jamais l'éditer à la main). Le reste du code (requêtes Drizzle, Server
+Actions, PDF, stockage) ignore le dialecte.
+
+Pour tester localement contre une base Postgres distante : mettez son URL
+publique dans `.env.local` (`DATABASE_URL=...`), puis `npm run db:push`,
+`npm run db:seed`, `npm run dev`. Retirez la variable pour revenir en SQLite.
+
+## Déploiement
+
+Le projet se construit en image Docker (`Dockerfile`, build Next.js
+`standalone`) avec une sonde de vie `GET /api/health`. Le pas-à-pas Railway
+(repo GitHub, variables, volume persistant, initialisation de la base) est
+dans **[DEPLOY.md](./DEPLOY.md)**.
 
 ## Sécurité
 

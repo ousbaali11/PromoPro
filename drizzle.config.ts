@@ -1,10 +1,22 @@
 import type { Config } from "drizzle-kit";
+import "./src/db/load-env";
 
-export default {
-  schema: "./src/db/schema.ts",
-  out: "./drizzle",
-  dialect: "turso",
-  dbCredentials: {
-    url: "file:./data/promopro.db",
-  },
-} satisfies Config;
+// Même règle que src/db/client.ts : DATABASE_URL "postgres…" → PostgreSQL,
+// sinon SQLite local. `npm run db:push` cible donc toujours la base que
+// l'application utilise.
+const url = process.env.DATABASE_URL?.trim();
+const usePostgres = !!url && /^postgres(ql)?:\/\//i.test(url);
+
+export default (usePostgres
+  ? {
+      schema: "./src/db/schema.pg.ts",
+      out: "./drizzle-pg",
+      dialect: "postgresql",
+      dbCredentials: { url: url! },
+    }
+  : {
+      schema: "./src/db/schema.sqlite.ts",
+      out: "./drizzle",
+      dialect: "turso",
+      dbCredentials: { url: "file:./data/promopro.db" },
+    }) satisfies Config;

@@ -1,6 +1,6 @@
-/* eslint-disable no-console */
+import "./load-env";
 import { eq } from "drizzle-orm";
-import { db, closeDb } from "./client";
+import { db, closeDb, dialecte } from "./client";
 import {
   promoteurs,
   users,
@@ -26,6 +26,7 @@ import { genererEtStockerContrat } from "../lib/pdf/contrat";
 import { genererEtStockerRecu } from "../lib/pdf/recu";
 
 async function main() {
+  console.log(`→ Base cible : ${dialecte === "postgres" ? "PostgreSQL (DATABASE_URL)" : "SQLite locale (data/promopro.db)"}`);
   console.log("→ Nettoyage des tables...");
   // Ordre respectant les clés étrangères ; requêtes Drizzle (portable SQLite / PostgreSQL)
   for (const table of [

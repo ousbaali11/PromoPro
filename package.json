@@ -10,8 +10,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
-    "db:pg-schema": "node scripts/gen-pg-schema.mjs",
-    "db:push:pg": "drizzle-kit push --config drizzle.config.pg.ts"
+    "db:pg-schema": "node scripts/gen-pg-schema.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

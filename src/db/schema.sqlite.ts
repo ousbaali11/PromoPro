@@ -1,9 +1,4 @@
-// ---------------------------------------------------------------------------
-// Schéma PostgreSQL — miroir exact de schema.sqlite.ts (SQLite) pour la production.
-// Voir README « Migrer vers PostgreSQL ». Généré par scripts/gen-pg-schema.mjs
-// (`npm run db:pg-schema`) : ne pas éditer à la main, modifier schema.sqlite.ts.
-// ---------------------------------------------------------------------------
-import { pgTable, text, integer, doublePrecision, timestamp, boolean } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -14,7 +9,7 @@ const id = () =>
     .$defaultFn(() => crypto.randomUUID());
 
 const createdAt = () =>
-  timestamp("created_at", { withTimezone: true }).$defaultFn(() => new Date());
+  integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date());
 
 // ---------------------------------------------------------------------------
 // Roles (kept as a plain union — SQLite has no native enum type)
@@ -37,7 +32,7 @@ export type Role = (typeof ROLES)[number];
 // ---------------------------------------------------------------------------
 // Niveau 1 — Plateforme / Super Admin
 // ---------------------------------------------------------------------------
-export const promoteurs = pgTable("promoteurs", {
+export const promoteurs = sqliteTable("promoteurs", {
   id: id(),
   nom: text("nom").notNull(),
   contactEmail: text("contact_email"),
@@ -45,15 +40,15 @@ export const promoteurs = pgTable("promoteurs", {
   // EN_ATTENTE | ACTIF | SUSPENDU
   statut: text("statut").notNull().default("EN_ATTENTE"),
   abonnementFormule: text("abonnement_formule"), // ex: "Annuel", "Mensuel"
-  abonnementDebut: timestamp("abonnement_debut", { withTimezone: true }),
-  abonnementFin: timestamp("abonnement_fin", { withTimezone: true }),
+  abonnementDebut: integer("abonnement_debut", { mode: "timestamp" }),
+  abonnementFin: integer("abonnement_fin", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
 // ---------------------------------------------------------------------------
 // Utilisateurs (tous rôles confondus, y compris Super Admin: promoteurId=null)
 // ---------------------------------------------------------------------------
-export const users = pgTable("users", {
+export const users = sqliteTable("users", {
   id: id(),
   promoteurId: text("promoteur_id").references(() => promoteurs.id),
   role: text("role").notNull().$type<Role>(),
@@ -63,14 +58,14 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   email: text("email"),
   telephone: text("telephone"),
-  actif: boolean("actif").notNull().default(true),
+  actif: integer("actif", { mode: "boolean" }).notNull().default(true),
   createdAt: createdAt(),
 });
 
 // ---------------------------------------------------------------------------
 // Projets & Biens
 // ---------------------------------------------------------------------------
-export const projets = pgTable("projets", {
+export const projets = sqliteTable("projets", {
   id: id(),
   promoteurId: text("promoteur_id")
     .notNull()
@@ -83,32 +78,32 @@ export const projets = pgTable("projets", {
 });
 
 // DISPONIBLE | BLOQUE_PDG | PROPOSITION_EN_COURS | VENDU | DESISTE | LIVRE
-export const biens = pgTable("biens", {
+export const biens = sqliteTable("biens", {
   id: id(),
   projetId: text("projet_id")
     .notNull()
     .references(() => projets.id),
   designation: text("designation").notNull(), // ex: "Appartement B12"
   nature: text("nature").notNull().default("Appartement"), // Appartement | Parking | Local...
-  prix: doublePrecision("prix").notNull(),
-  surface: doublePrecision("surface").notNull(),
+  prix: real("prix").notNull(),
+  surface: real("surface").notNull(),
   planUrl: text("plan_url"),
   statut: text("statut").notNull().default("DISPONIBLE"),
   commercialId: text("commercial_id").references(() => users.id),
   clientId: text("client_id").references(() => clients.id),
   pdgCommentaire: text("pdg_commentaire"), // note privée, visible PDG seulement
   // Livraison (11.10 / 12.1) : double confirmation client + SAV → statut LIVRE
-  livraisonConfirmeeClient: boolean("livraison_confirmee_client").notNull().default(false),
-  livraisonConfirmeeSav: boolean("livraison_confirmee_sav").notNull().default(false),
-  livreAt: timestamp("livre_at", { withTimezone: true }),
-  notaireTransmisAt: timestamp("notaire_transmis_at", { withTimezone: true }), // dossier transmis au notaire (7.4)
+  livraisonConfirmeeClient: integer("livraison_confirmee_client", { mode: "boolean" }).notNull().default(false),
+  livraisonConfirmeeSav: integer("livraison_confirmee_sav", { mode: "boolean" }).notNull().default(false),
+  livreAt: integer("livre_at", { mode: "timestamp" }),
+  notaireTransmisAt: integer("notaire_transmis_at", { mode: "timestamp" }), // dossier transmis au notaire (7.4)
   createdAt: createdAt(),
 });
 
 // ---------------------------------------------------------------------------
 // Clients (acquéreurs)
 // ---------------------------------------------------------------------------
-export const clients = pgTable("clients", {
+export const clients = sqliteTable("clients", {
   id: id(),
   promoteurId: text("promoteur_id")
     .notNull()
@@ -134,7 +129,7 @@ export const clients = pgTable("clients", {
 // Propositions de vente (commercial -> PDG)
 // ---------------------------------------------------------------------------
 // ENVOYEE | ACCEPTEE | REFUSEE | NEGOCIEE | DESISTEE (vente annulée après désistement du client)
-export const propositions = pgTable("propositions", {
+export const propositions = sqliteTable("propositions", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -148,12 +143,12 @@ export const propositions = pgTable("propositions", {
   statut: text("statut").notNull().default("ENVOYEE"),
   noteNegociation: text("note_negociation"), // contre-proposition du PDG
   createdAt: createdAt(),
-  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decidedAt: integer("decided_at", { mode: "timestamp" }),
 });
 
 // Échéancier de paiement rattaché à une proposition/bien
 // EN_ATTENTE | PARTIELLE | PAYEE
-export const echeances = pgTable("echeances", {
+export const echeances = sqliteTable("echeances", {
   id: id(),
   propositionId: text("proposition_id")
     .notNull()
@@ -162,19 +157,19 @@ export const echeances = pgTable("echeances", {
     .notNull()
     .references(() => biens.id),
   numero: integer("numero").notNull(),
-  pourcentage: doublePrecision("pourcentage").notNull(),
-  montant: doublePrecision("montant").notNull(),
-  dateEcheance: timestamp("date_echeance", { withTimezone: true }).notNull(),
-  montantPaye: doublePrecision("montant_paye").notNull().default(0),
+  pourcentage: real("pourcentage").notNull(),
+  montant: real("montant").notNull(),
+  dateEcheance: integer("date_echeance", { mode: "timestamp" }).notNull(),
+  montantPaye: real("montant_paye").notNull().default(0),
   statut: text("statut").notNull().default("EN_ATTENTE"),
-  rappelEnvoyeAt: timestamp("rappel_envoye_at", { withTimezone: true }), // rappel J-7 envoyé au client (11.8)
+  rappelEnvoyeAt: integer("rappel_envoye_at", { mode: "timestamp" }), // rappel J-7 envoyé au client (11.8)
 });
 
 // ---------------------------------------------------------------------------
 // Contrats
 // ---------------------------------------------------------------------------
 // EN_ATTENTE | PRET | ENVOYE | SIGNE | ANNULE (désistement)
-export const contrats = pgTable("contrats", {
+export const contrats = sqliteTable("contrats", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -183,14 +178,14 @@ export const contrats = pgTable("contrats", {
   pdfUrl: text("pdf_url"),
   copieSigneeUrl: text("copie_signee_url"), // 4e copie scannée
   createdAt: createdAt(),
-  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
 });
 
 // ---------------------------------------------------------------------------
 // Paiements (tranches)
 // ---------------------------------------------------------------------------
 // EN_ATTENTE_COMPTABLE | VALIDE
-export const paiements = pgTable("paiements", {
+export const paiements = sqliteTable("paiements", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -200,25 +195,25 @@ export const paiements = pgTable("paiements", {
     .references(() => clients.id),
   echeanceId: text("echeance_id").references(() => echeances.id),
   trancheNumero: integer("tranche_numero"),
-  montant: doublePrecision("montant").notNull(),
+  montant: real("montant").notNull(),
   devise: text("devise").notNull().default("MAD"),
   natureOperation: text("nature_operation"), // virement local | virement international | versement | cheque
   banque: text("banque"),
-  dateOperation: timestamp("date_operation", { withTimezone: true }),
-  dateEncaissementCheque: timestamp("date_encaissement_cheque", { withTimezone: true }),
+  dateOperation: integer("date_operation", { mode: "timestamp" }),
+  dateEncaissementCheque: integer("date_encaissement_cheque", { mode: "timestamp" }),
   porteur: text("porteur"),
   porteurPieceUrl: text("porteur_piece_url"), // pièce d'identité du porteur s'il diffère du client (6.8)
   preuveUrl: text("preuve_url"),
   reference: text("reference"),
-  montantExact: doublePrecision("montant_exact"),
-  dateReception: timestamp("date_reception", { withTimezone: true }),
+  montantExact: real("montant_exact"),
+  dateReception: integer("date_reception", { mode: "timestamp" }),
   statut: text("statut").notNull().default("EN_ATTENTE_COMPTABLE"),
   recuPdfUrl: text("recu_pdf_url"),
   // Auteur de la saisie : un utilisateur interne (commercial, recouvrement...) OU le client lui-même
   saisiParId: text("saisi_par_id").references(() => users.id),
   saisiParClientId: text("saisi_par_client_id").references(() => clients.id),
   valideParId: text("valide_par_id").references(() => users.id),
-  validatedAt: timestamp("validated_at", { withTimezone: true }),
+  validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
@@ -226,7 +221,7 @@ export const paiements = pgTable("paiements", {
 // Désistements
 // ---------------------------------------------------------------------------
 // EN_ATTENTE | VERIFIE | REMBOURSE
-export const desistements = pgTable("desistements", {
+export const desistements = sqliteTable("desistements", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -236,12 +231,12 @@ export const desistements = pgTable("desistements", {
     .references(() => clients.id),
   commercialId: text("commercial_id").references(() => users.id), // commercial ayant enregistré le désistement
   documentUrl: text("document_url"),
-  montantARembourser: doublePrecision("montant_a_rembourser").notNull().default(0), // total des paiements validés au moment du désistement
+  montantARembourser: real("montant_a_rembourser").notNull().default(0), // total des paiements validés au moment du désistement
   statut: text("statut").notNull().default("EN_ATTENTE"),
   dechargeNote: text("decharge_note"), // décharge fournie ou non, commentaire du Responsable Administratif
   traiteParId: text("traite_par_id").references(() => users.id),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  rembourseAt: timestamp("rembourse_at", { withTimezone: true }),
+  verifiedAt: integer("verified_at", { mode: "timestamp" }),
+  rembourseAt: integer("rembourse_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
@@ -249,7 +244,7 @@ export const desistements = pgTable("desistements", {
 // Prospects (leads assistant administratif)
 // ---------------------------------------------------------------------------
 // NON_CONTACTE | CONTACTE
-export const prospects = pgTable("prospects", {
+export const prospects = sqliteTable("prospects", {
   id: id(),
   promoteurId: text("promoteur_id")
     .notNull()
@@ -268,14 +263,14 @@ export const prospects = pgTable("prospects", {
 // ---------------------------------------------------------------------------
 // PROPOSE | ACCEPTE | REPROPOSE — `dernierAuteur` indique qui a fait la dernière
 // proposition (CLIENT ou SERVICE) : c'est à l'autre partie d'accepter ou de reproposer.
-export const rendezvous = pgTable("rendezvous", {
+export const rendezvous = sqliteTable("rendezvous", {
   id: id(),
   clientId: text("client_id")
     .notNull()
     .references(() => clients.id),
   bienId: text("bien_id").references(() => biens.id), // rendez-vous rattaché à un bien (cloisonnement 11.11)
   service: text("service").notNull(), // COMMERCIAL | SAV | ADMINISTRATIF | RECOUVREMENT
-  dateProposee: timestamp("date_proposee", { withTimezone: true }).notNull(),
+  dateProposee: integer("date_proposee", { mode: "timestamp" }).notNull(),
   statut: text("statut").notNull().default("PROPOSE"),
   dernierAuteur: text("dernier_auteur").notNull().default("CLIENT"), // CLIENT | SERVICE
   notes: text("notes"),
@@ -287,7 +282,7 @@ export const rendezvous = pgTable("rendezvous", {
 // Demandes de visite du bien (11.7 / 12.3)
 // ---------------------------------------------------------------------------
 // DEMANDEE | ACCEPTEE (autorisation émise, créneau à choisir) | PLANIFIEE | REFUSEE
-export const visites = pgTable("visites", {
+export const visites = sqliteTable("visites", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -296,19 +291,19 @@ export const visites = pgTable("visites", {
     .notNull()
     .references(() => clients.id),
   statut: text("statut").notNull().default("DEMANDEE"),
-  dateVisite: timestamp("date_visite", { withTimezone: true }),
+  dateVisite: integer("date_visite", { mode: "timestamp" }),
   autorisationUrl: text("autorisation_url"), // PDF « Autorisation de visite »
   motifRefus: text("motif_refus"),
   traiteParId: text("traite_par_id").references(() => users.id),
   createdAt: createdAt(),
-  decidedAt: timestamp("decided_at", { withTimezone: true }),
+  decidedAt: integer("decided_at", { mode: "timestamp" }),
 });
 
 // ---------------------------------------------------------------------------
 // Photos d'avancement (11.3 / 12.4) — une demande tous les 6 mois par bien
 // ---------------------------------------------------------------------------
 // EN_ATTENTE | TRAITEE
-export const demandesPhotos = pgTable("demandes_photos", {
+export const demandesPhotos = sqliteTable("demandes_photos", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -318,11 +313,11 @@ export const demandesPhotos = pgTable("demandes_photos", {
     .references(() => clients.id),
   statut: text("statut").notNull().default("EN_ATTENTE"),
   traiteParId: text("traite_par_id").references(() => users.id),
-  traiteAt: timestamp("traite_at", { withTimezone: true }),
+  traiteAt: integer("traite_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
-export const photosAvancement = pgTable("photos_avancement", {
+export const photosAvancement = sqliteTable("photos_avancement", {
   id: id(),
   demandeId: text("demande_id").references(() => demandesPhotos.id),
   bienId: text("bien_id")
@@ -338,7 +333,7 @@ export const photosAvancement = pgTable("photos_avancement", {
 // Syndic (2 ans obligatoire)
 // ---------------------------------------------------------------------------
 // A_PAYER | EN_ATTENTE_VALIDATION | PAYE
-export const syndics = pgTable("syndics", {
+export const syndics = sqliteTable("syndics", {
   id: id(),
   bienId: text("bien_id")
     .notNull()
@@ -346,20 +341,20 @@ export const syndics = pgTable("syndics", {
   clientId: text("client_id")
     .notNull()
     .references(() => clients.id),
-  montant: doublePrecision("montant").notNull(),
+  montant: real("montant").notNull(),
   periode: text("periode"), // "2 ans" | "Annuel"
   statut: text("statut").notNull().default("A_PAYER"),
   definiParId: text("defini_par_id").references(() => users.id), // SAV
   // Paiement déclaré par le client (12.2)
   natureOperation: text("nature_operation"),
   banque: text("banque"),
-  dateOperation: timestamp("date_operation", { withTimezone: true }),
+  dateOperation: integer("date_operation", { mode: "timestamp" }),
   porteur: text("porteur"),
   preuveUrl: text("preuve_url"),
   reference: text("reference"),
-  payeAt: timestamp("paye_at", { withTimezone: true }),
+  payeAt: integer("paye_at", { mode: "timestamp" }),
   valideParId: text("valide_par_id").references(() => users.id), // Comptable Interne
-  validatedAt: timestamp("validated_at", { withTimezone: true }),
+  validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
@@ -368,7 +363,7 @@ export const syndics = pgTable("syndics", {
 // ---------------------------------------------------------------------------
 // Destinataire : un utilisateur interne (recipientType = STAFF, userId) ou un
 // client (recipientType = CLIENT, clientId).
-export const notifications = pgTable("notifications", {
+export const notifications = sqliteTable("notifications", {
   id: id(),
   recipientType: text("recipient_type").notNull().default("STAFF"), // STAFF | CLIENT
   userId: text("user_id").references(() => users.id),
@@ -377,6 +372,6 @@ export const notifications = pgTable("notifications", {
   titre: text("titre").notNull(),
   message: text("message"),
   lien: text("lien"),
-  lu: boolean("lu").notNull().default(false),
+  lu: integer("lu", { mode: "boolean" }).notNull().default(false),
   createdAt: createdAt(),
 });
