@@ -73,7 +73,9 @@ async function main() {
   } as const;
 
   const insertedUsers: Record<string, typeof users.$inferSelect> = {};
+  let i = 0;
   for (const [key, u] of Object.entries(staff)) {
+    i++;
     const [row] = await db
       .insert(users)
       .values({
@@ -84,6 +86,7 @@ async function main() {
         identifiant: u.identifiant,
         passwordHash: "passwordHash" in u ? u.passwordHash : pw,
         email: `${u.identifiant.toLowerCase()}@promopro.ma`,
+        telephone: key === "superAdmin" ? null : `+212 6 61 00 00 ${String(i).padStart(2, "0")}`,
       })
       .returning();
     insertedUsers[key] = row;
