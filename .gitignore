@@ -46,3 +46,7 @@ next-env.d.ts
 
 # fichiers uploades (stockage local, voir src/lib/storage.ts)
 /storage/uploads/
+
+# tests
+/test-results/
+/playwright-report/

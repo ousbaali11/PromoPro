@@ -234,6 +234,34 @@ Pour tester localement contre une base Postgres distante : mettez son URL
 publique dans `.env.local` (`DATABASE_URL=...`), puis `npm run db:push`,
 `npm run db:seed`, `npm run dev`. Retirez la variable pour revenir en SQLite.
 
+## Tests automatisés
+
+Deux niveaux, aucun ne touche jamais `data/promopro.db` ni une base distante :
+
+```bash
+npm run test        # unitaires (Vitest) : fonctions pures, sans base de données
+npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.db, jetable
+```
+
+- **Unitaires** (`tests/unit/`) : échéancier par défaut et formatage
+  (`src/lib/utils.ts`), hachage / identifiants / mots de passe temporaires
+  (`src/lib/auth.ts`), hiérarchie de recrutement et navigation
+  (`src/lib/roles.ts`), détection base locale / distante et garde-fou dev
+  (`src/db/guard.ts`).
+- **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
+  (schéma + seed de démo) avec `DATABASE_URL` forcé à vide, puis Playwright
+  démarre lui-même `next dev` sur le port 3100 en mode SQLite forcé
+  (`SQLITE_PATH=data/test.db`) et joue : connexion de chaque rôle et refus
+  d'un mauvais mot de passe, contrôle d'accès (PDG hors Équipe, Commercial
+  hors `/admin`, client hors `/dashboard`), recrutement par pôle (statuts
+  proposés, rôle forcé refusé), workflow de vente complet (projet → blocage
+  PDG → proposition → acceptation → « Vendu » → notification du commercial).
+- Première installation : `npx playwright install chromium` (le navigateur
+  n'est pas dans `node_modules`). Arrêtez votre `npm run dev` avant
+  `test:e2e` : Next.js n'accepte qu'un serveur de dev par dossier.
+- `.github/workflows/test.yml` rejoue lint, build, `test` et `test:e2e` à
+  chaque push sur `main` (voir DEPLOY.md).
+
 ## Travailler avec la base de production
 
 Règle : **`.env.local` ne doit jamais contenir `DATABASE_URL` de façon

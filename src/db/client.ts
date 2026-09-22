@@ -19,7 +19,7 @@ import { Pool } from "pg";
 import * as schemaSqlite from "./schema.sqlite";
 import * as schemaPg from "./schema.pg";
 import { DATABASE_URL, usePostgres } from "./schema";
-import { afficherBandeau, analyserDatabaseUrl, verifierGardeFouDev } from "./guard";
+import { afficherBandeau, analyserDatabaseUrl, cheminSqlite, verifierGardeFouDev } from "./guard";
 
 type Db = LibSQLDatabase<typeof schemaSqlite>;
 
@@ -65,9 +65,11 @@ function creerDb(): { db: Db; close: () => Promise<void>; dialecte: "postgres" |
     return { db, close: () => pool.end(), dialecte: "postgres" };
   }
 
-  const dataDir = path.join(process.cwd(), "data");
+  // SQLITE_PATH permet une base jetable (tests : data/test.db) ; défaut data/promopro.db
+  const dbPath = cheminSqlite();
+  const dataDir = path.dirname(dbPath);
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  const client = g.promoproLibsql ?? createClient({ url: `file:${path.join(dataDir, "promopro.db")}` });
+  const client = g.promoproLibsql ?? createClient({ url: `file:${dbPath}` });
   if (isDev) g.promoproLibsql = client;
   const db = drizzleLibsql(client, { schema: schemaSqlite });
   return {

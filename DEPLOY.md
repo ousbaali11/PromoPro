@@ -144,7 +144,24 @@ curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<votre-domaine>/api/cr
 autre planificateur externe (GitHub Actions `schedule`, cron d'un serveur)
 convient aussi.
 
-## 7. Mises à jour
+## 7. Intégration continue (signal avant déploiement)
+
+`.github/workflows/test.yml` lance, à chaque push ou pull request sur `main` :
+`npm run lint`, `npm run build`, `npm run test` (unitaires) et
+`npm run test:e2e` (Playwright sur une base SQLite jetable, jamais la
+production). Un échec apparaît dans l'onglet **Actions** de GitHub et sur le
+commit, en général quelques minutes avant que Railway n'ait fini de
+construire l'image.
+
+Ce que ça garantit : un build cassé, une règle d'accès ou un flux de vente
+régressé sont détectés par une commande, pas découverts en production. Ce que
+ça ne remplace pas : la vérification manuelle du déploiement (`/api/health`,
+connexion, logs Railway — étape 5), les migrations de schéma (`db:push`) et
+tout ce qui dépend de PostgreSQL ou du volume, que les tests n'exercent pas.
+Pour bloquer le déploiement tant que la CI est rouge, activez dans Railway
+**Settings → Deploy → Wait for CI** (« Check Suites ») sur le service web.
+
+## 8. Mises à jour
 
 Chaque `git push` sur la branche liée déclenche un build et un déploiement.
 Si vous modifiez `src/db/schema.sqlite.ts` :

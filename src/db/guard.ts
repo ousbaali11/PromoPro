@@ -4,6 +4,7 @@
  * next.config.ts (au démarrage de `next dev`) et par src/db/client.ts (à la
  * connexion, pour l'application comme pour les scripts).
  */
+import path from "node:path";
 
 export type InfoBase = {
   dialecte: "sqlite" | "postgres";
@@ -14,6 +15,19 @@ export type InfoBase = {
 };
 
 const HOTES_LOCAUX = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/** Chemin absolu de la base SQLite : `SQLITE_PATH` (ex. data/test.db pour les tests) ou data/promopro.db. */
+export function cheminSqlite(cwd = process.cwd()) {
+  const brut = process.env.SQLITE_PATH?.trim() || "data/promopro.db";
+  return path.isAbsolute(brut) ? brut : path.join(cwd, brut);
+}
+
+/** Chemin relatif lisible pour le bandeau. */
+function libelleSqlite() {
+  const abs = cheminSqlite();
+  const rel = path.relative(process.cwd(), abs).replace(/\\/g, "/");
+  return rel && !rel.startsWith("..") ? rel : abs;
+}
 
 export function analyserDatabaseUrl(url = process.env.DATABASE_URL): InfoBase {
   const v = url?.trim() ?? "";
@@ -39,7 +53,7 @@ export function bandeauBase(info: InfoBase = analyserDatabaseUrl()) {
   const rouge = (s: string) => (c ? `\x1b[1;97;41m${s}\x1b[0m` : s);
   const ligne = "=".repeat(78);
   if (info.dialecte === "sqlite") {
-    return [ligne, vert("🟢 Base locale : SQLite (data/promopro.db)"), ligne].join("\n");
+    return [ligne, vert(`🟢 Base locale : SQLite (${libelleSqlite()})`), ligne].join("\n");
   }
   return [
     ligne,

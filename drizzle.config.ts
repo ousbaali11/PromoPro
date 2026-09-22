@@ -1,6 +1,6 @@
 import type { Config } from "drizzle-kit";
 import "./src/db/load-env";
-import { afficherBandeau } from "./src/db/guard";
+import { afficherBandeau, cheminSqlite } from "./src/db/guard";
 
 // Bandeau vert/rouge dès le lancement de drizzle-kit (db:push, db:studio…)
 afficherBandeau();
@@ -22,5 +22,5 @@ export default (usePostgres
       schema: "./src/db/schema.sqlite.ts",
       out: "./drizzle",
       dialect: "turso",
-      dbCredentials: { url: "file:./data/promopro.db" },
+      dbCredentials: { url: `file:${cheminSqlite()}` },
     }) satisfies Config;
