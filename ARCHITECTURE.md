@@ -136,6 +136,18 @@ CSS-first via `@theme`).
 navigation de la sidebar par rôle (`NAV_BY_ROLE`) — ajoute une entrée ici
 quand un nouveau module a sa propre page de menu.
 
+## Fichiers uploadés
+
+`src/lib/storage.ts` centralise le stockage local (`storage/uploads/<type>/`,
+ignoré par git). Côté client, le composant `FileUpload` (`src/components/ui/`)
+envoie le fichier à `POST /api/upload` dès sa sélection et place le chemin
+retourné (`/api/files/<type>/<uuid>.<ext>`) dans un `<input type="hidden">`
+soumis avec le formulaire parent. Côté serveur, valide toujours ce chemin avec
+`parsePublicPath()` avant de l'enregistrer en base. Les fichiers sont servis
+par `GET /api/files/[type]/[filename]` : session obligatoire, et pour un
+client, uniquement les documents rattachés à son dossier
+(`src/lib/file-access.ts` — à étendre à chaque nouveau type de document).
+
 ## Échéancier de paiement
 
 La règle par défaut (40% le jour du blocage, puis 20% tous les 6 mois,
@@ -148,5 +160,3 @@ fonction plutôt que de recalculer les pourcentages ailleurs.
 - Pas de librairie de gestion d'état global (tout passe par des Server
   Components + revalidation) — inutile vu la taille du projet
 - Pas de tests automatisés pour l'instant (voir `PROMPTS.md`, section finale)
-- Pas d'upload de fichiers ni de génération de PDF (prompts 1 et 2 de
-  `PROMPTS.md`) — plusieurs modules placeholders en dépendent
