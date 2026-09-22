@@ -52,6 +52,8 @@ export default async function RecouvrementPage({
     for (const e of complets) echeancierParBien.set(e.bienId, [...(echeancierParBien.get(e.bienId) ?? []), e]);
   }
 
+  // Server Component : rendu une fois par requête, l'horloge y est stable
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const totalDu = rows.reduce((s, e) => s + Math.max(0, e.montant - e.montantPaye), 0);
   const enRetard = rows.filter((e) => e.statut !== "PAYEE" && e.dateEcheance.getTime() < now);

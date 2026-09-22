@@ -21,13 +21,13 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
     <div>
       <PageHeader title={projet.nom} description={`${projet.nomCompte} · IBAN ${projet.iban}`} />
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         {listeBiens.length === 0 ? (
           <div className="p-6">
             <EmptyState title="Aucun bien saisi" description="Ajoutez le tableau de contenance ci-dessous." />
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
                 <th className="px-5 py-3 font-medium">Désignation</th>

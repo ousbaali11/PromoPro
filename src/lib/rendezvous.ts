@@ -49,3 +49,13 @@ export async function rendezvousPourService(
 }
 
 export type RdvRow = Awaited<ReturnType<typeof rendezvousPourService>>[number];
+
+/** Répartit des rendez-vous en : en attente de réponse, confirmés à venir, passés. */
+export function partitionnerRendezVous<T extends { statut: string; dateProposee: Date }>(rows: T[], now = Date.now()) {
+  return {
+    enAttente: rows.filter((r) => r.statut !== "ACCEPTE" && r.dateProposee.getTime() >= now),
+    confirmes: rows.filter((r) => r.statut === "ACCEPTE" && r.dateProposee.getTime() >= now),
+    passes: rows.filter((r) => r.dateProposee.getTime() < now),
+    aVenir: rows.filter((r) => r.dateProposee.getTime() >= now),
+  };
+}

@@ -64,6 +64,9 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
   const prochaineDemandePhotos = derniereDemandePhotos?.createdAt
     ? addMonths(derniereDemandePhotos.createdAt, DELAI_PHOTOS_MOIS)
     : null;
+  // Server Component : rendu une fois par requête, l'horloge y est stable
+  // eslint-disable-next-line react-hooks/purity
+  const photosBloquees = !!prochaineDemandePhotos && prochaineDemandePhotos.getTime() > Date.now();
   const photos = await db.query.photosAvancement.findMany({
     where: eq(photosAvancement.bienId, bien.id),
     orderBy: [desc(photosAvancement.createdAt)],
@@ -284,6 +287,7 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
             <DemandePhotosButton
               bienId={bien.id}
               prochaineDisponibiliteISO={prochaineDemandePhotos?.toISOString() ?? null}
+              bloque={photosBloquees}
               demandeEnAttente={derniereDemandePhotos?.statut === "EN_ATTENTE"}
             />
             {photos.length > 0 && (

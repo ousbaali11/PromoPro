@@ -23,26 +23,28 @@ function compteARebours(cible: number) {
 export function DemandePhotosButton({
   bienId,
   prochaineDisponibiliteISO,
+  bloque,
   demandeEnAttente,
 }: {
   bienId: string;
   prochaineDisponibiliteISO: string | null;
+  /** Calculé côté serveur : une demande a été faite il y a moins de 6 mois */
+  bloque: boolean;
   demandeEnAttente: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const cible = prochaineDisponibiliteISO ? new Date(prochaineDisponibiliteISO).getTime() : 0;
   const [reste, setReste] = useState("");
-  const bloque = cible > Date.now();
 
-  // Calculé côté client uniquement (évite un écart serveur/client), rafraîchi chaque minute
+  // Compte à rebours calculé côté client uniquement, rafraîchi chaque minute
   useEffect(() => {
-    if (!cible) return;
+    if (!bloque || !cible) return;
     const update = () => setReste(compteARebours(cible));
     update();
     const t = setInterval(update, 60_000);
     return () => clearInterval(t);
-  }, [cible]);
+  }, [bloque, cible]);
 
   return (
     <div className="space-y-2">

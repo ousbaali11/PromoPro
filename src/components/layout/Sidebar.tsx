@@ -12,16 +12,18 @@ export function Sidebar({
   role,
   nom,
   prenom,
+  onNavigate,
 }: {
   role: Role;
   nom: string;
   prenom: string;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const items = navFor(role);
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col bg-navy text-white">
+    <aside className="flex h-full w-64 shrink-0 flex-col overflow-y-auto bg-navy text-white">
       <div className="flex items-center gap-2 px-5 py-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gold">
           <Building2 className="h-4.5 w-4.5 text-white" />
@@ -37,6 +39,7 @@ export function Sidebar({
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 active ? "bg-white/10 text-white font-medium" : "text-navy-100/80 hover:bg-white/5 hover:text-white",

@@ -19,8 +19,8 @@ export default async function EquipePage() {
       <PageHeader title="Équipe" description="Créez les comptes des nouvelles recrues commerciales." />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="overflow-hidden lg:col-span-2">
-          <table className="w-full text-sm">
+        <Card className="overflow-x-auto lg:col-span-2">
+          <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
                 <th className="px-5 py-3 font-medium">Nom</th>

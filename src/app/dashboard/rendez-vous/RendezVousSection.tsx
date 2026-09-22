@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
 import { formatDateTime } from "@/lib/utils";
-import { rendezvousPourService, type RdvRow } from "@/lib/rendezvous";
+import { rendezvousPourService, partitionnerRendezVous, type RdvRow } from "@/lib/rendezvous";
 import type { Service } from "@/lib/creneaux";
 import { RendezVousActions } from "./RendezVousActions";
 
@@ -54,26 +54,8 @@ function Ligne({ row, canAct }: { row: RdvRow; canAct: boolean }) {
   );
 }
 
-/**
- * Section « Rendez-vous » d'un service (section 11.5) : en attente de réponse,
- * confirmés à venir, historique. À inclure dans la page du service concerné.
- */
-export async function RendezVousSection({
-  service,
-  session,
-  canAct,
-}: {
-  service: Service;
-  session: { userId: string; role: string; promoteurId: string | null };
-  canAct: boolean;
-}) {
-  const rows = await rendezvousPourService(service, session);
-  const now = Date.now();
-  const enAttente = rows.filter((r) => r.rdv.statut !== "ACCEPTE" && r.rdv.dateProposee.getTime() >= now);
-  const confirmes = rows.filter((r) => r.rdv.statut === "ACCEPTE" && r.rdv.dateProposee.getTime() >= now);
-  const passes = rows.filter((r) => r.rdv.dateProposee.getTime() < now);
-
-  const Bloc = ({ titre, liste, vide }: { titre: string; liste: RdvRow[]; vide: string }) => (
+function Bloc({ titre, liste, vide, canAct }: { titre: string; liste: RdvRow[]; vide: string; canAct: boolean }) {
+  return (
     <div>
       <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-navy-400">
         {titre} <span className="ml-1 text-navy-900">{liste.length}</span>
@@ -89,6 +71,23 @@ export async function RendezVousSection({
       )}
     </div>
   );
+}
+
+/**
+ * Section « Rendez-vous » d'un service (section 11.5) : en attente de réponse,
+ * confirmés à venir, historique. À inclure dans la page du service concerné.
+ */
+export async function RendezVousSection({
+  service,
+  session,
+  canAct,
+}: {
+  service: Service;
+  session: { userId: string; role: string; promoteurId: string | null };
+  canAct: boolean;
+}) {
+  const rows = await rendezvousPourService(service, session);
+  const { enAttente, confirmes, passes } = partitionnerRendezVous(rows.map((r) => ({ ...r, statut: r.rdv.statut, dateProposee: r.rdv.dateProposee })));
 
   if (rows.length === 0) {
     return <EmptyState title="Aucun rendez-vous" description="Les demandes de rendez-vous des clients apparaîtront ici." />;
@@ -96,9 +95,9 @@ export async function RendezVousSection({
 
   return (
     <div className="space-y-5">
-      <Bloc titre="En attente" liste={enAttente} vide="Aucune demande en attente." />
-      <Bloc titre="Confirmés" liste={confirmes} vide="Aucun rendez-vous confirmé à venir." />
-      <Bloc titre="Historique" liste={passes.slice(0, 10)} vide="Aucun rendez-vous passé." />
+      <Bloc titre="En attente" liste={enAttente} vide="Aucune demande en attente." canAct={canAct} />
+      <Bloc titre="Confirmés" liste={confirmes} vide="Aucun rendez-vous confirmé à venir." canAct={canAct} />
+      <Bloc titre="Historique" liste={passes.slice(0, 10)} vide="Aucun rendez-vous passé." canAct={canAct} />
     </div>
   );
 }

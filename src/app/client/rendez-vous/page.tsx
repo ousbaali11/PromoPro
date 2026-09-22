@@ -5,6 +5,7 @@ import { biens, rendezvous } from "@/db/schema";
 import { Card, Badge, PageHeader } from "@/components/ui/Primitives";
 import { formatDateTime } from "@/lib/utils";
 import { SERVICE_LABEL } from "@/lib/creneaux";
+import { partitionnerRendezVous } from "@/lib/rendezvous";
 import { NouveauRendezVousForm, ReponseClient } from "./RendezVousClient";
 
 function statutDe(r: { statut: string; dernierAuteur: string }) {
@@ -21,9 +22,7 @@ export default async function ClientRendezVousPage() {
     where: eq(rendezvous.clientId, session.clientId),
     orderBy: [desc(rendezvous.dateProposee)],
   });
-  const now = Date.now();
-  const aVenir = rows.filter((r) => r.dateProposee.getTime() >= now);
-  const passes = rows.filter((r) => r.dateProposee.getTime() < now);
+  const { aVenir, passes } = partitionnerRendezVous(rows);
 
   return (
     <div className="space-y-6">
