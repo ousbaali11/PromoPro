@@ -5,6 +5,15 @@ Ce guide suppose un projet Railway **existant** contenant déjà un service
 construite avec le `Dockerfile` du dépôt (Next.js 16 en mode `standalone`)
 et exposée sur le port `3000`.
 
+État de validation (22/09/2026) : la bascule PostgreSQL a été exécutée et
+vérifiée en local contre le service Postgres Railway de ce projet
+(PostgreSQL 18, URL publique `*.proxy.rlwy.net`) : `npm run db:push`,
+`npm run db:seed`, `npm run build`, `npm run dev`, connexion PDG et client,
+navigation et mutations (acceptation d'une proposition, confirmation d'un
+contrat avec génération de PDF). Le `docker build` n'a pas pu être testé
+(Docker absent de la machine de développement) : le premier déploiement
+Railway en tient lieu — surveillez les logs de build.
+
 Résumé du résultat attendu : un service « web » relié au dépôt GitHub, un
 volume monté sur `/app/storage`, trois variables (`DATABASE_URL` injectée,
 `JWT_SECRET`, `UPLOAD_DIR`), la base initialisée une seule fois, et

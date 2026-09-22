@@ -39,9 +39,20 @@ function sslOptions(url: string) {
 
 function creerDb(): { db: Db; close: () => Promise<void>; dialecte: "postgres" | "sqlite" } {
   if (usePostgres && DATABASE_URL) {
-    const pool =
-      g.promoproPgPool ??
-      new Pool({ connectionString: DATABASE_URL, max: 10, ssl: sslOptions(DATABASE_URL), connectionTimeoutMillis: 10_000 });
+    let pool = g.promoproPgPool;
+    if (!pool) {
+      pool = new Pool({
+        connectionString: DATABASE_URL,
+        max: 10,
+        ssl: sslOptions(DATABASE_URL),
+        connectionTimeoutMillis: 15_000,
+        // Les proxys (Railway) coupent les connexions inactives : on les recycle
+        // avant, et on journalise les erreurs des clients inactifs au lieu de
+        // laisser l'événement 'error' faire tomber le processus.
+        idleTimeoutMillis: 30_000,
+      });
+      pool.on("error", (err) => console.error("[db] connexion PostgreSQL inactive en erreur :", err.message));
+    }
     if (isDev) g.promoproPgPool = pool;
     const db = drizzlePg(pool, { schema: schemaPg }) as unknown as Db;
     return { db, close: () => pool.end(), dialecte: "postgres" };
