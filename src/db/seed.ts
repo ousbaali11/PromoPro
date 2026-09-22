@@ -26,7 +26,7 @@ import { genererEtStockerContrat } from "../lib/pdf/contrat";
 import { genererEtStockerRecu } from "../lib/pdf/recu";
 
 async function main() {
-  console.log(`→ Base cible : ${dialecte === "postgres" ? "PostgreSQL (DATABASE_URL)" : "SQLite locale (data/promopro.db)"}`);
+  console.log(`→ Base cible : ${dialecte === "postgres" ? "PostgreSQL (DATABASE_URL)" : "SQLite locale (voir le bandeau ci-dessus)"}`);
   console.log("→ Nettoyage des tables...");
   // Ordre respectant les clés étrangères ; requêtes Drizzle (portable SQLite / PostgreSQL)
   for (const table of [
