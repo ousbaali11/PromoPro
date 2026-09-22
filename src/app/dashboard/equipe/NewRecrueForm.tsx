@@ -5,7 +5,8 @@ import { createRecrue } from "./actions";
 import { Card, Field, Input, Select } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 
-export function NewRecrueForm() {
+/** Formulaire de recrutement : les statuts proposés sont ceux du pôle du directeur connecté. */
+export function NewRecrueForm({ roles }: { roles: { value: string; label: string }[] }) {
   const [state, formAction, pending] = useActionState(createRecrue, undefined);
 
   return (
@@ -14,7 +15,9 @@ export function NewRecrueForm() {
 
       {state?.success ? (
         <div className="space-y-3">
-          <p className="text-sm text-navy-900">Compte créé. Identifiants à communiquer :</p>
+          <p className="text-sm text-navy-900">
+            Compte {roles.find((r) => r.value === state.success!.role)?.label ?? ""} créé. Identifiants à communiquer :
+          </p>
           <div className="space-y-1 rounded-md bg-navy-50 p-3 font-mono text-xs">
             <p>Identifiant : {state.success.identifiant}</p>
             <p>Mot de passe : {state.success.password}</p>
@@ -32,10 +35,12 @@ export function NewRecrueForm() {
             <Input id="email" name="email" type="email" />
           </Field>
           <Field label="Statut" htmlFor="role">
-            <Select id="role" name="role" defaultValue="COMMERCIAL">
-              <option value="COMMERCIAL">Commercial</option>
-              <option value="RESPONSABLE_COMMERCIAL">Responsable Commercial</option>
-              <option value="RESPONSABLE_ADMINISTRATIF">Responsable Administratif</option>
+            <Select id="role" name="role" defaultValue={roles[0]?.value}>
+              {roles.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
             </Select>
           </Field>
           {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}

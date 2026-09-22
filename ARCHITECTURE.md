@@ -19,6 +19,27 @@ Regarde `src/app/dashboard/propositions/` pour un exemple complet (le plus
 riche du projet : création, liste filtrée par rôle, trois actions de
 décision).
 
+## Hiérarchie de création des comptes
+
+Qui peut créer qui (implémenté dans `src/lib/roles.ts` par
+`ROLES_RECRUTABLES_PAR`, appliqué côté serveur dans
+`src/app/admin/actions.ts` et `src/app/dashboard/equipe/actions.ts`) :
+
+| Créateur | Comptes créés | Où |
+|---|---|---|
+| `npm run create-admin` (script) | Super Admin | ligne de commande |
+| Super Admin | Promoteur **+** PDG **+** Directeur Commercial **+** Directeur Financier, en un seul geste | `/admin/nouveau` |
+| Directeur Commercial | Commercial, Responsable Commercial, Responsable Administratif, Assistant Administratif, Service Après-Vente | `/dashboard/equipe` |
+| Directeur Financier | Comptable Interne, Recouvrement | `/dashboard/equipe` |
+| Commercial / Responsable Commercial | Clients (compte de l'espace client) | `/dashboard/clients/nouveau` |
+
+Le PDG ne crée aucun compte. La page Équipe n'affiche à un directeur que les
+membres de son pôle et ne propose que les statuts de ce pôle ; le rôle
+demandé est revalidé côté serveur contre `ROLES_RECRUTABLES_PAR[session.role]`.
+Pour ajouter un rôle recrutable, compléter cette constante (et `ROLE_LABELS`) :
+formulaire, liste et contrôle serveur suivent. La table `users` ne trace pas
+le créateur d'un compte : l'appartenance à un pôle se déduit du rôle.
+
 ## Sessions et rôles
 
 Deux types de session, définis dans `src/lib/auth.ts` :

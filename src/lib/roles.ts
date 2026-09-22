@@ -34,6 +34,32 @@ export const ROLE_LABELS: Record<Role, string> = {
   RECOUVREMENT: "Recouvrement",
 };
 
+/**
+ * Hiérarchie de création des comptes internes :
+ * - le Super Admin crée le promoteur avec ses trois directions (PDG, Directeur
+ *   Commercial, Directeur Financier) en un seul geste (`/admin/nouveau`) ;
+ * - chaque directeur recrute ensuite les rôles de son pôle (`/dashboard/equipe`) ;
+ * - le PDG ne crée aucun compte.
+ */
+export const ROLES_RECRUTABLES_PAR: Partial<Record<Role, Role[]>> = {
+  DIRECTEUR_COMMERCIAL: [
+    "COMMERCIAL",
+    "RESPONSABLE_COMMERCIAL",
+    "RESPONSABLE_ADMINISTRATIF",
+    "ASSISTANT_ADMINISTRATIF",
+    "SERVICE_APRES_VENTE",
+  ],
+  DIRECTEUR_FINANCIER: ["COMPTABLE_INTERNE", "RECOUVREMENT"],
+};
+
+/** Rôles autorisés à ouvrir la page Équipe (ceux qui ont un pôle à recruter). */
+export const ROLES_RECRUTEURS = Object.keys(ROLES_RECRUTABLES_PAR) as Role[];
+
+export const POLE_LABELS: Partial<Record<Role, string>> = {
+  DIRECTEUR_COMMERCIAL: "Pôle commercial et administratif",
+  DIRECTEUR_FINANCIER: "Pôle financier",
+};
+
 // Pages communes à tous les rôles internes du promoteur
 const COMMON: NavItem[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -58,7 +84,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_ADMINISTRATIF: [...COMMON, CONTRATS, DESISTEMENTS],
-  DIRECTEUR_FINANCIER: [...COMMON, FINANCE],
+  DIRECTEUR_FINANCIER: [...COMMON, FINANCE, EQUIPE],
   COMPTABLE_INTERNE: [...COMMON, PAIEMENTS],
   ASSISTANT_ADMINISTRATIF: [...COMMON, PROSPECTS],
   SERVICE_APRES_VENTE: [...COMMON, SAV],

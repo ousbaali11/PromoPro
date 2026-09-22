@@ -76,19 +76,20 @@ Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 
 ### Comptes de démonstration (mot de passe entre parenthèses)
 
-| Rôle | Identifiant |
-|---|---|
-| Super Admin (plateforme) | `SUPERADMIN` (`admin1234`) |
-| PDG | `PDG-DEMO` (`demo1234`) |
-| Directeur Commercial | `DIRCOM-DEMO` (`demo1234`) |
-| Commercial | `COM1-DEMO` / `COM2-DEMO` (`demo1234`) |
-| Responsable Administratif | `RESPADM-DEMO` (`demo1234`) |
-| Directeur Financier | `DIRFIN-DEMO` (`demo1234`) |
-| Comptable Interne | `COMPTA-DEMO` (`demo1234`) |
-| Assistant Administratif | `ASSIST-DEMO` (`demo1234`) |
-| Service Après-Vente | `SAV-DEMO` (`demo1234`) |
-| Recouvrement | `RECOUV-DEMO` (`demo1234`) |
-| Client | `CL-DEMO` (`demo1234`) |
+| Rôle | Identifiant | Compte créé par |
+|---|---|---|
+| Super Admin (plateforme) | `SUPERADMIN` (`admin1234`) | `npm run create-admin` (ou seed) |
+| PDG | `PDG-DEMO` (`demo1234`) | Super Admin, avec le promoteur |
+| Directeur Commercial | `DIRCOM-DEMO` (`demo1234`) | Super Admin, avec le promoteur |
+| Directeur Financier | `DIRFIN-DEMO` (`demo1234`) | Super Admin, avec le promoteur |
+| Commercial | `COM1-DEMO` / `COM2-DEMO` (`demo1234`) | Directeur Commercial |
+| Responsable Commercial | — | Directeur Commercial |
+| Responsable Administratif | `RESPADM-DEMO` (`demo1234`) | Directeur Commercial |
+| Assistant Administratif | `ASSIST-DEMO` (`demo1234`) | Directeur Commercial |
+| Service Après-Vente | `SAV-DEMO` (`demo1234`) | Directeur Commercial |
+| Comptable Interne | `COMPTA-DEMO` (`demo1234`) | Directeur Financier |
+| Recouvrement | `RECOUV-DEMO` (`demo1234`) | Directeur Financier |
+| Client | `CL-DEMO` (`demo1234`) | Commercial (fiche client) |
 
 La liste est aussi affichée sur la page de connexion.
 
@@ -109,9 +110,11 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   internes, clients), sessions signées, routes protégées par rôle,
   rate-limiting sur la connexion, notifications (cloche) pour le staff **et**
   les clients
-- **Super Admin** : créer un promoteur, activer/suspendre son abonnement
+- **Super Admin** : créer un promoteur avec ses trois directions (PDG,
+  Directeur Commercial, Directeur Financier), activer/suspendre son abonnement
 - **Directeur Commercial** : projets et tableau de contenance, plan de chaque
-  bien (PDF/image), création des recrues
+  bien (PDF/image), recrutement de son pôle (commercial, responsable
+  commercial, responsable administratif, assistant administratif, SAV)
 - **PDG** : blocage de biens avec commentaire privé ; accepter / refuser /
   négocier les propositions
 - **Commercial** : clients (avec scan de pièce d'identité), propositions avec
@@ -124,7 +127,8 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   PDF et mise à jour de l'échéancier (trop-perçu reporté), syndic à valider,
   biens vendus par commercial
 - **Directeur Financier** : trésorerie (total du jour, à 7 jours, chèques
-  encaissés / à venir, virements, échéances à venir, remboursements)
+  encaissés / à venir, virements, échéances à venir, remboursements),
+  recrutement de son pôle (comptable interne, recouvrement)
 - **Service Après-Vente** : rendez-vous, demandes de visite (autorisation PDF,
   créneaux contrôlés), photos d'avancement, livraison (double confirmation),
   syndic
