@@ -92,6 +92,10 @@ export const biens = sqliteTable("biens", {
   commercialId: text("commercial_id").references(() => users.id),
   clientId: text("client_id").references(() => clients.id),
   pdgCommentaire: text("pdg_commentaire"), // note privée, visible PDG seulement
+  // Livraison (11.10 / 12.1) : double confirmation client + SAV → statut LIVRE
+  livraisonConfirmeeClient: integer("livraison_confirmee_client", { mode: "boolean" }).notNull().default(false),
+  livraisonConfirmeeSav: integer("livraison_confirmee_sav", { mode: "boolean" }).notNull().default(false),
+  livreAt: integer("livre_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
@@ -123,7 +127,7 @@ export const clients = sqliteTable("clients", {
 // ---------------------------------------------------------------------------
 // Propositions de vente (commercial -> PDG)
 // ---------------------------------------------------------------------------
-// ENVOYEE | ACCEPTEE | REFUSEE | NEGOCIEE
+// ENVOYEE | ACCEPTEE | REFUSEE | NEGOCIEE | DESISTEE (vente annulée après désistement du client)
 export const propositions = sqliteTable("propositions", {
   id: id(),
   bienId: text("bien_id")
@@ -162,7 +166,7 @@ export const echeances = sqliteTable("echeances", {
 // ---------------------------------------------------------------------------
 // Contrats
 // ---------------------------------------------------------------------------
-// EN_ATTENTE | PRET | ENVOYE | SIGNE
+// EN_ATTENTE | PRET | ENVOYE | SIGNE | ANNULE (désistement)
 export const contrats = sqliteTable("contrats", {
   id: id(),
   bienId: text("bien_id")
@@ -223,8 +227,14 @@ export const desistements = sqliteTable("desistements", {
   clientId: text("client_id")
     .notNull()
     .references(() => clients.id),
+  commercialId: text("commercial_id").references(() => users.id), // commercial ayant enregistré le désistement
   documentUrl: text("document_url"),
+  montantARembourser: real("montant_a_rembourser").notNull().default(0), // total des paiements validés au moment du désistement
   statut: text("statut").notNull().default("EN_ATTENTE"),
+  dechargeNote: text("decharge_note"), // décharge fournie ou non, commentaire du Responsable Administratif
+  traiteParId: text("traite_par_id").references(() => users.id),
+  verifiedAt: integer("verified_at", { mode: "timestamp" }),
+  rembourseAt: integer("rembourse_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 

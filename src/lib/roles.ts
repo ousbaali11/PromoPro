@@ -45,6 +45,7 @@ const CLIENTS: NavItem = { href: "/dashboard/clients", label: "Clients", icon: C
 const CONTRATS: NavItem = { href: "/dashboard/contrats", label: "Contrats", icon: FileSignature };
 const PAIEMENTS: NavItem = { href: "/dashboard/paiements", label: "Paiements", icon: Wallet };
 const DESISTEMENTS: NavItem = { href: "/dashboard/desistements", label: "Désistements", icon: UserRoundX };
+const DESISTES: NavItem = { href: "/dashboard/desistes", label: "Biens désistés", icon: UserRoundX };
 const PROSPECTS: NavItem = { href: "/dashboard/prospects", label: "Prospects", icon: Contact };
 const SAV: NavItem = { href: "/dashboard/sav", label: "Service après-vente", icon: Wrench };
 const RECOUVREMENT: NavItem = { href: "/dashboard/recouvrement", label: "Recouvrement", icon: BadgeEuro };
@@ -52,10 +53,10 @@ const FINANCE: NavItem = { href: "/dashboard/finance", label: "Trésorerie", ico
 const EQUIPE: NavItem = { href: "/dashboard/equipe", label: "Équipe", icon: UsersRound };
 
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
-  PDG: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS],
-  DIRECTEUR_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, EQUIPE],
-  COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, PROSPECTS],
-  RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, PROSPECTS],
+  PDG: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES],
+  DIRECTEUR_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, EQUIPE],
+  COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
+  RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_ADMINISTRATIF: [...COMMON, CONTRATS, DESISTEMENTS],
   DIRECTEUR_FINANCIER: [...COMMON, FINANCE],
   COMPTABLE_INTERNE: [...COMMON, PAIEMENTS],

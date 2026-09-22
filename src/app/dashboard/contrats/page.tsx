@@ -7,12 +7,19 @@ import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
 import { TodoModule } from "@/components/layout/TodoModule";
 import { ConfirmerButton } from "./ConfirmerButton";
 
-const LABELS: Record<string, string> = { EN_ATTENTE: "En attente", PRET: "Prêt", ENVOYE: "Envoyé", SIGNE: "Signé" };
+const LABELS: Record<string, string> = {
+  EN_ATTENTE: "En attente",
+  PRET: "Prêt",
+  ENVOYE: "Envoyé",
+  SIGNE: "Signé",
+  ANNULE: "Annulé (désistement)",
+};
 const COLORS: Record<string, string> = {
   EN_ATTENTE: "bg-amber-50 text-amber-700 ring-amber-600/20",
   PRET: "bg-sky-50 text-sky-700 ring-sky-600/20",
   ENVOYE: "bg-navy/10 text-navy ring-navy/20",
   SIGNE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  ANNULE: "bg-slate-100 text-slate-700 ring-slate-600/20",
 };
 
 export default async function ContratsPage() {

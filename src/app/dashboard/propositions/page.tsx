@@ -11,12 +11,14 @@ const STATUT_LABELS: Record<string, string> = {
   ACCEPTEE: "Acceptée",
   REFUSEE: "Refusée",
   NEGOCIEE: "Négociée",
+  DESISTEE: "Désistée",
 };
 const STATUT_COLORS: Record<string, string> = {
   ENVOYEE: "bg-sky-50 text-sky-700 ring-sky-600/20",
   ACCEPTEE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   REFUSEE: "bg-rose-50 text-rose-700 ring-rose-600/20",
   NEGOCIEE: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  DESISTEE: "bg-slate-100 text-slate-700 ring-slate-600/20",
 };
 
 export default async function PropositionsPage() {

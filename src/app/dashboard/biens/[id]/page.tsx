@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ChevronLeft, FileImage, FileDown, Paperclip } from "lucide-react";
 import { db } from "@/db/client";
@@ -10,6 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
+import { DesistementForm } from "./DesistementForm";
 import { saisirPaiementCommercial } from "./actions";
 import { PlanPreview } from "@/components/ui/PlanPreview";
 import { PaiementForm } from "@/components/paiements/PaiementForm";
@@ -33,9 +34,14 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
   const client = bien.clientId ? await db.query.clients.findFirst({ where: eq(clients.id, bien.clientId) }) : null;
   const vendu = ["VENDU", "LIVRE"].includes(bien.statut);
   const echeancier = vendu ? await echeancierDuBien(bien.id) : [];
-  const listePaiements = vendu
-    ? await db.query.paiements.findMany({ where: eq(paiements.bienId, bien.id), orderBy: [desc(paiements.createdAt)] })
-    : [];
+  // Paiements du client actuel uniquement (l'historique d'un ancien client désisté reste dans « Biens désistés »)
+  const listePaiements =
+    vendu && bien.clientId
+      ? await db.query.paiements.findMany({
+          where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, bien.clientId)),
+          orderBy: [desc(paiements.createdAt)],
+        })
+      : [];
 
   const canPropose =
     ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && bien.statut === "DISPONIBLE";
@@ -136,6 +142,10 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
             <LinkButton href={`/dashboard/propositions/nouvelle?bienId=${bien.id}`} variant="gold">
               Envoyer une proposition
             </LinkButton>
+          )}
+
+          {bien.statut === "VENDU" && isCommercialDuBien && client && (
+            <DesistementForm bienId={bien.id} clientNom={`${client.prenom} ${client.nom}`} />
           )}
         </div>
       </div>
