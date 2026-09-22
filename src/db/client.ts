@@ -19,6 +19,7 @@ import { Pool } from "pg";
 import * as schemaSqlite from "./schema.sqlite";
 import * as schemaPg from "./schema.pg";
 import { DATABASE_URL, usePostgres } from "./schema";
+import { afficherBandeau, analyserDatabaseUrl, verifierGardeFouDev } from "./guard";
 
 type Db = LibSQLDatabase<typeof schemaSqlite>;
 
@@ -38,6 +39,12 @@ function sslOptions(url: string) {
 }
 
 function creerDb(): { db: Db; close: () => Promise<void>; dialecte: "postgres" | "sqlite" } {
+  // Bandeau vert/rouge avant toute autre sortie, puis refus du serveur de dev
+  // sur une base distante (sauf ALLOW_REMOTE_DB_IN_DEV=1) — voir guard.ts.
+  const info = analyserDatabaseUrl(DATABASE_URL ?? undefined);
+  afficherBandeau(info);
+  verifierGardeFouDev(info);
+
   if (usePostgres && DATABASE_URL) {
     let pool = g.promoproPgPool;
     if (!pool) {

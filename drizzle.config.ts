@@ -1,5 +1,9 @@
 import type { Config } from "drizzle-kit";
 import "./src/db/load-env";
+import { afficherBandeau } from "./src/db/guard";
+
+// Bandeau vert/rouge dès le lancement de drizzle-kit (db:push, db:studio…)
+afficherBandeau();
 
 // Même règle que src/db/client.ts : DATABASE_URL "postgres…" → PostgreSQL,
 // sinon SQLite local. `npm run db:push` cible donc toujours la base que

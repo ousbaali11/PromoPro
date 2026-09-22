@@ -234,6 +234,46 @@ Pour tester localement contre une base Postgres distante : mettez son URL
 publique dans `.env.local` (`DATABASE_URL=...`), puis `npm run db:push`,
 `npm run db:seed`, `npm run dev`. Retirez la variable pour revenir en SQLite.
 
+## Travailler avec la base de production
+
+Règle : **`.env.local` ne doit jamais contenir `DATABASE_URL` de façon
+permanente.** Le projet choisit sa base d'après cette seule variable ; tant
+qu'elle est présente, *toute* commande lancée depuis le dossier (`dev`,
+`db:push`, `db:seed`, `create-admin`…) écrit dans la base de production.
+
+Trois garde-fous sont en place (`src/db/guard.ts`) :
+
+- **Bandeau à chaque connexion**, avant toute autre sortie : vert
+  « 🟢 Base locale : SQLite » ou rouge « 🔴 ATTENTION — Base distante :
+  PostgreSQL (Railway/production) » avec l'hôte ciblé.
+- **`npm run dev` refuse de démarrer** si `DATABASE_URL` pointe vers un hôte
+  distant (autre que `localhost` / `127.0.0.1`), avec un message expliquant
+  quoi faire. `ALLOW_REMOTE_DB_IN_DEV=1` force le démarrage — à réserver aux
+  cas où l'on veut sciemment piloter la production depuis le navigateur.
+- Les **scripts ponctuels** (`db:push`, `db:seed`, `create-admin`) ne sont
+  pas bloqués : ils affichent le bandeau rouge et s'exécutent, puisque la
+  base a été demandée explicitement.
+
+Pattern recommandé pour une commande ponctuelle contre Postgres — la variable
+ne vaut que pour cette commande et n'est jamais persistée :
+
+```powershell
+# PowerShell (Windows)
+$env:DATABASE_URL="postgresql://postgres:...@xxxx.proxy.rlwy.net:PORT/railway"; npm run db:push
+$env:DATABASE_URL="postgresql://..."; npm run create-admin -- ADMIN-PROD 'mot-de-passe'
+Remove-Item Env:DATABASE_URL     # facultatif : retire la variable de la session PowerShell
+```
+
+```bash
+# bash / zsh
+DATABASE_URL="postgresql://..." npm run db:push
+```
+
+Attention : sous PowerShell, `$env:DATABASE_URL=...` reste défini pour toute
+la fenêtre de terminal jusqu'à `Remove-Item Env:DATABASE_URL` ou sa fermeture ;
+un `npm run dev` lancé ensuite dans la même fenêtre sera donc bloqué par le
+garde-fou — c'est voulu.
+
 ## Déploiement
 
 Le projet se construit en image Docker (`Dockerfile`, build Next.js
