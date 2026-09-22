@@ -3,11 +3,48 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { paiements, biens, projets } from "@/db/schema";
+import { paiements, biens, projets, syndics, clients } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { validerPaiement } from "@/lib/paiements";
+import { notifyClient, notifyRole } from "@/lib/notifications";
 
 export type CompleterState = { error?: string } | undefined;
+
+/** Section 12.2 / 9.3 — le Comptable Interne valide le paiement de syndic déclaré par le client ; le SAV est informé. */
+export async function validerSyndic(syndicId: string): Promise<{ error?: string } | undefined> {
+  const session = await requireRole(["COMPTABLE_INTERNE"]);
+  const syndic = await db.query.syndics.findFirst({ where: eq(syndics.id, syndicId) });
+  if (!syndic) return { error: "Syndic introuvable." };
+  const client = await db.query.clients.findFirst({ where: eq(clients.id, syndic.clientId) });
+  if (!client || client.promoteurId !== session.promoteurId) return { error: "Accès refusé." };
+  if (syndic.statut !== "EN_ATTENTE_VALIDATION") return { error: "Ce paiement n'est pas en attente de validation." };
+
+  await db
+    .update(syndics)
+    .set({ statut: "PAYE", valideParId: session.userId, validatedAt: new Date() })
+    .where(eq(syndics.id, syndicId));
+
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, syndic.bienId) });
+  const libelle = `${client.prenom} ${client.nom} · ${bien?.designation ?? ""}`;
+  await notifyRole(session.promoteurId!, "SERVICE_APRES_VENTE", {
+    type: "SYNDIC_PAYE",
+    titre: "Syndic réglé",
+    message: `${libelle} : le paiement du syndic (${Math.round(syndic.montant).toLocaleString("fr-FR")} MAD) a été validé par le Comptable Interne.`,
+    lien: "/dashboard/sav",
+  });
+  await notifyClient({
+    clientId: client.id,
+    type: "SYNDIC_VALIDE",
+    titre: "Paiement du syndic validé",
+    message: `Votre paiement de syndic pour ${bien?.designation ?? "votre bien"} a été validé. Vous êtes à jour.`,
+    lien: `/client/biens/${syndic.bienId}`,
+  });
+
+  revalidatePath("/dashboard/paiements");
+  revalidatePath("/dashboard/sav");
+  revalidatePath(`/client/biens/${syndic.bienId}`);
+  return undefined;
+}
 
 /**
  * Le Comptable Interne complète la référence de l'opération, le montant exact

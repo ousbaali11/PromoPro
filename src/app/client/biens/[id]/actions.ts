@@ -3,10 +3,12 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, clients, demandesPhotos, projets, promoteurs, visites } from "@/db/schema";
+import { biens, clients, demandesPhotos, projets, promoteurs, syndics, visites } from "@/db/schema";
 import { requireClientSession } from "@/lib/session";
-import { creerPaiement, lirePaiementForm, notifierComptable } from "@/lib/paiements";
+import { creerPaiement, lirePaiementForm, notifierComptable, NATURES_OPERATION } from "@/lib/paiements";
 import { notifyRole } from "@/lib/notifications";
+import { finaliserLivraisonSiComplete } from "@/lib/livraison";
+import { parsePublicPath } from "@/lib/storage";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
 import { addMonths, formatDate, formatDateTime, DELAI_PHOTOS_MOIS } from "@/lib/utils";
@@ -98,6 +100,70 @@ export async function demanderPhotos(bienId: string): Promise<{ error?: string }
   });
 
   revalidatePath(`/client/biens/${bien.id}`);
+  revalidatePath("/dashboard/sav");
+  return undefined;
+}
+
+/** Section 11.10 — le client confirme la bonne réception de son bien (« Confirmer tout »). */
+export async function confirmerLivraisonClient(bienId: string): Promise<{ error?: string } | undefined> {
+  const r = await monBien(bienId);
+  if ("error" in r) return { error: r.error };
+  const { session, bien } = r;
+  if (bien.statut !== "VENDU") return { error: "Ce bien n'est pas en attente de livraison." };
+  if (bien.livraisonConfirmeeClient) return undefined;
+
+  await db.update(biens).set({ livraisonConfirmeeClient: true }).where(eq(biens.id, bien.id));
+  const livre = await finaliserLivraisonSiComplete(bien.id);
+  if (!livre) {
+    await notifyRole(session.promoteurId, "SERVICE_APRES_VENTE", {
+      type: "LIVRAISON_CLIENT",
+      titre: "Réception confirmée par le client",
+      message: `${session.prenom} ${session.nom} a confirmé la réception de ${bien.designation}. Votre confirmation est attendue.`,
+      lien: "/dashboard/sav",
+    });
+  }
+
+  revalidatePath(`/client/biens/${bien.id}`);
+  revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/contrats");
+  return undefined;
+}
+
+/** Section 12.2 — le client déclare le paiement de sa part de syndic, avec preuve ; le Comptable Interne valide. */
+export async function payerSyndic(
+  syndicId: string,
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string } | undefined> {
+  const session = await requireClientSession();
+  const syndic = await db.query.syndics.findFirst({ where: eq(syndics.id, syndicId) });
+  if (!syndic || syndic.clientId !== session.clientId) return { error: "Syndic introuvable." };
+  if (syndic.statut !== "A_PAYER") return { error: "Ce syndic n'est pas en attente de paiement." };
+
+  const natureOperation = String(formData.get("natureOperation") ?? "");
+  const banque = String(formData.get("banque") ?? "").trim();
+  const dateStr = String(formData.get("dateOperation") ?? "");
+  const porteur = String(formData.get("porteur") ?? "").trim();
+  const preuveUrl = String(formData.get("preuveUrl") ?? "");
+  if (!NATURES_OPERATION.some((n) => n.value === natureOperation)) return { error: "Nature d'opération invalide." };
+  if (!banque || !dateStr || !porteur) return { error: "Merci de compléter banque, date et porteur." };
+  if (!parsePublicPath(preuveUrl)) return { error: "Merci de joindre la preuve de paiement." };
+
+  await db
+    .update(syndics)
+    .set({ statut: "EN_ATTENTE_VALIDATION", natureOperation, banque, dateOperation: new Date(dateStr), porteur, preuveUrl, payeAt: new Date() })
+    .where(eq(syndics.id, syndicId));
+
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, syndic.bienId) });
+  await notifyRole(session.promoteurId, "COMPTABLE_INTERNE", {
+    type: "SYNDIC_A_VALIDER",
+    titre: "Paiement de syndic à valider",
+    message: `${session.prenom} ${session.nom} déclare avoir réglé ${Math.round(syndic.montant).toLocaleString("fr-FR")} MAD de syndic pour ${bien?.designation ?? "son bien"}.`,
+    lien: "/dashboard/paiements",
+  });
+
+  revalidatePath(`/client/biens/${syndic.bienId}`);
+  revalidatePath("/dashboard/paiements");
   revalidatePath("/dashboard/sav");
   return undefined;
 }

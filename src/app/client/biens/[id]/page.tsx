@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, users, contrats, paiements, visites, demandesPhotos, photosAvancement } from "@/db/schema";
+import { biens, projets, users, contrats, paiements, visites, demandesPhotos, photosAvancement, syndics } from "@/db/schema";
 import { Card, Badge } from "@/components/ui/Primitives";
 import { addMonths, cn, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
 import { DemandePhotosButton } from "./PhotosSection";
+import { LivraisonCard, SyndicCard } from "./LivraisonSyndic";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_COLOR: Record<string, string> = {
@@ -66,6 +67,10 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
   const photos = await db.query.photosAvancement.findMany({
     where: eq(photosAvancement.bienId, bien.id),
     orderBy: [desc(photosAvancement.createdAt)],
+  });
+  const syndic = await db.query.syndics.findFirst({
+    where: and(eq(syndics.bienId, bien.id), eq(syndics.clientId, session.clientId)),
+    orderBy: [desc(syndics.createdAt)],
   });
   // 11.11 — navigation entre les biens du client, sans mélange des données
   const mesBiens = await db.query.biens.findMany({ where: eq(biens.clientId, session.clientId) });
@@ -208,6 +213,34 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
               </div>
             )}
           </Card>
+
+          {/* 11.10 — livraison */}
+          {["VENDU", "LIVRE"].includes(bien.statut) && (
+            <Card className="p-5">
+              <p className="mb-3 text-sm font-medium text-navy-900">Livraison du bien</p>
+              <LivraisonCard
+                bienId={bien.id}
+                statut={bien.statut}
+                confirmeeClient={bien.livraisonConfirmeeClient}
+                confirmeeSav={bien.livraisonConfirmeeSav}
+                livreLe={bien.livreAt ? formatDate(bien.livreAt) : null}
+              />
+            </Card>
+          )}
+
+          {/* 12.2 — syndic */}
+          {["VENDU", "LIVRE"].includes(bien.statut) && (
+            <Card className="p-5">
+              <p className="mb-3 text-sm font-medium text-navy-900">Syndic</p>
+              <SyndicCard
+                syndic={
+                  syndic
+                    ? { id: syndic.id, montant: formatMoney(syndic.montant), periode: syndic.periode, statut: syndic.statut, preuveUrl: syndic.preuveUrl }
+                    : null
+                }
+              />
+            </Card>
+          )}
 
           {/* 11.2 — documents */}
           <Card className="p-5">

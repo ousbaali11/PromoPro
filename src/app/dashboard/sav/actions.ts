@@ -1,11 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { visites, biens, clients, projets, promoteurs, demandesPhotos, photosAvancement } from "@/db/schema";
+import { visites, biens, clients, projets, promoteurs, demandesPhotos, photosAvancement, syndics } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { notifyClient } from "@/lib/notifications";
+import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
 import { parsePublicPath } from "@/lib/storage";
 
@@ -46,6 +47,76 @@ export async function deposerPhotos(
   revalidatePath("/dashboard/sav");
   revalidatePath(`/client/biens/${demande.bienId}`);
   return undefined;
+}
+
+async function bienDuPromoteur(bienId: string, promoteurId: string) {
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  const projet = bien ? await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) }) : null;
+  if (!bien || !projet || projet.promoteurId !== promoteurId) return null;
+  return bien;
+}
+
+/** Section 12.1 — le SAV confirme de son côté la livraison du bien. */
+export async function confirmerLivraisonSav(bienId: string): Promise<{ error?: string } | undefined> {
+  const session = await requireRole(["SERVICE_APRES_VENTE"]);
+  const bien = await bienDuPromoteur(bienId, session.promoteurId!);
+  if (!bien) return { error: "Bien introuvable." };
+  if (bien.statut !== "VENDU" || !bien.clientId) return { error: "Ce bien n'est pas en attente de livraison." };
+  if (bien.livraisonConfirmeeSav) return undefined;
+
+  await db.update(biens).set({ livraisonConfirmeeSav: true }).where(eq(biens.id, bien.id));
+  const livre = await finaliserLivraisonSiComplete(bien.id);
+  if (!livre) {
+    await notifyClient({
+      clientId: bien.clientId,
+      type: "LIVRAISON_SAV",
+      titre: "Livraison confirmée par le SAV",
+      message: `Le Service Après-Vente a confirmé la livraison de ${bien.designation}. Merci de confirmer la réception de votre côté.`,
+      lien: `/client/biens/${bien.id}`,
+    });
+  }
+
+  revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/contrats");
+  revalidatePath(`/client/biens/${bien.id}`);
+  revalidatePath(`/dashboard/biens/${bien.id}`);
+  return undefined;
+}
+
+/** Section 12.2 — le SAV définit le montant de syndic dû par le client d'un bien. */
+export async function definirSyndic(_prev: { error?: string } | undefined, formData: FormData) {
+  const session = await requireRole(["SERVICE_APRES_VENTE"]);
+  const bienId = String(formData.get("bienId") ?? "");
+  const montant = Number(formData.get("montant"));
+  const periode = String(formData.get("periode") ?? "2 ans");
+  if (!montant || montant <= 0) return { error: "Merci d'indiquer un montant valide." };
+
+  const bien = await bienDuPromoteur(bienId, session.promoteurId!);
+  if (!bien || !bien.clientId || !["VENDU", "LIVRE"].includes(bien.statut)) {
+    return { error: "Le syndic se définit sur un bien vendu ou livré, avec un client." };
+  }
+  const existant = await db.query.syndics.findFirst({
+    where: and(eq(syndics.bienId, bien.id), eq(syndics.clientId, bien.clientId)),
+  });
+  if (existant && existant.statut !== "A_PAYER") return { error: "Un syndic est déjà payé ou en cours de validation pour ce bien." };
+
+  if (existant) {
+    await db.update(syndics).set({ montant, periode, definiParId: session.userId }).where(eq(syndics.id, existant.id));
+  } else {
+    await db.insert(syndics).values({ bienId: bien.id, clientId: bien.clientId, montant, periode, statut: "A_PAYER", definiParId: session.userId });
+  }
+
+  await notifyClient({
+    clientId: bien.clientId,
+    type: "SYNDIC_A_PAYER",
+    titre: "Montant du syndic à régler",
+    message: `Votre part de syndic pour ${bien.designation} s'élève à ${Math.round(montant).toLocaleString("fr-FR")} MAD (${periode}). Déclarez votre paiement dans la rubrique Syndic.`,
+    lien: `/client/biens/${bien.id}`,
+  });
+
+  revalidatePath("/dashboard/sav");
+  revalidatePath(`/client/biens/${bien.id}`);
+  return { error: undefined };
 }
 
 async function visitePourSession(visiteId: string) {

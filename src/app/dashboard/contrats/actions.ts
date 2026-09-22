@@ -9,6 +9,19 @@ import { notify, notifyClient } from "@/lib/notifications";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
 import { parsePublicPath } from "@/lib/storage";
 
+/** Section 7.4 — le Responsable Administratif marque le dossier du bien livré comme transmis au notaire. */
+export async function marquerTransmisNotaire(bienId: string): Promise<{ error?: string } | undefined> {
+  const session = await requireRole(["RESPONSABLE_ADMINISTRATIF"]);
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  const projet = bien ? await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) }) : null;
+  if (!bien || !projet || projet.promoteurId !== session.promoteurId) return { error: "Bien introuvable." };
+  if (bien.statut !== "LIVRE") return { error: "Le bien doit être livré (double confirmation) avant transmission au notaire." };
+
+  await db.update(biens).set({ notaireTransmisAt: new Date() }).where(eq(biens.id, bienId));
+  revalidatePath("/dashboard/contrats");
+  return undefined;
+}
+
 /**
  * Section 7.3 — le Responsable Administratif dépose le scan de la 4e copie
  * signée et cachetée ; elle devient visible dans l'espace du client.

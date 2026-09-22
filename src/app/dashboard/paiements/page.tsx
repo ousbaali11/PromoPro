@@ -3,10 +3,11 @@ import { desc, eq } from "drizzle-orm";
 import { FileDown, Paperclip } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
-import { paiements, biens, projets, clients, users, propositions } from "@/db/schema";
+import { paiements, biens, projets, clients, users, propositions, syndics } from "@/db/schema";
 import { Card, Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { CompleterForm } from "./CompleterForm";
+import { ValiderSyndicButton } from "./ValiderSyndicButton";
 
 export default async function PaiementsPage() {
   const session = await requireRole(["COMPTABLE_INTERNE", "DIRECTEUR_FINANCIER", "PDG"]);
@@ -26,6 +27,11 @@ export default async function PaiementsPage() {
   );
   const enAttente = all.filter((p) => p.statut === "EN_ATTENTE_COMPTABLE");
   const valides = all.filter((p) => p.statut === "VALIDE");
+
+  // 9.3 / 12.2 — syndic en attente de validation
+  const syndicsEnAttente = (await db.query.syndics.findMany({ where: eq(syndics.statut, "EN_ATTENTE_VALIDATION") })).filter((s) =>
+    bienById.has(s.bienId),
+  );
 
   // 9.3 — biens vendus par commercial
   const ventes = (await db.query.propositions.findMany({ where: eq(propositions.statut, "ACCEPTEE") }))
@@ -156,6 +162,50 @@ export default async function PaiementsPage() {
                 })}
               </tbody>
             </table>
+          </Card>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-navy-900">
+          Syndic en attente de validation{" "}
+          <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
+            {syndicsEnAttente.length}
+          </span>
+        </h2>
+        {syndicsEnAttente.length === 0 ? (
+          <EmptyState title="Aucun paiement de syndic à valider" />
+        ) : (
+          <Card className="divide-y divide-navy-50">
+            {syndicsEnAttente.map((s) => {
+              const bien = bienById.get(s.bienId);
+              const client = clientById.get(s.clientId);
+              return (
+                <div key={s.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      {bien?.designation ?? "—"} <span className="ml-2 text-xs font-normal text-navy-400">Syndic {s.periode ?? ""}</span>
+                    </p>
+                    <p className="text-xs text-navy-400">
+                      {client ? `${client.prenom} ${client.nom}` : "—"} · {s.natureOperation} · {s.banque} · {formatDate(s.dateOperation)} · porteur {s.porteur}
+                    </p>
+                    {s.preuveUrl && (
+                      <a href={s.preuveUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-gold-600 hover:underline">
+                        <Paperclip className="h-3.5 w-3.5" /> Preuve de paiement
+                      </a>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-navy-900">{formatMoney(s.montant)}</p>
+                    {isComptable && (
+                      <div className="mt-2">
+                        <ValiderSyndicButton syndicId={s.id} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </Card>
         )}
       </section>

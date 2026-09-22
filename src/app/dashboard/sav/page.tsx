@@ -9,6 +9,13 @@ import { formatMoney, formatDate, formatDateTime } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 import { VisiteActions } from "./VisiteActions";
 import { DeposerPhotosForm } from "./DeposerPhotosForm";
+import { ConfirmerLivraisonButton, DefinirSyndicForm } from "./LivraisonSyndicActions";
+
+const SYNDIC_STATUT: Record<string, { label: string; cls: string }> = {
+  A_PAYER: { label: "À payer", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
+  EN_ATTENTE_VALIDATION: { label: "En attente de validation comptable", cls: "bg-sky-50 text-sky-700 ring-sky-600/20" },
+  PAYE: { label: "Payé", cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+};
 
 const VISITE_STATUT: Record<string, { label: string; cls: string }> = {
   DEMANDEE: { label: "À traiter", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
@@ -36,6 +43,9 @@ export default async function SavPage() {
   const visitesAutres = listeVisites.filter((v) => v.statut !== "DEMANDEE").slice(0, 15);
 
   const listeSyndics = clientIds.length ? await db.query.syndics.findMany({ where: inArray(syndics.clientId, clientIds) }) : [];
+  const biensAvecClient = [...bienById.values()].filter((b) => b.clientId && ["VENDU", "LIVRE"].includes(b.statut));
+  const biensVendus = biensAvecClient.filter((b) => b.statut === "VENDU");
+  const biensLivres = biensAvecClient.filter((b) => b.statut === "LIVRE");
 
   const demandes = clientIds.length
     ? await db.query.demandesPhotos.findMany({ where: inArray(demandesPhotos.clientId, clientIds), orderBy: [desc(demandesPhotos.createdAt)] })
@@ -176,28 +186,89 @@ export default async function SavPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">Syndic</h2>
+        <h2 className="mb-3 text-sm font-medium text-navy-900">Livraisons</h2>
+        {biensVendus.length === 0 && biensLivres.length === 0 ? (
+          <EmptyState title="Aucun bien vendu" description="Les biens vendus apparaîtront ici pour confirmation de livraison." />
+        ) : (
+          <Card className="divide-y divide-navy-50">
+            {[...biensVendus, ...biensLivres].map((b) => {
+              const client = b.clientId ? clientById.get(b.clientId) : null;
+              return (
+                <div key={b.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      <Link href={`/dashboard/biens/${b.id}`} className="hover:underline">
+                        {b.designation}
+                      </Link>
+                      <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
+                    </p>
+                    <p className="text-xs text-navy-400">
+                      {client ? `${client.prenom} ${client.nom}` : "—"}
+                      {b.livreAt && ` · livré le ${formatDate(b.livreAt)}`}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Badge className={b.livraisonConfirmeeClient ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-navy-50 text-navy-400 ring-navy-100"}>
+                        Client {b.livraisonConfirmeeClient ? "✓" : "—"}
+                      </Badge>
+                      <Badge className={b.livraisonConfirmeeSav ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-navy-50 text-navy-400 ring-navy-100"}>
+                        SAV {b.livraisonConfirmeeSav ? "✓" : "—"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    {b.statut === "LIVRE" ? (
+                      <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">Livré</Badge>
+                    ) : isSav && !b.livraisonConfirmeeSav ? (
+                      <ConfirmerLivraisonButton bienId={b.id} />
+                    ) : (
+                      <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">En attente du client</Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-navy-900">Syndic obligatoire (2 ans)</h2>
+        {isSav && biensAvecClient.length > 0 && (
+          <div className="mb-4">
+            <DefinirSyndicForm
+              biens={biensAvecClient.map((b) => {
+                const c = b.clientId ? clientById.get(b.clientId) : null;
+                return { id: b.id, label: `${b.designation} — ${c ? `${c.prenom} ${c.nom}` : "?"}` };
+              })}
+            />
+          </div>
+        )}
         {listeSyndics.length === 0 ? (
-          <EmptyState title="Aucun syndic défini" description="Les montants de syndic apparaîtront ici (module à compléter)." />
+          <EmptyState title="Aucun syndic défini" description="Définissez le montant dû par chaque client ; il sera notifié." />
         ) : (
           <Card className="overflow-x-auto">
-            <table className="w-full min-w-[480px] text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
+                  <th className="px-5 py-3 font-medium">Bien</th>
                   <th className="px-5 py-3 font-medium">Client</th>
-                  <th className="px-5 py-3 font-medium">Montant syndic</th>
+                  <th className="px-5 py-3 font-medium">Montant</th>
+                  <th className="px-5 py-3 font-medium">Période</th>
                   <th className="px-5 py-3 font-medium">Statut</th>
                 </tr>
               </thead>
               <tbody>
                 {listeSyndics.map((s) => {
                   const client = clientById.get(s.clientId);
+                  const bien = bienById.get(s.bienId);
                   return (
                     <tr key={s.id} className="border-b border-navy-50 last:border-0">
-                      <td className="px-5 py-3 font-medium text-navy-900">{client ? `${client.prenom} ${client.nom}` : "—"}</td>
+                      <td className="px-5 py-3 font-medium text-navy-900">{bien?.designation ?? "—"}</td>
+                      <td className="px-5 py-3 text-navy-400">{client ? `${client.prenom} ${client.nom}` : "—"}</td>
                       <td className="px-5 py-3 text-navy-900">{formatMoney(s.montant)}</td>
+                      <td className="px-5 py-3 text-navy-400">{s.periode ?? "—"}</td>
                       <td className="px-5 py-3">
-                        <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">{s.statut}</Badge>
+                        <Badge className={SYNDIC_STATUT[s.statut]?.cls ?? ""}>{SYNDIC_STATUT[s.statut]?.label ?? s.statut}</Badge>
                       </td>
                     </tr>
                   );

@@ -96,6 +96,7 @@ export const biens = sqliteTable("biens", {
   livraisonConfirmeeClient: integer("livraison_confirmee_client", { mode: "boolean" }).notNull().default(false),
   livraisonConfirmeeSav: integer("livraison_confirmee_sav", { mode: "boolean" }).notNull().default(false),
   livreAt: integer("livre_at", { mode: "timestamp" }),
+  notaireTransmisAt: integer("notaire_transmis_at", { mode: "timestamp" }), // dossier transmis au notaire (7.4)
   createdAt: createdAt(),
 });
 
@@ -343,7 +344,17 @@ export const syndics = sqliteTable("syndics", {
   montant: real("montant").notNull(),
   periode: text("periode"), // "2 ans" | "Annuel"
   statut: text("statut").notNull().default("A_PAYER"),
+  definiParId: text("defini_par_id").references(() => users.id), // SAV
+  // Paiement déclaré par le client (12.2)
+  natureOperation: text("nature_operation"),
+  banque: text("banque"),
+  dateOperation: integer("date_operation", { mode: "timestamp" }),
+  porteur: text("porteur"),
   preuveUrl: text("preuve_url"),
+  reference: text("reference"),
+  payeAt: integer("paye_at", { mode: "timestamp" }),
+  valideParId: text("valide_par_id").references(() => users.id), // Comptable Interne
+  validatedAt: integer("validated_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 
