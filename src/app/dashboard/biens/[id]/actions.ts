@@ -11,12 +11,21 @@ import { notifyRole } from "@/lib/notifications";
 import { creerPaiement, lirePaiementForm, notifierComptable } from "@/lib/paiements";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
+/** Charge un bien et vérifie qu'il appartient au promoteur de la session (isolation multi-promoteur). */
+async function bienDuPromoteur(bienId: string, promoteurId: string | null) {
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  if (!bien) return null;
+  const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
+  if (!projet || projet.promoteurId !== promoteurId) return null;
+  return bien;
+}
+
 export async function blockBien(_prev: { error?: string } | undefined, formData: FormData) {
-  await requireRole(["PDG"]);
+  const session = await requireRole(["PDG"]);
   const bienId = String(formData.get("bienId") ?? "");
   const commentaire = String(formData.get("commentaire") ?? "").trim();
 
-  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  const bien = await bienDuPromoteur(bienId, session.promoteurId);
   if (!bien) return { error: "Bien introuvable." };
   if (bien.statut !== "DISPONIBLE") {
     return { error: "Seul un bien disponible peut être bloqué." };
@@ -29,10 +38,11 @@ export async function blockBien(_prev: { error?: string } | undefined, formData:
 
 /** Le Directeur Commercial importe (ou remplace) le plan du bien — PDF ou image. */
 export async function setPlanBien(_prev: { error?: string } | undefined, formData: FormData) {
-  await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
   const bienId = String(formData.get("bienId") ?? "");
   const planUrl = String(formData.get("planUrl") ?? "");
   if (!bienId || !parsePublicPath(planUrl)) return { error: "Merci d'importer un fichier PDF ou image." };
+  if (!(await bienDuPromoteur(bienId, session.promoteurId))) return { error: "Bien introuvable." };
 
   await db.update(biens).set({ planUrl }).where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
@@ -137,7 +147,9 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
 }
 
 export async function unblockBien(bienId: string) {
-  await requireRole(["PDG"]);
+  const session = await requireRole(["PDG"]);
+  const bien = await bienDuPromoteur(bienId, session.promoteurId);
+  if (!bien || bien.statut !== "BLOQUE_PDG") return;
   await db.update(biens).set({ statut: "DISPONIBLE", pdgCommentaire: null }).where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
 }

@@ -27,8 +27,13 @@ export async function createProjet(_prev: { error?: string } | undefined, formDa
   redirect(`/dashboard/projets/${projet.id}`);
 }
 
+async function projetDuPromoteur(projetId: string, promoteurId: string | null) {
+  const projet = await db.query.projets.findFirst({ where: eq(projets.id, projetId) });
+  return projet && projet.promoteurId === promoteurId ? projet : null;
+}
+
 export async function addBien(_prev: { error?: string } | undefined, formData: FormData) {
-  await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
 
   const projetId = String(formData.get("projetId") ?? "");
   const designation = String(formData.get("designation") ?? "").trim();
@@ -39,6 +44,7 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
   if (!projetId || !designation || !prix || !surface) {
     return { error: "Merci de compléter tous les champs du bien (désignation, prix, surface)." };
   }
+  if (!(await projetDuPromoteur(projetId, session.promoteurId))) return { error: "Projet introuvable." };
 
   await db.insert(biens).values({ projetId, designation, nature, prix, surface });
 
@@ -47,7 +53,11 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
 }
 
 export async function deleteBien(bienId: string, projetId: string) {
-  await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  if (!(await projetDuPromoteur(projetId, session.promoteurId))) return;
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  // On ne supprime qu'un bien encore libre de tout engagement
+  if (!bien || bien.projetId !== projetId || !["DISPONIBLE", "BLOQUE_PDG"].includes(bien.statut)) return;
   await db.delete(biens).where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/projets/${projetId}`);
 }

@@ -1,5 +1,10 @@
 # Prompts pour Claude Code — suite du développement PromoPro
 
+> **État : les 12 phases décrites ci-dessous sont implémentées** (commits
+> « Phase 1 » à « Phase 12 » dans l'historique git). Ce fichier est conservé
+> comme trace de la feuille de route ; pour l'état actuel du projet, voir
+> `README.md`, `ARCHITECTURE.md` et `SECURITY.md`.
+
 Ce fichier contient une séquence de prompts prêts à copier-coller dans Claude Code,
 **dans l'ordre**, pour terminer l'application à partir de la base posée dans ce
 dépôt. Chaque prompt est autonome : Claude Code a accès au code, il retrouvera les

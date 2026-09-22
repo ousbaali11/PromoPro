@@ -1,7 +1,7 @@
 import { eq, and, count } from "drizzle-orm";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, propositions, prospects } from "@/db/schema";
+import { biens, projets, propositions, prospects, users } from "@/db/schema";
 import { Card, PageHeader } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -31,7 +31,8 @@ export default async function DashboardHome() {
     const rows = await db
       .select({ n: count() })
       .from(propositions)
-      .where(eq(propositions.statut, "ENVOYEE"));
+      .innerJoin(users, eq(propositions.commercialId, users.id))
+      .where(and(eq(propositions.statut, "ENVOYEE"), eq(users.promoteurId, promoteurId)));
     propositionsEnAttente = rows[0]?.n ?? 0;
   }
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { eq } from "drizzle-orm";
-import { db, client as libsqlClient } from "./client";
+import { db, closeDb } from "./client";
 import {
   promoteurs,
   users,
@@ -13,6 +13,12 @@ import {
   prospects,
   notifications,
   contrats,
+  desistements,
+  syndics,
+  rendezvous,
+  visites,
+  demandesPhotos,
+  photosAvancement,
 } from "./schema";
 import { hashPassword } from "../lib/auth";
 import { defaultEcheancier } from "../lib/utils";
@@ -21,23 +27,27 @@ import { genererEtStockerRecu } from "../lib/pdf/recu";
 
 async function main() {
   console.log("→ Nettoyage des tables...");
+  // Ordre respectant les clés étrangères ; requêtes Drizzle (portable SQLite / PostgreSQL)
   for (const table of [
-    "notifications",
-    "paiements",
-    "echeances",
-    "propositions",
-    "prospects",
-    "desistements",
-    "contrats",
-    "syndics",
-    "rendezvous",
-    "biens",
-    "clients",
-    "projets",
-    "users",
-    "promoteurs",
+    notifications,
+    photosAvancement,
+    demandesPhotos,
+    visites,
+    rendezvous,
+    syndics,
+    paiements,
+    echeances,
+    desistements,
+    contrats,
+    propositions,
+    prospects,
+    biens,
+    clients,
+    projets,
+    users,
+    promoteurs,
   ]) {
-    await libsqlClient.execute(`DELETE FROM ${table};`);
+    await db.delete(table);
   }
 
   console.log("→ Création du promoteur PromoPro...");
@@ -271,5 +281,5 @@ main()
     process.exit(1);
   })
   .finally(() => {
-    libsqlClient.close();
+    void closeDb();
   });

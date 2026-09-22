@@ -1,7 +1,8 @@
 # Architecture & conventions
 
 Ce document décrit les conventions établies dans ce projet, à suivre pour tout
-nouveau module (voir `PROMPTS.md` pour la feuille de route).
+nouveau module. Les 12 phases de la feuille de route (`PROMPTS.md`) sont
+implémentées ; les contrôles de sécurité sont récapitulés dans `SECURITY.md`.
 
 ## Le schéma d'un module
 
@@ -190,4 +191,8 @@ fonction plutôt que de recalculer les pourcentages ailleurs.
 
 - Pas de librairie de gestion d'état global (tout passe par des Server
   Components + revalidation) — inutile vu la taille du projet
-- Pas de tests automatisés pour l'instant (voir `PROMPTS.md`, section finale)
+- Pas de tests automatisés : chaque phase a été vérifiée manuellement dans le
+  navigateur (flux complets par rôle) et par de petits scripts `tsx` pour les
+  règles pures (créneaux de visite, périodes, totaux de trésorerie, PDF). Les
+  fonctions candidates à des tests unitaires sont isolées dans `src/lib/`
+  (`creneaux.ts`, `periodes.ts`, `tresorerie.ts`, `paiements.ts`).

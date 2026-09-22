@@ -4,6 +4,8 @@ import path from "node:path";
 import fs from "node:fs";
 import * as schema from "./schema";
 
+// Client SQLite (développement et petits déploiements mono-instance).
+// Pour PostgreSQL en production, voir client.pg.ts et le README.
 const dataDir = path.join(process.cwd(), "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
@@ -20,3 +22,7 @@ if (process.env.NODE_ENV !== "production") {
 
 export const db = drizzle(client, { schema });
 export { client };
+
+export async function closeDb() {
+  client.close();
+}

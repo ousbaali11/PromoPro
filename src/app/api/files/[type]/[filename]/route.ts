@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { isSafeFilename, isUploadType, mimeFor, readUpload } from "@/lib/storage";
-import { clientCanAccessFile } from "@/lib/file-access";
+import { clientCanAccessFile, staffCanAccessFile } from "@/lib/file-access";
 
 /**
  * GET /api/files/[type]/[filename] — sert un fichier uploadé.
- * - Staff : accès à tout fichier (les noms sont des uuid, non devinables).
+ * - Staff : uniquement les fichiers rattachés à son promoteur (Super Admin : tout).
  * - Client : uniquement les fichiers rattachés à son dossier (voir file-access.ts).
+ * Un fichier qu'aucun enregistrement ne référence n'est jamais servi.
  */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/files/[type]/[filename]">) {
   const session = await getSession();
@@ -17,10 +18,10 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/files/[type
     return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });
   }
 
-  if (session.kind === "client") {
-    const ok = await clientCanAccessFile(session.clientId, `/api/files/${type}/${filename}`);
-    if (!ok) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
-  }
+  const url = `/api/files/${type}/${filename}`;
+  const ok =
+    session.kind === "client" ? await clientCanAccessFile(session.clientId, url) : await staffCanAccessFile(session, url);
+  if (!ok) return NextResponse.json({ error: "Accès refusé." }, { status: 403 });
 
   const data = await readUpload(type, filename);
   if (!data) return NextResponse.json({ error: "Fichier introuvable." }, { status: 404 });

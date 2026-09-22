@@ -5,11 +5,11 @@ projets & biens, propositions de vente, contrats, paiements, désistements, pros
 service après-vente, recouvrement, et un espace client dédié — le tout conforme au
 cahier des charges fonctionnel PromoPro.
 
-Ce dépôt est un **point de départ réel et fonctionnel** (pas une maquette) : base de
-données, authentification, et un premier flux de vente complet fonctionnent de bout en
-bout. Les modules restants sont préparés (modèle de données, pages, navigation) mais
-laissés en placeholders — voir **[PROMPTS.md](./PROMPTS.md)** pour la suite du
-développement avec Claude Code.
+L'application couvre l'ensemble des profils et des flux du cahier des charges
+(`PromoPro_Cahier_des_charges.pdf`). Les 12 phases de la feuille de route
+(`PROMPTS.md`) sont implémentées et vérifiées ; les conventions de code sont
+dans **[ARCHITECTURE.md](./ARCHITECTURE.md)** et la checklist de sécurité dans
+**[SECURITY.md](./SECURITY.md)**.
 
 ## Stack technique
 
@@ -92,43 +92,38 @@ Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 
 La liste est aussi affichée sur la page de connexion.
 
-## Ce qui fonctionne déjà de bout en bout
+## Fonctionnalités par profil
 
 - Authentification par identifiant + mot de passe (Super Admin, tous les rôles
-  internes, et clients), sessions signées, routes protégées par rôle
+  internes, clients), sessions signées, routes protégées par rôle,
+  rate-limiting sur la connexion, notifications (cloche) pour le staff **et**
+  les clients
 - **Super Admin** : créer un promoteur, activer/suspendre son abonnement
-  (paiement hors plateforme, par virement — pas de page de paiement en ligne)
-- **Directeur Commercial** : créer un projet, saisir son tableau de biens, créer
-  des recrues (Commercial / Responsable Commercial / Responsable Administratif)
-- **PDG** : bloquer un bien avec un commentaire privé, recevoir les propositions,
-  accepter / refuser / négocier
-- **Commercial** : consulter les projets et biens, créer un client (identifiant +
-  mot de passe générés), envoyer une proposition avec échéancier 40/20/20/20
-  modifiable, gérer ses prospects (Contacté / Retour client)
-- **Responsable Administratif** : voir les contrats générés après acceptation
-  d'une proposition, les vérifier et les confirmer
-- **Assistant Administratif** : vue d'ensemble des prospects par commercial,
-  bouton de relance
-- **Espace Client** : liste des biens possédés, échéancier de paiement avec
-  barre d'avancement, statut du contrat, contact WhatsApp du commercial
-- Notifications automatiques entre rôles (cloche en haut à droite du dashboard)
-
-## Ce qui reste à construire
-
-Le modèle de données (`src/db/schema.ts`) couvre déjà **toutes** les entités du
-cahier des charges. Les pages suivantes existent comme placeholders lisant déjà
-les vraies données, à compléter avec les actions manquantes :
-
-- Paiements (validation comptable, génération de reçu PDF)
-- Désistements (vérification, remboursement)
-- Service après-vente (livraison, syndic, visites, photos d'avancement)
-- Recouvrement (relance, ajout de paiement pour le compte du client)
-- Trésorerie (Directeur Financier)
-- Espace Client : upload de pièces, téléchargement PDF du contrat, demande de
-  photos, prise de rendez-vous, demande de visite, ajout de paiement
-
-**Voir [PROMPTS.md](./PROMPTS.md)** pour une séquence de prompts prêts à copier
-dans Claude Code, module par module, dans l'ordre recommandé.
+- **Directeur Commercial** : projets et tableau de contenance, plan de chaque
+  bien (PDF/image), création des recrues
+- **PDG** : blocage de biens avec commentaire privé ; accepter / refuser /
+  négocier les propositions
+- **Commercial** : clients (avec scan de pièce d'identité), propositions avec
+  échéancier 40/20/20/20 modifiable, saisie de la 1re tranche avec preuve,
+  désistement (bien remis à zéro, historique « Biens désistés »), prospects
+- **Responsable Administratif** : contrat PDF généré à la confirmation, dépôt
+  de la 4e copie signée, désistements (vérification, remboursement), dossiers
+  livrés à transmettre au notaire, rendez-vous
+- **Comptable Interne** : référencement et validation des paiements avec reçu
+  PDF et mise à jour de l'échéancier (trop-perçu reporté), syndic à valider,
+  biens vendus par commercial
+- **Directeur Financier** : trésorerie (total du jour, à 7 jours, chèques
+  encaissés / à venir, virements, échéances à venir, remboursements)
+- **Service Après-Vente** : rendez-vous, demandes de visite (autorisation PDF,
+  créneaux contrôlés), photos d'avancement, livraison (double confirmation),
+  syndic
+- **Recouvrement** : échéanciers de toutes les ventes avec filtres de période,
+  paiement constaté pour le compte du client, rendez-vous
+- **Assistant Administratif** : prospects par commercial, relance
+- **Espace Client** : par bien (cloisonné) — échéancier et avancement, ajout de
+  paiement avec preuve, contrat / copie signée / plan / reçus, photos
+  d'avancement (1 demande / 6 mois), visite, livraison, syndic ; rendez-vous
+  avec chaque service ; contact des services ; rappel J-7 avant échéance
 
 ## Structure du projet
 
@@ -146,7 +141,11 @@ src/
     utils.ts                  formatage (argent, dates), échéancier par défaut
   components/
     ui/                        primitives (Button, Card, Input, Badge...)
-    layout/                  Sidebar, NotificationBell, TodoModule
+    layout/                  DashboardShell (sidebar responsive), NotificationBell
+    paiements/               PaiementForm (partagé commercial / client / recouvrement)
+  lib/pdf/                   contrat, reçu, autorisation de visite (pdf-lib)
+  lib/                       storage, file-access, paiements, rendezvous, creneaux,
+                             periodes, tresorerie, livraison, rate-limit
   app/
     login/                   connexion (comptes internes + clients)
     admin/                   Super Admin (promoteurs, abonnements)
@@ -179,17 +178,49 @@ production). Elle est idempotente : une échéance n'est jamais rappelée deux f
 - **En local** : `curl http://localhost:3000/api/cron/rappels-echeance`
   (sans `CRON_SECRET` défini, la route est ouverte hors production).
 
+## Mise à jour du schéma en développement
+
+`npm run db:push` applique les changements de `src/db/schema.ts` à la base
+SQLite locale. Attention : sur une base existante, drizzle-kit peut recréer une
+table et perdre son contenu. En développement, relancez simplement
+`npm run db:seed` après un `db:push` pour retrouver le jeu de démonstration.
+
+## Fichiers uploadés en production
+
+Les fichiers (pièces d'identité, preuves de paiement, PDF générés, photos)
+sont écrits sur disque via `src/lib/storage.ts`, dans `storage/uploads/` par
+défaut. En production, ce dossier doit être un **disque persistant** : montez
+un volume et définissez `UPLOAD_DIR=/chemin/du/volume` (les chemins stockés en
+base ne changent pas). Sur une plateforme sans disque persistant (serverless),
+remplacez `saveUpload` / `readUpload` dans `storage.ts` par un stockage objet
+S3-compatible (S3, R2, MinIO) : c'est le seul endroit du code qui touche au
+système de fichiers, les chemins publics `/api/files/...` et le contrôle
+d'accès restent identiques.
+
 ## Migrer vers PostgreSQL pour la production
 
-1. `npm install pg` puis remplacer `drizzle-orm/libsql` (et `@libsql/client`) par
-   `drizzle-orm/node-postgres` dans `src/db/client.ts`
-2. Adapter `src/db/schema.ts` : `sqliteTable` → `pgTable`, `integer(..., {mode:
-   "timestamp"})` → `timestamp(...)`, `integer(..., {mode: "boolean"})` →
-   `boolean(...)`
-3. `drizzle.config.ts` : `dialect: "postgresql"` + `dbCredentials.url` pointant
-   vers votre base Postgres
-4. `npm run db:push`
+Tout est préparé ; la bascule est un remplacement de deux fichiers :
 
-Le reste du code (requêtes Drizzle, Server Actions) ne change pas.
+1. Créez la base et définissez `DATABASE_URL=postgres://user:pass@host:5432/promopro`
+   (`PGSSLMODE=disable` si le serveur est sans TLS sur un réseau privé).
+2. Remplacez le client et le schéma SQLite par leurs équivalents PostgreSQL :
+   `src/db/client.pg.ts` → `src/db/client.ts` et `src/db/schema.pg.ts` →
+   `src/db/schema.ts` (`schema.pg.ts` est un miroir colonne par colonne,
+   régénéré par `npm run db:pg-schema` ; le driver `pg` est déjà installé).
+3. `npm run db:push:pg` (utilise `drizzle.config.pg.ts`), puis éventuellement
+   `npm run db:seed` pour un jeu de démonstration.
+
+Le reste du code (requêtes Drizzle, Server Actions, PDF, stockage) ne change
+pas : les types TypeScript des deux schémas sont identiques. Cette procédure
+n'a pas pu être exécutée dans l'environnement de développement (pas de serveur
+PostgreSQL disponible) : validez-la sur votre instance avant la mise en
+production.
+
+## Sécurité
+
+Voir [SECURITY.md](./SECURITY.md) : secrets obligatoires en production
+(`JWT_SECRET`, `CRON_SECRET`), rate-limiting du login, contrôle d'accès par
+rôle et par promoteur sur chaque action, fichiers servis uniquement aux ayants
+droit.
 #   P r o m o P r o  
  

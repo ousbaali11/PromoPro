@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { prospects, users } from "@/db/schema";
-import { requireRole, requireStaffSession } from "@/lib/session";
+import { requireRole } from "@/lib/session";
 import { notify } from "@/lib/notifications";
 
 export async function markContacted(prospectId: string) {
@@ -23,7 +23,14 @@ export async function submitRetourClient(_prev: { error?: string } | undefined, 
   if (!retour) return { error: "Merci de préciser la conclusion de l'échange." };
 
   const prospect = await db.query.prospects.findFirst({ where: eq(prospects.id, prospectId) });
-  if (!prospect) return { error: "Prospect introuvable." };
+  // Un commercial ne traite que ses propres prospects (le Responsable Commercial, ceux de son promoteur)
+  if (
+    !prospect ||
+    prospect.promoteurId !== session.promoteurId ||
+    (session.role === "COMMERCIAL" && prospect.commercialId !== session.userId)
+  ) {
+    return { error: "Prospect introuvable." };
+  }
 
   await db
     .update(prospects)

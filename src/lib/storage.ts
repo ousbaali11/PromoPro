@@ -9,9 +9,11 @@ import path from "node:path";
  * `GET /api/files/<type>/<filename>` qui vérifie la session — jamais depuis
  * `/public`, pour garder le contrôle d'accès.
  *
- * Pour un déploiement sans disque persistant, remplacer `saveUpload` /
- * `readUpload` par un stockage objet (S3, R2...) — le reste du code ne
- * manipule que des chemins publics `/api/files/...`.
+ * En production, le dossier doit être sur un **disque persistant** (volume
+ * monté) : définir `UPLOAD_DIR=/chemin/du/volume` (voir README). Pour un
+ * déploiement sans disque persistant (serverless), remplacer `saveUpload` /
+ * `readUpload` par un stockage objet S3-compatible — le reste du code ne
+ * manipule que des chemins publics `/api/files/...`, rien d'autre ne change.
  */
 
 export const UPLOAD_TYPES = [
@@ -36,7 +38,9 @@ const MIME_BY_EXT: Record<string, string> = {
   png: "image/png",
 };
 
-const UPLOAD_ROOT = path.join(process.cwd(), "storage", "uploads");
+const UPLOAD_ROOT = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(process.cwd(), "storage", "uploads");
 
 // Nom de fichier généré par nous : uuid + extension autorisée, rien d'autre
 // (protège contre toute traversée de répertoire lors de la lecture).

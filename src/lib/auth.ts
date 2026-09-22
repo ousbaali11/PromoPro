@@ -2,12 +2,43 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import type { Role } from "@/db/schema";
 
-// NOTE pour la production : déplacer ce secret vers un vrai gestionnaire de
-// secrets (variable d'environnement obligatoire, jamais commit). Une valeur
-// de repli est fournie pour que le projet tourne dès le premier `npm run dev`.
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? "promopro-dev-secret-change-me");
+const DEV_FALLBACK_SECRET = "promopro-dev-secret-change-me";
 const COOKIE_NAME = "promopro_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 jours, en secondes
+
+let cachedSecret: Uint8Array | null = null;
+let warned = false;
+
+/**
+ * Secret de signature des sessions.
+ * - En production (`NODE_ENV=production`), `JWT_SECRET` est OBLIGATOIRE : le
+ *   serveur refuse de signer ou vérifier une session sans lui (erreur au
+ *   premier appel, donc dès la première requête authentifiée / connexion).
+ * - Pendant `next build` (NEXT_PHASE=phase-production-build) le contrôle est
+ *   différé pour que la compilation reste possible sans secret.
+ * - En développement, une valeur de repli est utilisée avec un avertissement.
+ */
+function getSecret(): Uint8Array {
+  if (cachedSecret) return cachedSecret;
+  const fromEnv = process.env.JWT_SECRET;
+  if (fromEnv && fromEnv.length >= 16) {
+    cachedSecret = new TextEncoder().encode(fromEnv);
+    return cachedSecret;
+  }
+  const isProd = process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build";
+  if (isProd) {
+    throw new Error(
+      "JWT_SECRET manquant ou trop court (16 caractères minimum) : obligatoire en production. " +
+        "Générez-en un avec `openssl rand -base64 48` (voir SECURITY.md).",
+    );
+  }
+  if (!warned) {
+    warned = true;
+    console.warn("[auth] JWT_SECRET non défini : secret de développement utilisé. Ne pas déployer ainsi.");
+  }
+  cachedSecret = new TextEncoder().encode(DEV_FALLBACK_SECRET);
+  return cachedSecret;
+}
 
 export type SessionPayload = {
   userId: string;
@@ -36,20 +67,22 @@ export async function verifyPassword(plain: string, hash: string) {
   return bcrypt.compare(plain, hash);
 }
 
-/** Signe une session. Utilise l'API Web Crypto (via `jose`) pour rester compatible avec le runtime Edge du middleware. */
+/** Signe une session. Utilise l'API Web Crypto (via `jose`) pour rester compatible avec le runtime Edge du proxy. */
 export async function signSession(payload: AnySession) {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE}s`)
-    .sign(JWT_SECRET);
+    .sign(getSecret());
 }
 
 export async function verifySession(token: string): Promise<AnySession | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getSecret());
     return payload as unknown as AnySession;
-  } catch {
+  } catch (e) {
+    // Un secret manquant en production doit remonter (erreur de configuration), pas être avalé.
+    if (e instanceof Error && e.message.startsWith("JWT_SECRET")) throw e;
     return null;
   }
 }

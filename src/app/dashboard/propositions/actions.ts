@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
-import { biens, clients, propositions, echeances, users, contrats } from "@/db/schema";
+import { biens, clients, propositions, echeances, users, contrats, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { notify, notifyMany } from "@/lib/notifications";
@@ -17,9 +17,15 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   if (!bien || bien.statut !== "DISPONIBLE") {
     return { error: "Ce bien n'est plus disponible pour une proposition." };
   }
+  const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
+  if (!projet || projet.promoteurId !== session.promoteurId) return { error: "Bien introuvable." };
 
   // --- Client : sélection d'un client existant, ou création d'un nouveau ---
   let clientId = String(formData.get("clientId") ?? "");
+  if (clientId && clientId !== "__nouveau__") {
+    const existant = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
+    if (!existant || existant.promoteurId !== session.promoteurId) return { error: "Client introuvable." };
+  }
   if (clientId === "__nouveau__") {
     const nom = String(formData.get("clientNom") ?? "").trim();
     const prenom = String(formData.get("clientPrenom") ?? "").trim();
@@ -95,9 +101,13 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   redirect("/dashboard/propositions");
 }
 
-async function getPropositionOrThrow(propositionId: string) {
+/** Charge une proposition ENVOYEE du promoteur de la session (le PDG ne décide que pour son promoteur). */
+async function getPropositionOrThrow(propositionId: string, promoteurId: string | null) {
   const proposition = await db.query.propositions.findFirst({ where: eq(propositions.id, propositionId) });
   if (!proposition) throw new Error("Proposition introuvable.");
+  const commercial = await db.query.users.findFirst({ where: eq(users.id, proposition.commercialId) });
+  if (!commercial || commercial.promoteurId !== promoteurId) throw new Error("Proposition introuvable.");
+  if (proposition.statut !== "ENVOYEE") throw new Error("Cette proposition a déjà été traitée.");
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, proposition.bienId) });
   if (!bien) throw new Error("Bien introuvable.");
   return { proposition, bien };
@@ -105,7 +115,7 @@ async function getPropositionOrThrow(propositionId: string) {
 
 export async function acceptProposition(propositionId: string) {
   const session = await requireRole(["PDG"]);
-  const { proposition, bien } = await getPropositionOrThrow(propositionId);
+  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
 
   await db
     .update(propositions)
@@ -161,8 +171,8 @@ export async function acceptProposition(propositionId: string) {
 }
 
 export async function refuseProposition(propositionId: string) {
-  await requireRole(["PDG"]);
-  const { proposition, bien } = await getPropositionOrThrow(propositionId);
+  const session = await requireRole(["PDG"]);
+  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
 
   await db
     .update(propositions)
@@ -183,12 +193,12 @@ export async function refuseProposition(propositionId: string) {
 }
 
 export async function negotiateProposition(_prev: { error?: string } | undefined, formData: FormData) {
-  await requireRole(["PDG"]);
+  const session = await requireRole(["PDG"]);
   const propositionId = String(formData.get("propositionId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
   if (!note) return { error: "Merci de préciser votre contre-proposition." };
 
-  const { proposition, bien } = await getPropositionOrThrow(propositionId);
+  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
 
   await db
     .update(propositions)
