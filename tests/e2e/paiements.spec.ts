@@ -89,6 +89,6 @@ test("le client voit le paiement validé et télécharge son reçu", async ({ pa
   const href = await ligne.getByRole("link", { name: "Reçu PDF" }).getAttribute("href");
   const reponse = await page.request.get(href!);
   expect(reponse.status()).toBe(200);
+  // Seule la tranche 2 est concernée par cette spec (les autres specs jouent sur T3/T4).
   await expect(ligneTrancheClient(page, 2).getByText("Payée")).toBeVisible();
-  await expect(ligneTrancheClient(page, 3).getByText("En attente")).toBeVisible();
 });
