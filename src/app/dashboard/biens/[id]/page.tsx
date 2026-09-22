@@ -8,7 +8,8 @@ import { requireStaffSession } from "@/lib/session";
 import { Card, Badge } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS } from "@/lib/utils";
-import { BlockBienForm, UnblockBienButton } from "./BienActions";
+import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
+import { PlanPreview } from "@/components/ui/PlanPreview";
 
 export default async function BienDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,16 +43,23 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-5">
-        <Card className="flex aspect-square items-center justify-center sm:col-span-2 sm:aspect-auto">
-          <div className="flex flex-col items-center gap-2 p-6 text-center text-navy-400">
-            <FileImage className="h-8 w-8" />
-            <p className="text-xs">
-              Aucun plan importé.
-              <br />
-              (upload PDF / image à brancher)
-            </p>
-          </div>
-        </Card>
+        <div className="space-y-4 sm:col-span-2">
+          <Card className="flex aspect-square items-center justify-center overflow-hidden sm:aspect-auto sm:min-h-64">
+            {bien.planUrl ? (
+              <PlanPreview url={bien.planUrl} />
+            ) : (
+              <div className="flex flex-col items-center gap-2 p-6 text-center text-navy-400">
+                <FileImage className="h-8 w-8" />
+                <p className="text-xs">Aucun plan importé.</p>
+              </div>
+            )}
+          </Card>
+          {session.role === "DIRECTEUR_COMMERCIAL" && (
+            <Card className="p-4">
+              <PlanUploadForm bienId={bien.id} hasPlan={!!bien.planUrl} />
+            </Card>
+          )}
+        </div>
 
         <div className="space-y-4 sm:col-span-3">
           <Card className="grid grid-cols-2 gap-4 p-5">

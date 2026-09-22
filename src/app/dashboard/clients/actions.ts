@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { clients } from "@/db/schema";
 import { requireRole, requireStaffSession } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
+import { parsePublicPath } from "@/lib/storage";
 
 export type CreateClientState = { error?: string; success?: { identifiant: string; password: string } } | undefined;
 
@@ -21,6 +22,13 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
     return { error: "Nom, prénom, téléphone et e-mail sont obligatoires." };
   }
 
+  // Chemin retourné par POST /api/upload (composant FileUpload) — on ne garde
+  // que les chemins bien formés, jamais une valeur arbitraire.
+  const pieceDocUrl = String(formData.get("pieceDocUrl") ?? "");
+  if (pieceDocUrl && !parsePublicPath(pieceDocUrl)) {
+    return { error: "Le document d'identité importé est invalide, merci de le réimporter." };
+  }
+
   const identifiant = generateIdentifiant("CL");
   const password = generateTempPassword();
 
@@ -33,6 +41,7 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
     adresse: String(formData.get("adresse") ?? "") || null,
     pieceType: String(formData.get("pieceType") ?? "CIN"),
     pieceNumero: String(formData.get("pieceNumero") ?? "") || null,
+    pieceDocUrl: pieceDocUrl || null,
     telephone1,
     telephone2: String(formData.get("telephone2") ?? "") || null,
     email,

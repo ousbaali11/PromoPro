@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { blockBien, unblockBien } from "./actions";
+import { blockBien, unblockBien, setPlanBien } from "./actions";
 import { Card, Field, Textarea } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { FileUpload } from "@/components/ui/FileUpload";
 
 export function BlockBienForm({ bienId }: { bienId: string }) {
   const [state, formAction, pending] = useActionState(blockBien, undefined);
@@ -25,6 +26,20 @@ export function BlockBienForm({ bienId }: { bienId: string }) {
         </Button>
       </form>
     </Card>
+  );
+}
+
+export function PlanUploadForm({ bienId, hasPlan }: { bienId: string; hasPlan: boolean }) {
+  const [state, formAction, pending] = useActionState(setPlanBien, undefined);
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="bienId" value={bienId} />
+      <FileUpload name="planUrl" type="plans" label={hasPlan ? "Remplacer le plan" : "Importer le plan"} required />
+      {state?.error && <p className="text-xs text-rose-700">{state.error}</p>}
+      <Button type="submit" variant="secondary" size="sm" disabled={pending}>
+        {pending ? "Enregistrement..." : "Enregistrer le plan"}
+      </Button>
+    </form>
   );
 }
 

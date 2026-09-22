@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { Plus } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients } from "@/db/schema";
@@ -40,6 +41,7 @@ export default async function ClientsPage() {
             <thead>
               <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
                 <th className="px-5 py-3 font-medium">Nom</th>
+                <th className="px-5 py-3 font-medium">Pièce</th>
                 <th className="px-5 py-3 font-medium">Téléphone</th>
                 <th className="px-5 py-3 font-medium">E-mail</th>
                 <th className="px-5 py-3 font-medium">Identifiant</th>
@@ -50,7 +52,23 @@ export default async function ClientsPage() {
               {rows.map((c) => (
                 <tr key={c.id} className="border-b border-navy-50 last:border-0 hover:bg-navy-50/50">
                   <td className="px-5 py-3 font-medium text-navy-900">
-                    {c.prenom} {c.nom}
+                    <Link href={`/dashboard/clients/${c.id}`} className="hover:underline">
+                      {c.prenom} {c.nom}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3">
+                    {c.pieceDocUrl ? (
+                      <a
+                        href={c.pieceDocUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-gold-600 hover:underline"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Voir
+                      </a>
+                    ) : (
+                      <span className="text-xs text-navy-400/60">—</span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-navy-400">{c.telephone1}</td>
                   <td className="px-5 py-3 text-navy-400">{c.email}</td>

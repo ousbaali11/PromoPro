@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createClient } from "../actions";
 import { Card, Field, Input, Select, PageHeader } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { FileUpload } from "@/components/ui/FileUpload";
 
 export default function NouveauClientPage() {
   const [state, formAction, pending] = useActionState(createClient, undefined);
@@ -66,10 +67,12 @@ export default function NouveauClientPage() {
             </Field>
           </div>
 
-          <p className="text-xs text-navy-400">
-            Le scan de la pièce d&apos;identité se fait via la fonctionnalité d&apos;upload (à brancher — voir
-            PROMPTS.md, module Clients).
-          </p>
+          <FileUpload
+            name="pieceDocUrl"
+            type="pieces-identite"
+            label="Scan de la pièce d'identité"
+            hint="CIN ou passeport, au format PDF ou image."
+          />
 
           {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
 

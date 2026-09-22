@@ -43,3 +43,6 @@ next-env.d.ts
 # base de données locale (régénérée via npm run db:push && npm run db:seed)
 /data/*.db
 /data/*.db-*
+
+# fichiers uploades (stockage local, voir src/lib/storage.ts)
+/storage/uploads/
