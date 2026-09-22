@@ -99,11 +99,19 @@ exit
 ```
 
 `npm run db:seed` **vide toutes les tables** avant d'insérer la démo : ne le
-lancez qu'à l'initialisation, jamais sur une base en exploitation. Pour une
-base vierge sans données de démo, faites seulement `db:push` puis créez le
-premier promoteur avec le compte Super Admin… qui est lui-même créé par le
-seed : dans ce cas, lancez le seed puis supprimez le promoteur de démo depuis
-`/admin` (ou changez immédiatement les mots de passe de démo).
+lancez qu'à l'initialisation, jamais sur une base en exploitation.
+
+Pour une base **vierge, sans données de démo** (recommandé en production) :
+faites seulement `npm run db:push`, puis créez le premier compte Super Admin
+avec vos propres identifiants (aucune valeur par défaut) :
+
+```bash
+npm run create-admin -- ADMIN-PROD 'un-mot-de-passe-solide'   # --nom / --prenom facultatifs
+```
+
+Le mot de passe (10 caractères minimum) est haché avec bcrypt et n'est jamais
+affiché. Connectez-vous ensuite sur `/login` avec cet identifiant pour créer
+le premier promoteur et son PDG depuis `/admin`.
 
 Alternative sans `railway ssh` (validée en développement) : depuis votre
 machine, mettez l'URL **publique** de la base dans `.env.local`

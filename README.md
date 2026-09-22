@@ -92,6 +92,17 @@ Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 
 La liste est aussi affichée sur la page de connexion.
 
+Pour créer un Super Admin avec vos propres identifiants (sans passer par le
+seed, par exemple sur une base de production vierge) :
+
+```bash
+npm run create-admin -- <identifiant> '<mot-de-passe>'
+```
+
+(`scripts/create-super-admin.ts` : options `--nom` / `--prenom`, mot de passe
+de 10 caractères minimum, refuse un identifiant déjà utilisé ; cible la base
+désignée par `DATABASE_URL`, sinon la base SQLite locale.)
+
 ## Fonctionnalités par profil
 
 - Authentification par identifiant + mot de passe (Super Admin, tous les rôles
