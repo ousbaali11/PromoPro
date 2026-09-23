@@ -1,22 +1,15 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { ChevronLeft, FileText } from "lucide-react";
+import { ChevronLeft, FileText, Home } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients, users, biens } from "@/db/schema";
-import { Card, Badge, PageHeader } from "@/components/ui/Primitives";
-import { formatDate, formatMoney, STATUT_BIEN_COLORS, STATUT_BIEN_LABELS } from "@/lib/utils";
+import { Card, Info, PageHeader, Section, EmptyState } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { LinkButton } from "@/components/ui/Button";
+import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
 import { ResetPasswordButton } from "../ResetPasswordButton";
-
-function Info({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs text-navy-400">{label}</p>
-      <p className="mt-0.5 text-sm text-navy-900">{value || "—"}</p>
-    </div>
-  );
-}
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,72 +32,88 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const projetById = new Map(projetsList.map((p) => [p.id, p]));
 
   const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role);
+  const initiales = `${client.prenom[0] ?? ""}${client.nom[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link
-        href="/dashboard/clients"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-navy-400 hover:text-navy-900"
-      >
-        <ChevronLeft className="h-4 w-4" /> Clients
-      </Link>
-
-      <PageHeader
-        title={`${client.prenom} ${client.nom}`}
-        description={`Identifiant ${client.identifiant} · créé le ${formatDate(client.createdAt)}`}
-        action={canReset ? <ResetPasswordButton clientId={client.id} /> : undefined}
-      />
-
-      <div className="space-y-4">
-        <Card className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-          <Info label="Date de naissance" value={client.dateNaissance} />
-          <Info label="Lieu de naissance" value={client.lieuNaissance} />
-          <Info label="Adresse" value={client.adresse} />
-          <Info label="Pièce d'identité" value={`${client.pieceType ?? "CIN"} ${client.pieceNumero ?? ""}`.trim()} />
-          <Info label="Téléphone 1" value={client.telephone1} />
-          <Info label="Téléphone 2" value={client.telephone2} />
-          <Info label="E-mail" value={client.email} />
-          <Info label="Commercial" value={commercial ? `${commercial.prenom} ${commercial.nom}` : null} />
-        </Card>
-
-        <Card className="p-5">
-          <p className="text-xs text-navy-400">Scan de la pièce d&apos;identité</p>
-          {client.pieceDocUrl ? (
-            <a
-              href={client.pieceDocUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex items-center gap-2 rounded-md bg-navy-50 px-3 py-2 text-sm text-navy hover:bg-navy-100"
-            >
-              <FileText className="h-4 w-4" /> Ouvrir le document
-            </a>
-          ) : (
-            <p className="mt-1 text-sm text-navy-400">Aucun document importé.</p>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <p className="mb-3 text-xs text-navy-400">Biens du client</p>
-          {mesBiens.length === 0 ? (
-            <p className="text-sm text-navy-400">Aucun bien affecté pour l&apos;instant.</p>
-          ) : (
-            <ul className="divide-y divide-navy-50">
-              {mesBiens.map((b) => (
-                <li key={b.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/dashboard/biens/${b.id}`} className="font-medium text-navy-900 hover:underline">
-                    {b.designation}
-                    <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
-                  </Link>
-                  <span className="flex items-center gap-3">
-                    <span className="text-navy-400">{formatMoney(b.prix)}</span>
-                    <Badge className={STATUT_BIEN_COLORS[b.statut]}>{STATUT_BIEN_LABELS[b.statut]}</Badge>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div>
+        <Link
+          href="/dashboard/clients"
+          className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
+        >
+          <ChevronLeft className="h-4 w-4" /> Clients
+        </Link>
+        <div className="flex items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy text-small font-semibold text-gold ring-4 ring-navy-50">
+            {initiales}
+          </span>
+          <div className="min-w-0 flex-1">
+            <PageHeader
+              eyebrow="Client"
+              title={`${client.prenom} ${client.nom}`}
+              description={`Identifiant ${client.identifiant} · créé le ${formatDate(client.createdAt)}`}
+              action={canReset ? <ResetPasswordButton clientId={client.id} /> : undefined}
+            />
+          </div>
+        </div>
       </div>
+
+      <Card className="grid grid-cols-1 gap-x-4 gap-y-5 p-5 sm:grid-cols-2">
+        <Info label="Date de naissance" value={client.dateNaissance} />
+        <Info label="Lieu de naissance" value={client.lieuNaissance} />
+        <Info label="Adresse" value={client.adresse} className="sm:col-span-2" />
+        <Info label="Pièce d'identité" value={<span className="font-mono">{`${client.pieceType ?? "CIN"} ${client.pieceNumero ?? ""}`.trim()}</span>} />
+        <Info
+          label="Scan de la pièce"
+          value={
+            client.pieceDocUrl ? (
+              <a
+                href={client.pieceDocUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xs font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+              >
+                <FileText className="h-4 w-4" /> Ouvrir le document
+              </a>
+            ) : (
+              <span className="text-navy-400">Aucun document importé.</span>
+            )
+          }
+        />
+        <Info label="Téléphone 1" value={<span className="tabular">{client.telephone1}</span>} />
+        <Info label="Téléphone 2" value={client.telephone2 ? <span className="tabular">{client.telephone2}</span> : undefined} />
+        <Info label="E-mail" value={client.email} />
+        <Info label="Commercial" value={commercial ? `${commercial.prenom} ${commercial.nom}` : undefined} />
+      </Card>
+
+      <Section title="Biens du client" count={mesBiens.length > 0 ? mesBiens.length : undefined}>
+        {mesBiens.length === 0 ? (
+          <EmptyState icon={<Home />} title="Aucun bien affecté" description="Les biens vendus à ce client apparaîtront ici." className="py-10" />
+        ) : (
+          <Card className="divide-y divide-navy-50">
+            {mesBiens.map((b) => (
+              <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-small" data-testid="client-bien">
+                <div className="min-w-0">
+                  <Link
+                    href={`/dashboard/biens/${b.id}`}
+                    className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                  >
+                    {b.designation}
+                  </Link>
+                  <p className="text-caption text-navy-400">{projetById.get(b.projetId)?.nom}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="tabular text-navy-400">{formatMoney(b.prix)}</span>
+                  <StatusBadge statut={b.statut} label={STATUT_BIEN_LABELS[b.statut]} tone={STATUT_BIEN_TONES[b.statut] ?? "neutral"} />
+                  <LinkButton href={`/dashboard/biens/${b.id}`} variant="ghost" size="sm">
+                    Ouvrir
+                  </LinkButton>
+                </div>
+              </div>
+            ))}
+          </Card>
+        )}
+      </Section>
     </div>
   );
 }

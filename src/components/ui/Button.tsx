@@ -123,6 +123,7 @@ export function ConfirmButton({
   icon,
   children,
   disabled,
+  loading: loadingExterne = false,
   ...props
 }: Omit<ButtonProps, "onClick"> & {
   onConfirm: () => void | Promise<unknown>;
@@ -130,7 +131,9 @@ export function ConfirmButton({
   delai?: number;
 }) {
   const [arme, setArme] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingInterne, setLoadingInterne] = useState(false);
+  // `loading` externe (transition du parent) ou interne (onConfirm asynchrone)
+  const loading = loadingInterne || loadingExterne;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -152,10 +155,10 @@ export function ConfirmButton({
     }
     desarmer();
     try {
-      setLoading(true);
+      setLoadingInterne(true);
       await onConfirm();
     } finally {
-      setLoading(false);
+      setLoadingInterne(false);
     }
   };
 

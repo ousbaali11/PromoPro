@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Users } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients } from "@/db/schema";
-import { Card, PageHeader, EmptyState } from "@/components/ui/Primitives";
+import { PageHeader } from "@/components/ui/Primitives";
+import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
 import { ResetPasswordButton } from "./ResetPasswordButton";
 
@@ -19,71 +20,78 @@ export default async function ClientsPage() {
   const canCreate = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL", "DIRECTEUR_COMMERCIAL"].includes(session.role);
   const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role);
 
+  const nouveau = canCreate ? (
+    <LinkButton href="/dashboard/clients/nouveau" size="sm">
+      <Plus className="h-4 w-4" /> Nouveau client
+    </LinkButton>
+  ) : undefined;
+
   return (
     <div>
       <PageHeader
         title="Clients"
-        description="Comptes clients créés pour l'accès à leur espace personnel."
-        action={
-          canCreate ? (
-            <LinkButton href="/dashboard/clients/nouveau" size="sm">
-              <Plus className="h-4 w-4" /> Nouveau client
-            </LinkButton>
-          ) : undefined
-        }
+        description={`${rows.length} compte${rows.length > 1 ? "s" : ""} client${rows.length > 1 ? "s" : ""} pour l'accès à leur espace personnel.`}
+        action={nouveau}
       />
 
-      {rows.length === 0 ? (
-        <EmptyState title="Aucun client" description="Les clients créés apparaîtront ici." />
-      ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead>
-              <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
-                <th className="px-5 py-3 font-medium">Nom</th>
-                <th className="px-5 py-3 font-medium">Pièce</th>
-                <th className="px-5 py-3 font-medium">Téléphone</th>
-                <th className="px-5 py-3 font-medium">E-mail</th>
-                <th className="px-5 py-3 font-medium">Identifiant</th>
-                {canReset && <th className="px-5 py-3 font-medium"></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((c) => (
-                <tr key={c.id} className="border-b border-navy-50 last:border-0 hover:bg-navy-50/50">
-                  <td className="px-5 py-3 font-medium text-navy-900">
-                    <Link href={`/dashboard/clients/${c.id}`} className="hover:underline">
-                      {c.prenom} {c.nom}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3">
-                    {c.pieceDocUrl ? (
-                      <a
-                        href={c.pieceDocUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-gold-600 hover:underline"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> Voir
-                      </a>
-                    ) : (
-                      <span className="text-xs text-navy-400/60">—</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-navy-400">{c.telephone1}</td>
-                  <td className="px-5 py-3 text-navy-400">{c.email}</td>
-                  <td className="px-5 py-3 font-mono text-xs text-navy-900">{c.identifiant}</td>
-                  {canReset && (
-                    <td className="px-5 py-3 text-right">
-                      <ResetPasswordButton clientId={c.id} />
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+      <DataTable
+        testId="table-clients"
+        caption="Liste des clients"
+        defaultSort={{ column: 0, sens: "asc" }}
+        columns={[
+          { header: "Nom", sortable: true },
+          { header: "Pièce", hideBelow: "md", width: "1%" },
+          { header: "Téléphone", hideBelow: "sm" },
+          { header: "E-mail", hideBelow: "lg" },
+          { header: "Identifiant", sortable: true },
+          ...(canReset ? [{ header: <span className="sr-only">Actions</span>, align: "right" as const, width: "1%" }] : []),
+        ]}
+        rows={rows.map((c) => ({
+          key: c.id,
+          testId: "client-ligne",
+          sort: [`${c.nom} ${c.prenom}`, null, null, null, c.identifiant],
+          cells: [
+            <Link
+              key="nom"
+              href={`/dashboard/clients/${c.id}`}
+              className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+            >
+              {c.prenom} {c.nom}
+            </Link>,
+            c.pieceDocUrl ? (
+              <a
+                key="piece"
+                href={c.pieceDocUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+              >
+                <FileText className="h-3.5 w-3.5" /> Voir
+              </a>
+            ) : (
+              <span key="piece" className="text-caption text-navy-300">
+                —
+              </span>
+            ),
+            <span key="tel" className="tabular text-navy-400">
+              {c.telephone1}
+            </span>,
+            <span key="mail" className="text-navy-400">
+              {c.email}
+            </span>,
+            <span key="id" className="font-mono text-caption text-navy-900">
+              {c.identifiant}
+            </span>,
+            ...(canReset ? [<ResetPasswordButton key="reset" clientId={c.id} />] : []),
+          ],
+        }))}
+        empty={{
+          icon: <Users />,
+          title: "Aucun client",
+          description: canCreate ? "Créez le premier dossier client : il recevra ses identifiants d'accès." : "Les clients créés apparaîtront ici.",
+          action: nouveau,
+        }}
+      />
     </div>
   );
 }

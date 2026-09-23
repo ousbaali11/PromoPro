@@ -40,6 +40,10 @@ while (Date.now() - debut < 120_000) {
 const navigateur = await chromium.launch();
 const page = await navigateur.newPage({ viewport: { width: 1440, height: 900 } });
 let roleCourant = "";
+// Erreurs console / exceptions de la page : affichées sous chaque capture (la pastille « Issue » de Next les signale sinon en silence)
+const erreurs = [];
+page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") erreurs.push(`[${m.type()}] ${m.text()}`); });
+page.on("pageerror", (e) => erreurs.push(`[pageerror] ${e.message}`));
 
 try {
   for (const cible of cibles) {
@@ -60,6 +64,7 @@ try {
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${dossier}/${nom}.png`, fullPage: true });
     console.log(`✓ ${dossier}/${nom}.png`);
+    for (const e of erreurs.splice(0)) console.log(`  ⚠ ${e.slice(0, 600)}`);
   }
 } finally {
   await navigateur.close();
