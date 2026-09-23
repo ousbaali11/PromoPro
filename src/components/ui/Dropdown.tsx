@@ -106,6 +106,9 @@ export function Dropdown({
   const selectionner = async (it: MenuItem) => {
     if (it.disabled) return;
     fermer();
+    // Le focus revient au déclencheur avant l action : une modale ouverte
+    // depuis le menu mémorise ainsi un élément encore présent pour le rendre à sa fermeture.
+    (racine.current?.querySelector("[data-trigger]") as HTMLElement | null)?.focus();
     await it.onSelect?.();
   };
 
@@ -116,7 +119,7 @@ export function Dropdown({
         data-trigger
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-controls={menuId}
+        aria-controls={open ? menuId : undefined}
         aria-label={trigger ? undefined : label}
         onClick={() => (open ? fermer() : ouvrir())}
         className={cn(

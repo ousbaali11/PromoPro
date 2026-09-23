@@ -169,7 +169,7 @@ export function DataTable({
                     key={i}
                     scope="col"
                     style={col.width ? { width: col.width } : undefined}
-                    aria-sort={actif ? (tri.sens === "asc" ? "ascending" : "descending") : undefined}
+                    aria-sort={col.sortable ? (actif ? (tri.sens === "asc" ? "ascending" : "descending") : "none") : undefined}
                     className={cn(
                       "px-5 py-2.5 text-label uppercase text-navy-400",
                       ALIGN[col.align ?? "left"],

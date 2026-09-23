@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
@@ -62,6 +62,9 @@ export function PaiementForm({
   withReference?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  // Plusieurs formulaires peuvent coexister sur une page (recouvrement) : identifiants uniques par instance
+  const uid = useId();
+  const id = (champ: string) => `${champ}-${uid}`;
   const [nature, setNature] = useState("virement local");
   const [porteurDifferent, setPorteurDifferent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -87,7 +90,7 @@ export function PaiementForm({
       {intro && <p className="text-caption text-navy-400">{intro}</p>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Select id="echeanceId" name="echeanceId" label="Tranche concernée" defaultValue={defaultEcheance}>
+        <Select id={id("echeanceId")} name="echeanceId" label="Tranche concernée" defaultValue={defaultEcheance}>
           {echeances.length === 0 && <option value="">Échéancier non disponible</option>}
           {echeances.map((e) => (
             <option key={e.id} value={e.id} disabled={e.statut === "PAYEE"}>
@@ -96,36 +99,36 @@ export function PaiementForm({
             </option>
           ))}
         </Select>
-        <Select id="natureOperation" name="natureOperation" label="Nature de l'opération" value={nature} onChange={(e) => setNature(e.target.value)}>
+        <Select id={id("natureOperation")} name="natureOperation" label="Nature de l'opération" value={nature} onChange={(e) => setNature(e.target.value)}>
           {NATURES.map((n) => (
             <option key={n.value} value={n.value}>
               {n.label}
             </option>
           ))}
         </Select>
-        <Input id="banque" name="banque" label="Banque" required />
-        <Input id="dateOperation" name="dateOperation" type="date" label="Date de l'opération" clearable={false} required />
-        <Input id="montant" name="montant" type="number" label="Montant" min={1} step={1} clearable={false} required />
-        <Select id="devise" name="devise" label="Devise" defaultValue="MAD">
+        <Input id={id("banque")} name="banque" label="Banque" required />
+        <Input id={id("dateOperation")} name="dateOperation" type="date" label="Date de l'opération" clearable={false} required />
+        <Input id={id("montant")} name="montant" type="number" label="Montant" min={1} step={1} clearable={false} required />
+        <Select id={id("devise")} name="devise" label="Devise" defaultValue="MAD">
           <option>MAD</option>
           <option>EUR</option>
           <option>USD</option>
         </Select>
         <Input
-          id="porteur"
+          id={id("porteur")}
           name="porteur"
           label="Porteur de l'opération"
           hint="Personne physique ayant réalisé le paiement."
           containerClassName={withReference ? undefined : "sm:col-span-2"}
           required
         />
-        {withReference && <Input id="reference" name="reference" label="Référence de l'opération" hint="ex. VIR-2026-00123" required />}
+        {withReference && <Input id={id("reference")} name="reference" label="Référence de l'opération" hint="ex. VIR-2026-00123" required />}
       </div>
 
       <Repli visible={nature === "cheque"}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
-            id="dateEncaissementCheque"
+            id={id("dateEncaissementCheque")}
             name="dateEncaissementCheque"
             type="date"
             label="Date d'encaissement prévue"

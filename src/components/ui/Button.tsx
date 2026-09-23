@@ -24,7 +24,8 @@ const variants: Record<Variant, string> = {
   ghost: "text-navy hover:bg-navy-50 active:bg-navy-100 disabled:hover:bg-transparent",
   danger:
     "bg-danger text-white shadow-e1 hover:bg-danger-fg hover:shadow-e2 active:shadow-none disabled:hover:bg-danger",
-  gold: "bg-gold text-white shadow-e1 hover:bg-gold-600 hover:shadow-e2 active:bg-gold-700 active:shadow-none disabled:hover:bg-gold",
+  // Texte blanc sur --color-gold : 3.1:1 seulement. Le bouton doré repose donc sur gold-600 (5.1:1), gold-700 en survol.
+  gold: "bg-gold-600 text-white shadow-e1 hover:bg-gold-700 hover:shadow-e2 active:bg-gold-700 active:shadow-none disabled:hover:bg-gold-600",
 };
 
 const sizes: Record<Size, string> = {

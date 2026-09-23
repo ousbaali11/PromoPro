@@ -33,7 +33,7 @@ export default async function ClientLayout({ children }: { children: React.React
           <div className="flex items-center gap-2">
             <NotificationBell notifications={notifs} dark />
             <div className="ml-1 hidden items-center gap-2 sm:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-caption font-semibold text-gold ring-1 ring-inset ring-white/10">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-caption font-semibold text-gold-200 ring-1 ring-inset ring-white/10">
                 {initiales}
               </span>
               <span className="text-small text-navy-100">

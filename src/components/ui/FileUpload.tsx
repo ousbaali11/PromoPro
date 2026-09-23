@@ -192,7 +192,7 @@ export function FileUpload({
               if (e.target.files?.length) void upload(e.target.files);
             }}
           />
-          <p className="text-[11px] text-navy-400/70">PDF, JPG ou PNG · 10 Mo max{multiple ? " par fichier" : ""}.</p>
+          <p className="text-caption text-navy-400">PDF, JPG ou PNG · 10 Mo max{multiple ? " par fichier" : ""}.</p>
         </div>
       )}
 

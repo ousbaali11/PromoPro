@@ -30,7 +30,7 @@ export function ErrorFallback({ error, retry, reset, espace }: ErrorProps & { es
         La page n&apos;a pas pu être affichée. Vous pouvez réessayer ; si le problème persiste, contactez votre
         administrateur en indiquant le code ci-dessous.
       </p>
-      {error.digest && <p className="mt-2 font-mono text-xs text-navy-400/70">Code : {error.digest}</p>}
+      {error.digest && <p className="mt-2 font-mono text-xs text-navy-400">Code : {error.digest}</p>}
       <div className="mt-6 flex justify-center gap-2">
         <Button onClick={relancer}>
           <RotateCcw className="h-4 w-4" /> Réessayer

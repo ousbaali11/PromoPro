@@ -33,14 +33,19 @@ export function Modal({
   const titreId = useId();
   const descId = useId();
   const panneau = useRef<HTMLDivElement>(null);
+  const contenu = useRef<HTMLDivElement>(null);
   const precedent = useRef<Element | null>(null);
 
   useEffect(() => {
     if (!open) return;
     precedent.current = document.activeElement;
     const el = panneau.current;
-    // Focus initial : premier élément focalisable du contenu, sinon le panneau
-    const premier = el?.querySelector<HTMLElement>(FOCUSABLE);
+    // Focus initial : premier élément focalisable du contenu (champ, lien), sinon
+    // du pied (boutons d'action), sinon la croix de fermeture, sinon le panneau
+    const premier =
+      contenu.current?.querySelector<HTMLElement>(FOCUSABLE) ??
+      el?.querySelector<HTMLElement>("[data-modal-footer] " + FOCUSABLE.split(", ").join(", [data-modal-footer] ")) ??
+      el?.querySelector<HTMLElement>(FOCUSABLE);
     (premier ?? el)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
@@ -123,8 +128,14 @@ export function Modal({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="px-6 py-5">{children}</div>
-            {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-navy-50 px-6 py-4">{footer}</div>}
+            <div ref={contenu} className="px-6 py-5">
+              {children}
+            </div>
+            {footer && (
+              <div data-modal-footer className="flex flex-wrap justify-end gap-2 border-t border-navy-50 px-6 py-4">
+                {footer}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

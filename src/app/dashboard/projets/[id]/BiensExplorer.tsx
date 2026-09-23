@@ -182,18 +182,20 @@ function CarteBien({
           {formatMoney(bien.prix).replace(/\s?MAD$/, "")}
           <span className="ml-1 text-caption font-medium text-navy-400">MAD</span>
         </p>
-        <dl className="mt-auto flex items-center gap-4 text-caption text-navy-400">
-          <div className="flex items-center gap-1.5">
+        {/* Liste de définitions valide : un <div> dt/dd par donnée, filets de séparation en bordure */}
+        <dl className="mt-auto flex items-center text-caption text-navy-400 [&>div+div]:ml-4 [&>div+div]:border-l [&>div+div]:border-navy-100 [&>div+div]:pl-4">
+          <div>
             <dt className="sr-only">Nature</dt>
             <dd>{bien.nature}</dd>
           </div>
-          <div className="h-3 w-px bg-navy-100" aria-hidden />
-          <div className="flex items-center gap-1.5">
+          <div>
             <dt className="sr-only">Surface</dt>
             <dd className="tabular">{bien.surface} m²</dd>
           </div>
-          <div className="h-3 w-px bg-navy-100" aria-hidden />
-          <dd className="tabular">{Math.round(bien.prix / bien.surface).toLocaleString("fr-FR")} MAD/m²</dd>
+          <div>
+            <dt className="sr-only">Prix au mètre carré</dt>
+            <dd className="tabular">{Math.round(bien.prix / bien.surface).toLocaleString("fr-FR")} MAD/m²</dd>
+          </div>
         </dl>
       </div>
     </Card>

@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-navy px-4 py-10">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-navy px-4 py-10">
       {/* Fond : calque d'architecte doré, très discret, et halo chaud derrière la carte */}
       <div className="pointer-events-none absolute inset-0 bg-blueprint opacity-60" aria-hidden />
       <div
@@ -74,6 +74,6 @@ export default function LoginPage() {
           </dl>
         </details>
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId } from "react";
+import { useId, type KeyboardEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,10 @@ export type Segment = {
  * Contrôle segmenté : une pastille navy glisse d'un segment à l'autre
  * (layoutId) au lieu d'un changement de couleur brut. Utilisé pour les
  * filtres de période (liens) et les bascules de vue (boutons).
+ *
+ * Clavier : Tab entre dans le contrôle, flèches (← → ↑ ↓) et Home / End
+ * déplacent le focus d'un segment à l'autre, Entrée ou Espace activent le
+ * segment focalisé (y compris pour les liens, qu'Espace n'active pas nativement).
  */
 export function SegmentedControl({
   items,
@@ -40,11 +44,46 @@ export function SegmentedControl({
   const Conteneur = parLien ? "nav" : "div";
   const taille = size === "sm" ? "h-7 px-2.5 text-caption" : "h-8 px-3 text-small";
 
+  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const segments = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-segment]")];
+    const pos = segments.indexOf(document.activeElement as HTMLElement);
+    if (pos < 0 || segments.length === 0) return;
+    let cible = -1;
+    switch (e.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        cible = (pos + 1) % segments.length;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        cible = (pos - 1 + segments.length) % segments.length;
+        break;
+      case "Home":
+        cible = 0;
+        break;
+      case "End":
+        cible = segments.length - 1;
+        break;
+      case " ":
+        // Espace n'active pas un lien nativement : on déclenche le clic (les boutons l'ont déjà)
+        if (segments[pos].tagName === "A") {
+          e.preventDefault();
+          segments[pos].click();
+        }
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    segments[cible].focus();
+  };
+
   return (
     <Conteneur
       aria-label={ariaLabel}
       role={parLien ? undefined : "tablist"}
       data-testid={testId}
+      onKeyDown={onKeyDown}
       className={cn("inline-flex max-w-full flex-wrap gap-1 rounded-full bg-navy-50 p-1 ring-1 ring-inset ring-navy-100/70", className)}
     >
       {items.map((item) => {
@@ -78,7 +117,7 @@ export function SegmentedControl({
           </>
         );
         return parLien ? (
-          <Link key={item.value} href={item.href!} aria-current={actif ? "page" : undefined} className={classes}>
+          <Link key={item.value} href={item.href!} data-segment aria-current={actif ? "page" : undefined} className={classes}>
             {contenu}
           </Link>
         ) : (
@@ -86,7 +125,9 @@ export function SegmentedControl({
             key={item.value}
             type="button"
             role="tab"
+            data-segment
             aria-selected={actif}
+            tabIndex={actif ? 0 : -1}
             onClick={() => onChange?.(item.value)}
             className={classes}
           >

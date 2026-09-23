@@ -79,7 +79,7 @@ export function Sidebar({
 
       <div className="border-t border-white/10 px-3 py-3">
         <div className="flex items-center gap-3 rounded-sm px-2 py-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-caption font-semibold text-gold ring-1 ring-inset ring-white/10">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-caption font-semibold text-gold-200 ring-1 ring-inset ring-white/10">
             {initiales}
           </span>
           <div className="min-w-0">

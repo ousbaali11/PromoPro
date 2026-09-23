@@ -63,7 +63,7 @@ export function NotificationBell({ notifications, dark = false }: { notification
               animate={{ scale: [1.25, 1], opacity: 1 }}
               exit={{ scale: 0.4, opacity: 0 }}
               transition={{ type: "spring", stiffness: 600, damping: 22 }}
-              className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white tabular"
+              className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-gold-600 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white tabular"
             >
               {unread > 9 ? "9+" : unread}
             </motion.span>

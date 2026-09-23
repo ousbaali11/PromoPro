@@ -260,7 +260,17 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   régénéré → espace client) ; désistements (bien remis à zéro, vérification,
   remboursement) ; espace client (rendez-vous, visite et créneaux, paiement
   avec trop-perçu, photos d'avancement) ; SAV (livraison, notaire, syndic) ;
-  recouvrement (filtres, paiement pour le compte du client, trésorerie).
+  recouvrement (filtres, paiement pour le compte du client, trésorerie) ;
+  accessibilité (`accessibilite.spec.ts`) : analyse axe-core WCAG A/AA de
+  chaque famille de composant au repos et en état ouvert (login, admin,
+  tableau de bord, biens grille/liste, modale, menu déroulant, contrôle
+  segmenté, espace client) — les violations *critical* / *serious* font
+  échouer le test, *minor* / *moderate* sont seulement journalisées
+  (`tests/e2e/a11y.ts`) — plus piège et retour de focus des modales,
+  navigation clavier des menus et segments, `aria-sort` des tableaux,
+  région `aria-live` des toasts, étiquettes flottantes associées, actions
+  révélées au focus, et respect de `prefers-reduced-motion` (contexte
+  Playwright émulé).
   Les specs partagent la base recréée au début du run et tournent en série
   dans l'ordre alphabétique des fichiers : chacune n'agit que sur « ses »
   tranches ou biens pour rester indépendante des autres.

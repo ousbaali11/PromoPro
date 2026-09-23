@@ -21,7 +21,7 @@
   --color-navy-50: #eef2f6;
   --color-navy-100: #d7e0e9;
   --color-navy-200: #b5c4d4;
-  --color-navy-300: #7f97b1;
+  --color-navy-300: #587393; /* 4.9:1 sur blanc, 4.5:1 sur crème (placeholders, texte atténué) */
   --color-navy-400: #35547a;
   --color-navy-600: #1c3a5e;
   --color-navy: #12283f;
@@ -31,7 +31,7 @@
   --color-gold-100: #f0e4cc;
   --color-gold-200: #e2cda0;
   --color-gold: #b08d57;
-  --color-gold-600: #93713f;
+  --color-gold-600: #886838; /* 5.1:1 sur blanc, 4.8:1 sur crème et gold-50 (liens, sur-titres, boutons dorés) */
   --color-gold-700: #6f5530;
 
   --color-cream: #f7f6f2;
