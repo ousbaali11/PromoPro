@@ -142,6 +142,7 @@ export default async function RecouvrementPage({
                   <div className="[&>div]:rounded-none [&>div]:shadow-none [&>div]:ring-0">
                     <DataTable
                       caption={`Échéances de ${bien.designation}`}
+                      exportation={{ nom: `echeances-${bien.designation}`, entetes: ["Tranche", "Pourcentage", "Montant", "Restant dû", "Échéance", "Statut"] }}
                       dense
                       minWidth={560}
                       columns={[
@@ -157,6 +158,7 @@ export default async function RecouvrementPage({
                           key: e.id,
                           testId: "ligne-echeance",
                           accent: s.statut === "RETARD" ? "danger" : undefined,
+                          export: [`Tranche ${e.numero}`, e.pourcentage, e.montant, Math.max(0, e.montant - e.montantPaye), e.dateEcheance ? new Date(e.dateEcheance) : null, s.label],
                           cells: [
                             <span key="t" className="font-medium">
                               Tranche {e.numero} · {e.pourcentage}%

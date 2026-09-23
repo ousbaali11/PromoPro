@@ -63,6 +63,9 @@ test("visite : demande du client → acceptation du SAV → créneau validé (di
   await ouvrirBienClient(page, "Appartement A01");
   await expect(page.getByText("Visite acceptée — choisissez votre créneau")).toBeVisible();
 
+  // Le champ date est contrôlé par React : on attend l'hydratation du formulaire avant de saisir
+  await page.locator('[data-testid="form-creneau"][data-hydrated="true"]').waitFor();
+
   // Dimanche : aucun créneau proposé, bouton désactivé
   await page.locator("#visite-date").fill(ymd(prochainJour(0)));
   await expect(page.locator("#visite-heure option")).toHaveText(["Pas de visite ce jour"]);

@@ -82,6 +82,7 @@ export default async function ContratsPage() {
         <DataTable
           testId="table-contrats"
           caption="Contrats de vente"
+          exportation={{ nom: "contrats", entetes: ["Bien", "Client", "Statut", "Contrat PDF", "Copie signée"] }}
           columns={[
             { header: "Bien", sortable: true },
             { header: "Client", hideBelow: "sm" },
@@ -94,6 +95,7 @@ export default async function ContratsPage() {
             accent: contrat.statut === "EN_ATTENTE" ? "warning" : undefined,
             muted: contrat.statut === "ANNULE",
             sort: [bien.designation, null, LABELS[contrat.statut], null],
+            export: [bien.designation, client ? `${client.prenom} ${client.nom}` : "", LABELS[contrat.statut], !!contrat.pdfUrl, !!contrat.copieSigneeUrl],
             cells: [
               <Link
                 key="bien"

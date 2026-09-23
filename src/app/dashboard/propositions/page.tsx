@@ -8,6 +8,8 @@ import { Card, PageHeader, EmptyState, Section, Callout, type Tone } from "@/com
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { PropositionActions } from "./PropositionActions";
+import { ExportCsv } from "@/components/ui/ExportCsv";
+import type { ValeurCsv } from "@/lib/csv";
 
 const STATUT_LABELS: Record<string, string> = {
   ENVOYEE: "En attente",
@@ -31,6 +33,23 @@ type Ligne = {
   commercial: typeof users.$inferSelect;
   echeances: (typeof echeances.$inferSelect)[];
 };
+
+const ENTETES_CSV = ["Bien", "Client", "Commercial", "Statut", "Date", "Échéancier"];
+
+/** Ligne CSV d'une proposition : mêmes informations que la carte affichée. */
+function ligneCsv(l: Ligne): ValeurCsv[] {
+  return [
+    l.bien?.designation ?? "",
+    l.client ? `${l.client.prenom} ${l.client.nom}` : "",
+    `${l.commercial.prenom} ${l.commercial.nom}`,
+    STATUT_LABELS[l.proposition.statut] ?? l.proposition.statut,
+    l.proposition.createdAt ?? null,
+    [...l.echeances]
+      .sort((a, b) => a.numero - b.numero)
+      .map((e) => `T${e.numero} ${e.pourcentage}% ${formatMoney(e.montant)} le ${formatDate(e.dateEcheance)}`)
+      .join(" | "),
+  ];
+}
 
 function CarteProposition({ ligne, isPdg }: { ligne: Ligne; isPdg: boolean }) {
   const { proposition, bien, client, commercial, echeances: ech } = ligne;
@@ -127,6 +146,7 @@ export default async function PropositionsPage() {
             count={enAttente.length}
             countTone={enAttente.length > 0 ? "warning" : "neutral"}
             testId="propositions-en-attente"
+            action={enAttente.length > 0 ? <ExportCsv nom="propositions-en-attente" entetes={ENTETES_CSV} lignes={enAttente.map(ligneCsv)} /> : undefined}
           >
             {enAttente.length === 0 ? (
               <EmptyState icon={<Inbox />} title="Rien à traiter" description="Toutes les propositions ont reçu une décision." className="py-8" />
@@ -140,7 +160,12 @@ export default async function PropositionsPage() {
           </Section>
 
           {traitees.length > 0 && (
-            <Section title="Historique" count={traitees.length} testId="propositions-historique">
+            <Section
+              title="Historique"
+              count={traitees.length}
+              testId="propositions-historique"
+              action={<ExportCsv nom="propositions-historique" entetes={ENTETES_CSV} lignes={traitees.map(ligneCsv)} />}
+            >
               <div className="space-y-4">
                 {traitees.map((l) => (
                   <CarteProposition key={l.proposition.id} ligne={l} isPdg={isPdg} />

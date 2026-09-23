@@ -82,6 +82,7 @@ export default async function ProspectsPage() {
         testId="table-prospects"
         caption="Prospects"
         defaultSort={{ column: 3, sens: "desc" }}
+        exportation={{ nom: "prospects", entetes: ["Nom", "Téléphone", "Source", "Statut", "Commercial", "Retour client"] }}
         columns={[
           { header: "Nom", sortable: true },
           { header: "Téléphone", hideBelow: "sm" },
@@ -99,6 +100,7 @@ export default async function ProspectsPage() {
             testId: "prospect-ligne",
             accent: contacte ? undefined : "warning",
             sort: [p.nom, null, null, contacte ? 0 : 1, ...(isAssistant ? [null] : []), null, ...(!isAssistant ? [null] : [])],
+            export: [p.nom, p.telephone, p.source, contacte ? "Contacté" : "Non contacté", com ? `${com.prenom} ${com.nom}` : "", p.retourClient ?? ""],
             cells: [
               <span key="nom" className="font-medium">
                 {p.nom}

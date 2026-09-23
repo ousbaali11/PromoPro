@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/Primitives";
 import { DataTable } from "@/components/ui/DataTable";
 import { EtatCompte } from "@/components/ui/EtatCompte";
 import { LinkButton } from "@/components/ui/Button";
-import { etatCompte } from "@/lib/comptes";
+import { etatCompte, ETAT_LABELS } from "@/lib/comptes";
 import { ResetPasswordButton } from "./ResetPasswordButton";
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ supprimes?: string }> }) {
@@ -62,6 +62,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         testId="table-clients"
         caption="Liste des clients"
         defaultSort={{ column: 0, sens: "asc" }}
+        exportation={{
+          nom: voirSupprimes ? "clients-supprimes" : "clients",
+          entetes: ["Nom", "Prénom", "État du compte", "Type de pièce", "Numéro de pièce", "Téléphone 1", "Téléphone 2", "E-mail", "Identifiant"],
+        }}
         columns={[
           { header: "Nom", sortable: true },
           { header: "Pièce", hideBelow: "md", width: "1%" },
@@ -75,6 +79,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           testId: "client-ligne",
           muted: etatCompte(c) !== "actif",
           sort: [`${c.nom} ${c.prenom}`, null, null, null, c.identifiant],
+          export: [c.nom, c.prenom, ((e) => (e === "actif" ? "Actif" : ETAT_LABELS[e]))(etatCompte(c)), c.pieceType, c.pieceNumero, c.telephone1, c.telephone2, c.email, c.identifiant],
           cells: [
             <span key="nom" className="inline-flex flex-wrap items-center gap-2">
               <Link

@@ -139,6 +139,7 @@ export default async function PaiementsPage() {
           caption="Paiements validés"
           minWidth={720}
           defaultSort={{ column: 5, sens: "desc" }}
+          exportation={{ nom: "paiements-valides", entetes: ["Bien", "Client", "Tranche", "Montant reçu", "Devise", "Référence", "Réception", "Statut"] }}
           columns={[
             { header: "Bien", sortable: true },
             { header: "Client", hideBelow: "sm" },
@@ -156,6 +157,16 @@ export default async function PaiementsPage() {
               key: p.id,
               testId: "paiement-valide",
               sort: [bien?.designation ?? "", null, null, p.montantExact ?? p.montant, null, p.dateReception ? new Date(p.dateReception).getTime() : 0, null, null],
+              export: [
+                bien?.designation ?? "",
+                client ? `${client.prenom} ${client.nom}` : "",
+                p.trancheNumero ?? "",
+                p.montantExact ?? p.montant,
+                p.devise,
+                p.reference ?? "",
+                p.dateReception ? new Date(p.dateReception) : null,
+                "Validé",
+              ],
               cells: [
                 <span key="bien" className="font-medium">
                   {bien?.designation ?? "—"}
@@ -242,6 +253,7 @@ export default async function PaiementsPage() {
         <DataTable
           testId="table-ventes"
           caption="Biens vendus par commercial"
+          exportation={{ nom: "ventes-par-commercial", entetes: ["Commercial", "Nature", "Désignation", "Prix", "Client", "Date de vente"] }}
           columns={[
             { header: "Commercial", sortable: true },
             { header: "Nature", hideBelow: "md" },
@@ -258,6 +270,14 @@ export default async function PaiementsPage() {
               key: v.id,
               testId: "vente-ligne",
               sort: [com ? `${com.nom} ${com.prenom}` : "", null, bien?.designation ?? "", bien?.prix ?? 0, null, v.decidedAt?.getTime() ?? 0],
+              export: [
+                com ? `${com.prenom} ${com.nom}` : "",
+                bien?.nature ?? "",
+                bien?.designation ?? "",
+                bien?.prix ?? null,
+                client ? `${client.prenom} ${client.nom}` : "",
+                v.decidedAt ?? null,
+              ],
               cells: [
                 <NomCompte key="com" compte={com} />,
                 <span key="nature" className="text-navy-400">

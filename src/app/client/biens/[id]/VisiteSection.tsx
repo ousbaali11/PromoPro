@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState, useTransition } from "react";
+import { useHydrated } from "@/components/ui/useHydrated";
 import { CalendarCheck, FileDown, DoorOpen } from "lucide-react";
 import { demanderVisite, choisirCreneauVisite } from "./actions";
 import { Button } from "@/components/ui/Button";
@@ -95,6 +96,7 @@ function ChoixCreneau({ visite }: { visite: Visite }) {
   const [date, setDate] = useState("");
   const heures = useMemo(() => heuresPour(date), [date]);
   const today = new Date().toISOString().slice(0, 10);
+  const hydrate = useHydrated(); // marqueur pour les tests : la date est un champ contrôlé, inutile avant hydratation
 
   return (
     <div className="space-y-3 rounded-md bg-gold-50 p-4 ring-1 ring-inset ring-gold-200">
@@ -107,7 +109,7 @@ function ChoixCreneau({ visite }: { visite: Visite }) {
         )}
       </div>
       <p className="text-caption text-navy-400">Lundi–vendredi 8h–12h et 14h–18h, samedi 8h–12h.</p>
-      <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
+      <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start" data-testid="form-creneau" data-hydrated={hydrate ? "true" : undefined}>
         <Input id="visite-date" name="date" type="date" label="Date" min={today} value={date} onChange={(e) => setDate(e.target.value)} clearable={false} required />
         <Select id="visite-heure" name="heure" label="Heure" required disabled={heures.length === 0}>
           {heures.length === 0 ? (

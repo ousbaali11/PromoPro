@@ -6,6 +6,8 @@ import { ArrowUp, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "./Primitives";
 import { Skeleton } from "./Skeleton";
+import { ExportCsv } from "./ExportCsv";
+import type { ValeurCsv } from "@/lib/csv";
 
 /*
  * Tableau de données partagé. Les pages (Server Components) fournissent des
@@ -38,6 +40,8 @@ export type DataTableRow = {
   /** Mise en avant (ex. élément en retard). */
   accent?: "danger" | "warning" | "success";
   testId?: string;
+  /** Valeurs texte de la ligne pour l'export CSV (alignées sur `exportation.entetes`). */
+  export?: ValeurCsv[];
 };
 
 type Sens = "asc" | "desc";
@@ -72,9 +76,12 @@ export function DataTable({
   minWidth = 640,
   testId,
   caption,
+  exportation,
 }: {
   columns: DataTableColumn[];
   rows: DataTableRow[];
+  /** Bouton « Exporter (CSV) » : exporte les lignes affichées (filtrées, dans l'ordre de tri courant, toutes pages). */
+  exportation?: { nom: string; entetes: string[] };
   loading?: boolean;
   /** État vide (titre obligatoire), rendu à la place du tableau. */
   empty?: { title: string; description?: string; icon?: ReactNode; action?: ReactNode };
@@ -146,6 +153,11 @@ export function DataTable({
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow-e2 ring-1 ring-navy-100/70" data-testid={testId}>
+      {exportation && rows.length > 0 && (
+        <div className="flex items-center justify-end gap-3 border-b border-navy-100 bg-cream-100/40 px-4 py-2">
+          <ExportCsv nom={exportation.nom} entetes={exportation.entetes} lignes={triees.filter((r) => r.export).map((r) => r.export!)} />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-body" style={{ minWidth }}>
           {caption && <caption className="sr-only">{caption}</caption>}
