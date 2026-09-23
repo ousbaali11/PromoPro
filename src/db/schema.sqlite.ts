@@ -74,6 +74,7 @@ export const projets = sqliteTable("projets", {
   nom: text("nom").notNull(),
   nomCompte: text("nom_compte").notNull(),
   iban: text("iban").notNull(),
+  delaiTmaJours: integer("delai_tma_jours").notNull().default(60), // fenêtre de dépôt des TMA après le blocage d'un bien
   createdById: text("created_by_id").references(() => users.id),
   createdAt: createdAt(),
 });
@@ -88,7 +89,10 @@ export const biens = sqliteTable("biens", {
   nature: text("nature").notNull().default("Appartement"), // Appartement | Parking | Local...
   prix: real("prix").notNull(),
   surface: real("surface").notNull(),
-  planUrl: text("plan_url"),
+  // Plans : la colonne historique plan_url garde son nom (pas de migration destructive), exposée comme plan2dUrl
+  plan2dUrl: text("plan_url"), // image ou PDF
+  plan3dUrl: text("plan_3d_url"), // modèle .glb / .gltf (visualiseur <model-viewer>)
+  visiteVirtuelleUrl: text("visite_virtuelle_url"), // lien externe vers une visite 360°
   statut: text("statut").notNull().default("DISPONIBLE"),
   commercialId: text("commercial_id").references(() => users.id),
   clientId: text("client_id").references(() => clients.id),
@@ -406,5 +410,32 @@ export const journalActivite = sqliteTable("journal_activite", {
   cibleId: text("cible_id"),
   cibleNom: text("cible_nom").notNull(),
   details: text("details"),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Travaux Modificatifs Acquéreurs (TMA) : demande du client → chiffrage et
+// devis par le SAV → acceptation du devis (case horodatée, pas une signature
+// électronique juridique) → travaux suivis jusqu'à leur fin.
+// ---------------------------------------------------------------------------
+export const demandesTma = sqliteTable("demandes_tma", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => clients.id),
+  description: text("description").notNull(),
+  croquisUrl: text("croquis_url"), // photo ou croquis joint par le client
+  // DEMANDE | CHIFFRE | SIGNE | EN_COURS | TERMINE | REFUSE
+  statut: text("statut").notNull().default("DEMANDE"),
+  montant: real("montant"),
+  devisUrl: text("devis_url"),
+  motifRefus: text("motif_refus"),
+  chiffreParId: text("chiffre_par_id").references(() => users.id),
+  dateDemande: integer("date_demande", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  dateLimite: integer("date_limite", { mode: "timestamp" }), // blocage + délai du projet, figée à la demande
+  signatureClientAt: integer("signature_client_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });

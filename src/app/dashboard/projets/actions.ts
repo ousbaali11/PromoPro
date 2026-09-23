@@ -123,15 +123,17 @@ export async function modifierProjet(_prev: ModifState, formData: FormData): Pro
   const projet = await projetDuPromoteur(projetId, session.promoteurId);
   if (!projet) return { error: "Projet introuvable." };
 
+  const delaiTmaJours = Number(formData.get("delaiTmaJours"));
   const apres = {
     nom: String(formData.get("nom") ?? "").trim(),
     nomCompte: String(formData.get("nomCompte") ?? "").trim(),
     iban: String(formData.get("iban") ?? "").trim(),
+    delaiTmaJours: Number.isInteger(delaiTmaJours) && delaiTmaJours >= 0 ? delaiTmaJours : projet.delaiTmaJours,
   };
   if (!apres.nom || !apres.nomCompte || !apres.iban) {
     return { error: "Merci de renseigner le nom du projet, le nom du compte et l'IBAN." };
   }
-  const details = decrireChangements(projet, apres, { nom: "Nom", nomCompte: "Nom du compte", iban: "IBAN" });
+  const details = decrireChangements(projet, apres, { nom: "Nom", nomCompte: "Nom du compte", iban: "IBAN", delaiTmaJours: "Délai TMA (jours)" });
   if (!details) return { error: "Aucune modification à enregistrer." };
 
   await db.update(projets).set(apres).where(eq(projets.id, projetId));

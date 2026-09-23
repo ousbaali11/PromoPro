@@ -7,12 +7,15 @@ import { biens, projets, users, contrats, paiements, visites, demandesPhotos, ph
 import { Card, Info, PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { addMonths, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS } from "@/lib/utils";
+import { addMonths, formatMoney, formatDate, formatDateTime, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
 import { DemandePhotosButton } from "./PhotosSection";
 import { LivraisonCard, SyndicCard } from "./LivraisonSyndic";
+import { TmaSection } from "./TmaSection";
+import { PlansBien } from "@/components/biens/PlansBien";
+import { fenetreTma, demandesTmaDuBien } from "@/lib/tma-data";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_TONE = { EN_ATTENTE: "warning", PARTIELLE: "info", PAYEE: "success" } as const;
@@ -83,6 +86,10 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
   const whatsapp = commercial?.telephone ? `https://wa.me/${commercial.telephone.replace(/\D/g, "")}` : null;
   const contratDisponible = contrat && contrat.pdfUrl && !["EN_ATTENTE", "ANNULE"].includes(contrat.statut);
   const vendu = ["VENDU", "LIVRE"].includes(bien.statut);
+  // Travaux modificatifs : fenêtre de dépôt et demandes existantes
+  const fenetre = await fenetreTma(bien);
+  const demandesTma = vendu ? await demandesTmaDuBien(bien.id) : [];
+  const plansRenseignes = !!(bien.plan2dUrl || bien.plan3dUrl || bien.visiteVirtuelleUrl);
 
   return (
     <div className="space-y-8">
@@ -247,6 +254,36 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
             </Card>
           )}
 
+          {/* Travaux modificatifs acquéreurs */}
+          {vendu && (
+            <Card className="p-5" data-testid="carte-tma">
+              <h2 className="mb-3 text-h3 text-navy-900">Modifications de mon bien</h2>
+              <TmaSection
+                bienId={bien.id}
+                ouvert={fenetre.ouvert}
+                dateLimite={formatDate(fenetre.dateLimite)}
+                raisonFermeture={
+                  bien.statut === "LIVRE"
+                    ? "Le bien est livré : les demandes de modification ne sont plus possibles."
+                    : bien.statut !== "VENDU"
+                      ? "Les demandes de modification ne sont pas disponibles pour ce bien."
+                      : null
+                }
+                demandes={demandesTma.map((d) => ({
+                  id: d.id,
+                  description: d.description,
+                  statut: d.statut,
+                  montant: d.montant != null ? formatMoney(d.montant) : null,
+                  devisUrl: d.devisUrl,
+                  croquisUrl: d.croquisUrl,
+                  motifRefus: d.motifRefus,
+                  dateDemande: formatDate(d.dateDemande),
+                  signatureClientAt: d.signatureClientAt ? formatDateTime(d.signatureClientAt) : null,
+                }))}
+              />
+            </Card>
+          )}
+
           {/* 11.2 — documents */}
           <Card className="p-5" data-testid="carte-documents">
             <h2 className="mb-3 text-h3 text-navy-900">Mes documents</h2>
@@ -267,8 +304,8 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
                   Copie signée et cachetée
                 </DocLink>
               )}
-              {bien.planUrl && (
-                <DocLink href={bien.planUrl} icon={FileImage}>
+              {bien.plan2dUrl && (
+                <DocLink href={bien.plan2dUrl} icon={FileImage}>
                   Plan du bien
                 </DocLink>
               )}
@@ -283,6 +320,16 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="space-y-6">
+          {/* Plans : 2D, modèle 3D, visite virtuelle */}
+          {plansRenseignes && (
+            <Card className="overflow-hidden" data-testid="carte-plans">
+              <PlansBien
+                plans={{ plan2dUrl: bien.plan2dUrl, plan3dUrl: bien.plan3dUrl, visiteVirtuelleUrl: bien.visiteVirtuelleUrl }}
+                designation={bien.designation}
+              />
+            </Card>
+          )}
+
           {/* 11.3 — photos d'avancement */}
           <Card className="p-5" data-testid="carte-photos">
             <h2 className="mb-3 text-h3 text-navy-900">Avancement des travaux</h2>

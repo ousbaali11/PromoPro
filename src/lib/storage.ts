@@ -25,17 +25,33 @@ export const UPLOAD_TYPES = [
   "photos-avancement",
   "recus",
   "autorisations-visite",
+  "plans-3d", // modèles .glb / .gltf
+  "tma-croquis", // photo ou croquis joint à une demande de travaux modificatifs
+  "tma-devis", // devis PDF du SAV
 ] as const;
 export type UploadType = (typeof UPLOAD_TYPES)[number];
 
 export const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
+/** Extensions acceptées par type ; par défaut PDF / image, modèles 3D pour `plans-3d`. */
+export const EXTENSIONS_PAR_TYPE: Partial<Record<UploadType, readonly string[]>> = {
+  "plans-3d": ["glb", "gltf"],
+};
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
+export const MAX_FILE_SIZE_3D = 50 * 1024 * 1024; // 50 Mo pour un modèle 3D
+export function tailleMaxPour(type: UploadType) {
+  return type === "plans-3d" ? MAX_FILE_SIZE_3D : MAX_FILE_SIZE;
+}
+export function extensionsPour(type: UploadType): readonly string[] {
+  return EXTENSIONS_PAR_TYPE[type] ?? ALLOWED_EXTENSIONS;
+}
 
 const MIME_BY_EXT: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
+  glb: "model/gltf-binary",
+  gltf: "model/gltf+json",
 };
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR
@@ -44,7 +60,7 @@ const UPLOAD_ROOT = process.env.UPLOAD_DIR
 
 // Nom de fichier généré par nous : uuid + extension autorisée, rien d'autre
 // (protège contre toute traversée de répertoire lors de la lecture).
-const SAFE_FILENAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png)$/;
+const SAFE_FILENAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|glb|gltf)$/;
 
 export function isUploadType(value: string): value is UploadType {
   return (UPLOAD_TYPES as readonly string[]).includes(value);
@@ -58,8 +74,9 @@ export function extensionOf(filename: string) {
   return filename.split(".").pop()?.toLowerCase() ?? "";
 }
 
-export function isAllowedExtension(filename: string) {
-  return (ALLOWED_EXTENSIONS as readonly string[]).includes(extensionOf(filename));
+export function isAllowedExtension(filename: string, type?: UploadType) {
+  const autorisees = type ? extensionsPour(type) : ALLOWED_EXTENSIONS;
+  return autorisees.includes(extensionOf(filename));
 }
 
 export function mimeFor(filename: string) {

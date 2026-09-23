@@ -112,8 +112,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   les clients
 - **Super Admin** : créer un promoteur avec ses trois directions (PDG,
   Directeur Commercial, Directeur Financier), activer/suspendre son abonnement
-- **Directeur Commercial** : projets et tableau de contenance, plan de chaque
-  bien (PDF/image), recrutement de son pôle (commercial, responsable
+- **Directeur Commercial** : projets (dont le délai des travaux modificatifs)
+  et tableau de contenance, plans de chaque bien (2D PDF/image, modèle 3D
+  .glb/.gltf, lien de visite virtuelle), recrutement de son pôle (commercial, responsable
   commercial, responsable administratif, assistant administratif, SAV)
 - **PDG** : blocage de biens avec commentaire privé ; accepter / refuser /
   négocier les propositions
@@ -130,14 +131,17 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   encaissés / à venir, virements, échéances à venir, remboursements),
   recrutement de son pôle (comptable interne, recouvrement)
 - **Service Après-Vente** : rendez-vous, demandes de visite (autorisation PDF,
-  créneaux contrôlés), photos d'avancement, livraison (double confirmation),
+  créneaux contrôlés), photos d'avancement, travaux modificatifs acquéreurs
+  (chiffrage et devis, suivi des travaux), livraison (double confirmation),
   syndic
 - **Recouvrement** : échéanciers de toutes les ventes avec filtres de période,
   paiement constaté pour le compte du client, rendez-vous
 - **Assistant Administratif** : prospects par commercial, relance
 - **Espace Client** : par bien (cloisonné) — échéancier et avancement, ajout de
   paiement avec preuve, contrat / copie signée / plan / reçus, photos
-  d'avancement (1 demande / 6 mois), visite, livraison, syndic ; rendez-vous
+  d'avancement (1 demande / 6 mois), plans 2D / 3D / visite virtuelle,
+  demandes de modification du bien (TMA) et acceptation des devis, visite,
+  livraison, syndic ; rendez-vous
   avec chaque service ; contact des services ; rappel J-7 avant échéance
 
 ## Structure du projet
@@ -225,6 +229,36 @@ suspension et restauration est tracée dans la table `journal_activite`
 lecture seule) et `/admin/journal` (Super Admin, tous promoteurs), filtrable par
 type d'action et par période.
 
+## Travaux modificatifs acquéreurs (TMA) et plans enrichis
+
+Un client peut demander une modification de son bien (cloison, prise,
+revêtement…) depuis la fiche du bien de son espace, avec une photo ou un
+croquis facultatif. La fenêtre de dépôt court jusqu'à `projets.delai_tma_jours`
+(60 par défaut, modifiable par le Directeur Commercial sur « Modifier » du
+projet) après le **blocage** du bien — la date d'acceptation de la proposition —
+et se ferme à la livraison ; la date limite est figée sur chaque demande.
+
+Le Service Après-Vente (pôle déjà en charge de l'après-vente : visites, photos,
+livraison) voit les demandes sur `/dashboard/sav`, les **chiffre** (montant +
+devis PDF) ou les **refuse** avec un motif ; le client est notifié, voit le devis
+et coche « J'accepte ce devis », ce qui passe la demande à « Devis accepté » et
+notifie l'auteur du devis ; le SAV fait ensuite avancer les travaux
+(« en cours », « terminés »), chaque étape notifiant le client. Statuts :
+`DEMANDE → CHIFFRE → SIGNE → EN_COURS → TERMINE` (ou `REFUSE`), règles dans
+`src/lib/tma.ts`, table `demandes_tma`, tout est tracé au journal d'activité.
+
+**Limitation à connaître** : l'acceptation du devis est une case cochée et
+horodatée (`signature_client_at`), pas une signature électronique au sens
+juridique (aucun certificat ni archivage probant). Pour une valeur légale, il
+faudra brancher un prestataire de signature qualifiée.
+
+Les plans d'un bien sont désormais trois champs : `plan_url` (plan 2D, image ou
+PDF, inchangé), `plan_3d_url` (modèle `.glb` / `.gltf`, jusqu'à 50 Mo, affiché
+par le composant web `<model-viewer>` de Google chargé depuis son CDN, sans
+dépendance npm) et `visite_virtuelle_url` (lien `https://` externe, affiché
+dans une iframe isolée avec lien d'ouverture). La fiche bien, côté staff comme
+côté client, n'affiche que les onglets renseignés (`PlansBien`).
+
 ## Fichiers uploadés en production
 
 Les fichiers (pièces d'identité, preuves de paiement, PDF générés, photos)
@@ -272,7 +306,8 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   (`src/lib/utils.ts`), hachage / identifiants / mots de passe temporaires
   (`src/lib/auth.ts`), hiérarchie de recrutement et navigation
   (`src/lib/roles.ts`), détection base locale / distante et garde-fou dev
-  (`src/db/guard.ts`).
+  (`src/db/guard.ts`), fenêtre et transitions des travaux modificatifs
+  (`src/lib/tma.ts`).
 - **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
   (schéma + seed de démo) avec `DATABASE_URL` forcé à vide, puis Playwright
   démarre lui-même `next dev` sur le port 3100 en mode SQLite forcé
@@ -284,7 +319,10 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   paiements (saisie commerciale → validation comptable → reçu → contrat
   régénéré → espace client) ; désistements (bien remis à zéro, vérification,
   remboursement) ; espace client (rendez-vous, visite et créneaux, paiement
-  avec trop-perçu, photos d'avancement) ; SAV (livraison, notaire, syndic) ;
+  avec trop-perçu, photos d'avancement) ; travaux modificatifs
+  (`modificatifs.spec.ts` : demande client → devis SAV → acceptation → travaux,
+  notifications à chaque étape, date limite suivant le délai du projet) ;
+  SAV (livraison, notaire, syndic) ;
   recouvrement (filtres, paiement pour le compte du client, trésorerie) ;
   accessibilité (`accessibilite.spec.ts`) : analyse axe-core WCAG A/AA de
   chaque famille de composant au repos et en état ouvert (login, admin,

@@ -3,7 +3,7 @@
 import { useActionState, useTransition } from "react";
 import { Lock, LockOpen } from "lucide-react";
 import { blockBien, unblockBien, setPlanBien } from "./actions";
-import { Card, Textarea } from "@/components/ui/Primitives";
+import { Card, Textarea, Input, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 
@@ -34,15 +34,35 @@ export function BlockBienForm({ bienId }: { bienId: string }) {
   );
 }
 
-export function PlanUploadForm({ bienId, hasPlan }: { bienId: string; hasPlan: boolean }) {
+export function PlanUploadForm({
+  bienId,
+  plans,
+}: {
+  bienId: string;
+  plans: { plan2dUrl: string | null; plan3dUrl: string | null; visiteVirtuelleUrl: string | null };
+}) {
   const [state, formAction, pending] = useActionState(setPlanBien, undefined);
   return (
-    <form action={formAction} className="space-y-2">
+    <form action={formAction} className="space-y-3" data-testid="form-plans">
       <input type="hidden" name="bienId" value={bienId} />
-      <FileUpload name="planUrl" type="plans" label={hasPlan ? "Remplacer le plan" : "Importer le plan"} required />
-      {state?.error && <p className="text-caption text-danger-fg">{state.error}</p>}
+      <FileUpload name="plan2dUrl" type="plans" label={plans.plan2dUrl ? "Remplacer le plan 2D" : "Plan 2D (image ou PDF)"} />
+      <FileUpload
+        name="plan3dUrl"
+        type="plans-3d"
+        accept=".glb,.gltf"
+        label={plans.plan3dUrl ? "Remplacer le modèle 3D" : "Modèle 3D (.glb ou .gltf)"}
+        hint="Affiché dans un visualiseur 3D manipulable (rotation, zoom)."
+      />
+      <Input
+        name="visiteVirtuelleUrl"
+        type="url"
+        label="Lien de visite virtuelle (facultatif)"
+        defaultValue={plans.visiteVirtuelleUrl ?? ""}
+        hint="Adresse https:// d'une visite 360° (Matterport, Kuula…), affichée dans un onglet du bien."
+      />
+      {state?.error && <Callout tone="danger">{state.error}</Callout>}
       <Button type="submit" variant="secondary" size="sm" loading={pending}>
-        Enregistrer le plan
+        Enregistrer les plans
       </Button>
     </form>
   );

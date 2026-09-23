@@ -1,6 +1,6 @@
 import { eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, desistements, paiements, photosAvancement, projets, syndics, visites } from "@/db/schema";
+import { biens, clients, contrats, demandesTma, desistements, paiements, photosAvancement, projets, syndics, visites } from "@/db/schema";
 
 /**
  * Retrouve à quel promoteur et à quel client appartient un fichier stocké, à
@@ -35,8 +35,11 @@ export async function proprietaireDuFichier(url: string): Promise<{ promoteurId:
   const visite = await db.query.visites.findFirst({ where: eq(visites.autorisationUrl, url) });
   if (visite) return viaClient(visite.clientId);
 
-  const bienPlan = await db.query.biens.findFirst({ where: eq(biens.planUrl, url) });
+  const bienPlan = await db.query.biens.findFirst({ where: or(eq(biens.plan2dUrl, url), eq(biens.plan3dUrl, url)) });
   if (bienPlan) return viaBien(bienPlan.id);
+
+  const tma = await db.query.demandesTma.findFirst({ where: or(eq(demandesTma.croquisUrl, url), eq(demandesTma.devisUrl, url)) });
+  if (tma) return viaClient(tma.clientId);
 
   const photo = await db.query.photosAvancement.findFirst({ where: eq(photosAvancement.url, url) });
   if (photo) return viaBien(photo.bienId);

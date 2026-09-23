@@ -12,7 +12,10 @@ type UploadType =
   | "contrats"
   | "photos-avancement"
   | "recus"
-  | "autorisations-visite";
+  | "autorisations-visite"
+  | "plans-3d"
+  | "tma-croquis"
+  | "tma-devis";
 
 type Uploaded = { path: string; name: string };
 
@@ -192,7 +195,13 @@ export function FileUpload({
               if (e.target.files?.length) void upload(e.target.files);
             }}
           />
-          <p className="text-caption text-navy-400">PDF, JPG ou PNG · 10 Mo max{multiple ? " par fichier" : ""}.</p>
+          <p className="text-caption text-navy-400">
+            {accept
+              .split(",")
+              .map((e) => e.trim().replace(/^\./, "").toUpperCase())
+              .join(", ")}{" "}
+            · {type === "plans-3d" ? "50" : "10"} Mo max{multiple ? " par fichier" : ""}.
+          </p>
         </div>
       )}
 

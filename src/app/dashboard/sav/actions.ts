@@ -3,12 +3,16 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { visites, biens, clients, projets, promoteurs, demandesPhotos, photosAvancement, syndics } from "@/db/schema";
+import { visites, biens, clients, projets, promoteurs, demandesPhotos, photosAvancement, syndics, demandesTma } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { notifyClient } from "@/lib/notifications";
 import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
 import { parsePublicPath } from "@/lib/storage";
+import { enregistrerActivite } from "@/lib/journal";
+import { demandeTmaAvecBien } from "@/lib/tma-data";
+import { prochainStatutTma, TMA_LABELS } from "@/lib/tma";
+import { formatMoney } from "@/lib/utils";
 
 /** Section 12.4 — le SAV dépose les photos d'avancement demandées ; elles deviennent visibles côté client. */
 export async function deposerPhotos(
@@ -189,5 +193,105 @@ export async function refuserVisite(
 
   revalidatePath("/dashboard/sav");
   revalidatePath(`/client/biens/${bien.id}`);
+  return undefined;
+}
+
+export type TmaSavState = { error?: string; success?: string } | undefined;
+
+async function demandeDuPromoteur(demandeId: string, promoteurId: string | null) {
+  const r = await demandeTmaAvecBien(demandeId);
+  return r && r.projet.promoteurId === promoteurId ? r : null;
+}
+
+/** TMA — le SAV chiffre la demande : montant + devis PDF, le client est notifié. */
+export async function chiffrerTma(_prev: TmaSavState, formData: FormData): Promise<TmaSavState> {
+  const session = await requireRole(["SERVICE_APRES_VENTE"]);
+  const demandeId = String(formData.get("demandeId") ?? "");
+  const montant = Number(formData.get("montant"));
+  const devisUrl = String(formData.get("devisUrl") ?? "");
+  const r = await demandeDuPromoteur(demandeId, session.promoteurId);
+  if (!r) return { error: "Demande introuvable." };
+  if (r.demande.statut !== "DEMANDE") return { error: "Cette demande a déjà été traitée." };
+  if (!(montant > 0)) return { error: "Indiquez le montant du devis (MAD)." };
+  if (parsePublicPath(devisUrl)?.type !== "tma-devis") return { error: "Joignez le devis (PDF)." };
+
+  await db.update(demandesTma).set({ statut: "CHIFFRE", montant, devisUrl, chiffreParId: session.userId }).where(eq(demandesTma.id, demandeId));
+  await notifyClient({
+    clientId: r.demande.clientId,
+    type: "TMA_DEVIS",
+    titre: "Devis de modification disponible",
+    message: `${r.bien.designation} : devis de ${formatMoney(montant)} à accepter dans votre espace.`,
+    lien: `/client/biens/${r.bien.id}`,
+  });
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "tma",
+    cibleId: demandeId,
+    cibleNom: `${r.bien.designation} — demande de modification`,
+    details: `Chiffrée : ${formatMoney(montant)}, devis envoyé au client`,
+  });
+  revalidatePath("/dashboard/sav");
+  revalidatePath(`/client/biens/${r.bien.id}`);
+  return { success: "Devis envoyé au client." };
+}
+
+/** TMA — le SAV refuse une demande (irréalisable, hors délai…) avec un motif. */
+export async function refuserTma(_prev: TmaSavState, formData: FormData): Promise<TmaSavState> {
+  const session = await requireRole(["SERVICE_APRES_VENTE"]);
+  const demandeId = String(formData.get("demandeId") ?? "");
+  const motif = String(formData.get("motif") ?? "").trim();
+  const r = await demandeDuPromoteur(demandeId, session.promoteurId);
+  if (!r) return { error: "Demande introuvable." };
+  if (!["DEMANDE", "CHIFFRE"].includes(r.demande.statut)) return { error: "Cette demande ne peut plus être refusée." };
+  if (!motif) return { error: "Indiquez le motif du refus, il sera transmis au client." };
+
+  await db.update(demandesTma).set({ statut: "REFUSE", motifRefus: motif }).where(eq(demandesTma.id, demandeId));
+  await notifyClient({
+    clientId: r.demande.clientId,
+    type: "TMA_REFUSE",
+    titre: "Demande de modification refusée",
+    message: `${r.bien.designation} : ${motif}`,
+    lien: `/client/biens/${r.bien.id}`,
+  });
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "tma",
+    cibleId: demandeId,
+    cibleNom: `${r.bien.designation} — demande de modification`,
+    details: `Refusée : ${motif}`,
+  });
+  revalidatePath("/dashboard/sav");
+  revalidatePath(`/client/biens/${r.bien.id}`);
+  return { success: "Demande refusée, client informé." };
+}
+
+/** TMA — suivi des travaux après acceptation du devis : SIGNE → EN_COURS → TERMINE. */
+export async function avancerTma(demandeId: string): Promise<{ error?: string } | undefined> {
+  const session = await requireRole(["SERVICE_APRES_VENTE"]);
+  const r = await demandeDuPromoteur(demandeId, session.promoteurId);
+  if (!r) return { error: "Demande introuvable." };
+  const suivant = prochainStatutTma(r.demande.statut);
+  if (!suivant) return { error: "Aucune étape suivante pour cette demande." };
+
+  await db.update(demandesTma).set({ statut: suivant }).where(eq(demandesTma.id, demandeId));
+  await notifyClient({
+    clientId: r.demande.clientId,
+    type: "TMA_AVANCEMENT",
+    titre: suivant === "EN_COURS" ? "Travaux modificatifs démarrés" : "Travaux modificatifs terminés",
+    message: `${r.bien.designation} : ${TMA_LABELS[suivant].toLowerCase()}.`,
+    lien: `/client/biens/${r.bien.id}`,
+  });
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "tma",
+    cibleId: demandeId,
+    cibleNom: `${r.bien.designation} — demande de modification`,
+    details: `Statut : ${TMA_LABELS[r.demande.statut as keyof typeof TMA_LABELS] ?? r.demande.statut} → ${TMA_LABELS[suivant]}`,
+  });
+  revalidatePath("/dashboard/sav");
+  revalidatePath(`/client/biens/${r.bien.id}`);
   return undefined;
 }

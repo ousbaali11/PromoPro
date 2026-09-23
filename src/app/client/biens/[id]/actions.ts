@@ -3,15 +3,17 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, clients, demandesPhotos, projets, promoteurs, syndics, visites } from "@/db/schema";
+import { biens, clients, demandesPhotos, demandesTma, projets, promoteurs, syndics, visites } from "@/db/schema";
 import { requireClientSession } from "@/lib/session";
 import { creerPaiement, lirePaiementForm, notifierComptable, NATURES_OPERATION } from "@/lib/paiements";
-import { notifyRole } from "@/lib/notifications";
+import { notify, notifyRole } from "@/lib/notifications";
+import { enregistrerActivite } from "@/lib/journal";
+import { fenetreTma, demandeTmaAvecBien } from "@/lib/tma-data";
 import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { parsePublicPath } from "@/lib/storage";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
-import { addMonths, formatDate, formatDateTime, DELAI_PHOTOS_MOIS } from "@/lib/utils";
+import { addMonths, formatDate, formatDateTime, formatMoney, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
 /**
@@ -213,4 +215,86 @@ export async function choisirCreneauVisite(
   revalidatePath(`/client/biens/${bien.id}`);
   revalidatePath("/dashboard/sav");
   return undefined;
+}
+
+export type TmaState = { error?: string; success?: string } | undefined;
+
+/** TMA — le client demande une modification de son bien (fenêtre : délai du projet après blocage, bien non livré). */
+export async function demanderTma(_prev: TmaState, formData: FormData): Promise<TmaState> {
+  const session = await requireClientSession();
+  const bienId = String(formData.get("bienId") ?? "");
+  const description = String(formData.get("description") ?? "").trim();
+  const croquisUrl = String(formData.get("croquisUrl") ?? "");
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  if (!bien || bien.clientId !== session.clientId) return { error: "Bien introuvable." };
+  if (description.length < 10) return { error: "Décrivez la modification souhaitée (quelques mots au minimum)." };
+  if (croquisUrl && parsePublicPath(croquisUrl)?.type !== "tma-croquis") return { error: "La pièce jointe est invalide, merci de la réimporter." };
+
+  const fenetre = await fenetreTma(bien);
+  if (!fenetre.ouvert) {
+    return {
+      error:
+        bien.statut !== "VENDU"
+          ? "Les demandes de modification ne sont plus possibles pour ce bien."
+          : `La date limite de dépôt (${formatDate(fenetre.dateLimite)}) est dépassée.`,
+    };
+  }
+
+  const [demande] = await db
+    .insert(demandesTma)
+    .values({ bienId, clientId: session.clientId, description, croquisUrl: croquisUrl || null, dateLimite: fenetre.dateLimite })
+    .returning();
+
+  await notifyRole(session.promoteurId, "SERVICE_APRES_VENTE", {
+    type: "TMA_DEMANDE",
+    titre: "Nouvelle demande de modification",
+    message: `${session.prenom} ${session.nom} — ${bien.designation} : ${description.slice(0, 80)}${description.length > 80 ? "…" : ""}`,
+    lien: "/dashboard/sav",
+  });
+  await enregistrerActivite({
+    acteur: { userId: session.clientId, nom: session.nom, prenom: session.prenom, promoteurId: session.promoteurId },
+    action: "CREATION",
+    cibleType: "tma",
+    cibleId: demande.id,
+    cibleNom: `${bien.designation} — demande de modification`,
+    details: description.slice(0, 200),
+  });
+
+  revalidatePath(`/client/biens/${bienId}`);
+  revalidatePath("/dashboard/sav");
+  return { success: "Demande envoyée au service après-vente. Vous recevrez un devis à accepter avant tout travaux." };
+}
+
+/** TMA — le client accepte le devis (case cochée, horodatée dans signatureClientAt ; pas une signature électronique juridique). */
+export async function accepterDevisTma(_prev: TmaState, formData: FormData): Promise<TmaState> {
+  const session = await requireClientSession();
+  const demandeId = String(formData.get("demandeId") ?? "");
+  if (formData.get("acceptation") !== "on") return { error: "Cochez la case pour accepter le devis." };
+  const r = await demandeTmaAvecBien(demandeId);
+  if (!r || r.demande.clientId !== session.clientId) return { error: "Demande introuvable." };
+  if (r.demande.statut !== "CHIFFRE") return { error: "Ce devis n'est pas (ou plus) en attente d'acceptation." };
+
+  const maintenant = new Date();
+  await db.update(demandesTma).set({ statut: "SIGNE", signatureClientAt: maintenant }).where(eq(demandesTma.id, demandeId));
+
+  const params = {
+    type: "TMA_SIGNE",
+    titre: "Devis de modification accepté",
+    message: `${session.prenom} ${session.nom} a accepté le devis de ${formatMoney(r.demande.montant ?? 0)} pour ${r.bien.designation}.`,
+    lien: "/dashboard/sav",
+  };
+  if (r.demande.chiffreParId) await notify({ userId: r.demande.chiffreParId, ...params });
+  else await notifyRole(session.promoteurId, "SERVICE_APRES_VENTE", params);
+  await enregistrerActivite({
+    acteur: { userId: session.clientId, nom: session.nom, prenom: session.prenom, promoteurId: session.promoteurId },
+    action: "MODIFICATION",
+    cibleType: "tma",
+    cibleId: demandeId,
+    cibleNom: `${r.bien.designation} — demande de modification`,
+    details: `Devis de ${formatMoney(r.demande.montant ?? 0)} accepté le ${formatDateTime(maintenant)}`,
+  });
+
+  revalidatePath(`/client/biens/${r.bien.id}`);
+  revalidatePath("/dashboard/sav");
+  return { success: `Devis accepté le ${formatDateTime(maintenant)}. Le service après-vente planifie les travaux.` };
 }

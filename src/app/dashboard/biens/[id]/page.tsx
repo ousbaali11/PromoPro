@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { FileImage, FileDown, Paperclip, Send, CalendarClock, Receipt, Pencil } from "lucide-react";
+import { FileDown, Paperclip, Send, CalendarClock, Receipt, Pencil } from "lucide-react";
 import { db } from "@/db/client";
 import { biens, projets, clients, paiements } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
@@ -15,7 +15,7 @@ import { echeancierDuBien } from "@/lib/paiements";
 import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
 import { DesistementForm } from "./DesistementForm";
 import { saisirPaiementCommercial } from "./actions";
-import { PlanPreview } from "@/components/ui/PlanPreview";
+import { PlansBien } from "@/components/biens/PlansBien";
 import { PaiementForm } from "@/components/paiements/PaiementForm";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
@@ -83,19 +83,15 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-5">
         <div className="space-y-4 sm:col-span-2">
-          <Card className="flex aspect-square items-center justify-center overflow-hidden bg-blueprint sm:aspect-auto sm:min-h-64">
-            {bien.planUrl ? (
-              <PlanPreview url={bien.planUrl} />
-            ) : (
-              <div className="flex flex-col items-center gap-2 p-6 text-center text-navy-300">
-                <FileImage className="h-8 w-8" />
-                <p className="text-caption">Aucun plan importé.</p>
-              </div>
-            )}
+          <Card className="overflow-hidden">
+            <PlansBien
+              plans={{ plan2dUrl: bien.plan2dUrl, plan3dUrl: bien.plan3dUrl, visiteVirtuelleUrl: bien.visiteVirtuelleUrl }}
+              designation={bien.designation}
+            />
           </Card>
           {session.role === "DIRECTEUR_COMMERCIAL" && (
             <Card className="p-4">
-              <PlanUploadForm bienId={bien.id} hasPlan={!!bien.planUrl} />
+              <PlanUploadForm bienId={bien.id} plans={{ plan2dUrl: bien.plan2dUrl, plan3dUrl: bien.plan3dUrl, visiteVirtuelleUrl: bien.visiteVirtuelleUrl }} />
             </Card>
           )}
         </div>

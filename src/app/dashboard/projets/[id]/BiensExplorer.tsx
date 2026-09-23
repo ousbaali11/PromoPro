@@ -34,7 +34,7 @@ export type BienCarte = {
   nature: string;
   prix: number;
   surface: number;
-  planUrl: string | null;
+  plan2dUrl: string | null;
   statut: string;
   epingle: boolean;
 };
@@ -48,13 +48,13 @@ const FILTRES_VIDES: Filtres = { q: "", statut: "", nature: "", prixMin: "", pri
 /* fond « calque d'architecte » aux couleurs de la marque.                    */
 /* ------------------------------------------------------------------------ */
 function ZoneImage({ bien, compact = false }: { bien: BienCarte; compact?: boolean }) {
-  const estImage = !!bien.planUrl && !bien.planUrl.toLowerCase().endsWith(".pdf");
-  const estPdf = !!bien.planUrl && !estImage;
+  const estImage = !!bien.plan2dUrl && !bien.plan2dUrl.toLowerCase().endsWith(".pdf");
+  const estPdf = !!bien.plan2dUrl && !estImage;
   return (
     <div className={cn("relative overflow-hidden bg-blueprint", compact ? "h-14 w-20 rounded-md" : "aspect-[4/3] w-full")}>
       {estImage ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={bien.planUrl!} alt="" className="h-full w-full object-cover transition-transform duration-slow ease-out-soft group-hover:scale-[1.03]" />
+        <img src={bien.plan2dUrl!} alt="" className="h-full w-full object-cover transition-transform duration-slow ease-out-soft group-hover:scale-[1.03]" />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-gold/70">
           {estPdf ? (

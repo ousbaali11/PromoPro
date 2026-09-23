@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
-import { MAX_FILE_SIZE, isAllowedExtension, isUploadType, saveUpload } from "@/lib/storage";
+import { extensionsPour, isAllowedExtension, isUploadType, saveUpload, tailleMaxPour } from "@/lib/storage";
 
 /**
  * POST /api/upload — FormData { file: File, type: UploadType }
@@ -24,11 +24,15 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "Aucun fichier reçu." }, { status: 400 });
   }
-  if (!isAllowedExtension(file.name)) {
-    return NextResponse.json({ error: "Format non accepté : PDF, JPG ou PNG uniquement." }, { status: 400 });
+  if (!isAllowedExtension(file.name, type)) {
+    return NextResponse.json(
+      { error: `Format non accepté : ${extensionsPour(type).map((e) => e.toUpperCase()).join(", ")} uniquement.` },
+      { status: 400 },
+    );
   }
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "Fichier trop volumineux (10 Mo maximum)." }, { status: 400 });
+  const max = tailleMaxPour(type);
+  if (file.size > max) {
+    return NextResponse.json({ error: `Fichier trop volumineux (${Math.round(max / 1024 / 1024)} Mo maximum).` }, { status: 400 });
   }
 
   const data = Buffer.from(await file.arrayBuffer());

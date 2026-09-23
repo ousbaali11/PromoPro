@@ -25,6 +25,7 @@ export const CIBLE_LABELS: Record<string, string> = {
   promoteur: "Promoteur",
   projet: "Projet",
   bien: "Bien",
+  tma: "Travaux modificatifs",
 };
 
 type Acteur = { userId: string; nom: string; prenom: string; promoteurId: string | null };

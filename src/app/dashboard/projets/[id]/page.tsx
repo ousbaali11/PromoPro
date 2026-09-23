@@ -31,7 +31,7 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
       <PageHeader
         eyebrow="Projet"
         title={projet.nom}
-        description={`${projet.nomCompte} · IBAN ${projet.iban} · ${listeBiens.length} bien${listeBiens.length > 1 ? "s" : ""}, ${disponibles} disponible${disponibles > 1 ? "s" : ""}`}
+        description={`${projet.nomCompte} · IBAN ${projet.iban} · ${listeBiens.length} bien${listeBiens.length > 1 ? "s" : ""}, ${disponibles} disponible${disponibles > 1 ? "s" : ""} · TMA : ${projet.delaiTmaJours} j après blocage`}
         action={
           session.role === "DIRECTEUR_COMMERCIAL" ? (
             <LinkButton href={`/dashboard/projets/${projet.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-projet">
@@ -48,7 +48,7 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
           nature: b.nature,
           prix: b.prix,
           surface: b.surface,
-          planUrl: b.planUrl,
+          plan2dUrl: b.plan2dUrl,
           statut: b.statut,
           epingle: mesEpingles.some((e) => e.bienId === b.id),
         }))}

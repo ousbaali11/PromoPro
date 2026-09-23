@@ -37,15 +37,38 @@ export async function blockBien(_prev: { error?: string } | undefined, formData:
 }
 
 /** Le Directeur Commercial importe (ou remplace) le plan du bien — PDF ou image. */
+/**
+ * Plans d'un bien : plan 2D (image / PDF), modèle 3D (.glb / .gltf) et lien de
+ * visite virtuelle. Chaque champ laissé vide conserve la valeur actuelle ;
+ * un lien de visite vide efface l'ancien.
+ */
 export async function setPlanBien(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
   const bienId = String(formData.get("bienId") ?? "");
-  const planUrl = String(formData.get("planUrl") ?? "");
-  if (!bienId || !parsePublicPath(planUrl)) return { error: "Merci d'importer un fichier PDF ou image." };
-  if (!(await bienDuPromoteur(bienId, session.promoteurId))) return { error: "Bien introuvable." };
+  const plan2dUrl = String(formData.get("plan2dUrl") ?? "");
+  const plan3dUrl = String(formData.get("plan3dUrl") ?? "");
+  const visiteVirtuelleUrl = String(formData.get("visiteVirtuelleUrl") ?? "").trim();
+  const bien = bienId ? await bienDuPromoteur(bienId, session.promoteurId) : null;
+  if (!bien) return { error: "Bien introuvable." };
+  if (plan2dUrl && parsePublicPath(plan2dUrl)?.type !== "plans") return { error: "Le plan 2D doit être un fichier PDF ou image importé." };
+  if (plan3dUrl && parsePublicPath(plan3dUrl)?.type !== "plans-3d") return { error: "Le modèle 3D doit être un fichier .glb ou .gltf importé." };
+  if (visiteVirtuelleUrl && !/^https:\/\/\S+$/i.test(visiteVirtuelleUrl)) {
+    return { error: "Le lien de visite virtuelle doit commencer par https://." };
+  }
+  if (!plan2dUrl && !plan3dUrl && visiteVirtuelleUrl === (bien.visiteVirtuelleUrl ?? "")) {
+    return { error: "Importez un plan 2D, un modèle 3D ou renseignez un lien de visite virtuelle." };
+  }
 
-  await db.update(biens).set({ planUrl }).where(eq(biens.id, bienId));
+  await db
+    .update(biens)
+    .set({
+      plan2dUrl: plan2dUrl || bien.plan2dUrl,
+      plan3dUrl: plan3dUrl || bien.plan3dUrl,
+      visiteVirtuelleUrl: visiteVirtuelleUrl || null,
+    })
+    .where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
+  revalidatePath(`/client/biens/${bienId}`);
   return { error: undefined };
 }
 

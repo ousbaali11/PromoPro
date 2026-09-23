@@ -61,9 +61,9 @@ const pngBase64 = await page.evaluate(() => {
   ctx.fillText("Ch. 2", 620, 500);
   return c.toDataURL("image/png").split(",")[1];
 });
-const formPlan = page.locator("form", { has: page.locator('input[name="planUrl"]') });
+const formPlan = page.locator("form", { has: page.locator('input[name="plan2dUrl"]') });
 await formPlan.locator('input[type="file"]').setInputFiles({ name: "plan-a01.png", mimeType: "image/png", buffer: Buffer.from(pngBase64, "base64") });
-await page.waitForFunction(() => (document.querySelector('input[name="planUrl"]')?.value ?? "").startsWith("/api/files/"));
+await page.waitForFunction(() => (document.querySelector('input[name="plan2dUrl"]')?.value ?? "").startsWith("/api/files/"));
 await formPlan.getByRole("button", { name: "Enregistrer le plan" }).click();
 await page.getByRole("img", { name: "Plan du bien" }).waitFor();
 
