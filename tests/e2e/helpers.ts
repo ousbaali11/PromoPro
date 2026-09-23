@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { inflateSync } from "node:zlib";
+import * as XLSX from "xlsx";
 
 export const MDP = "demo1234";
 
@@ -142,4 +143,12 @@ export function prochainJour(jour: number, aPartirDe = new Date()) {
   d.setDate(d.getDate() + 2);
   while (d.getDay() !== jour) d.setDate(d.getDate() + 1);
   return d;
+}
+
+/** Classeur Excel (.xlsx) généré en mémoire pour setInputFiles : une feuille, en-têtes = clés des objets. */
+export function classeurXlsx(lignes: Record<string, string>[], name = "prospects.xlsx") {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lignes), "Prospects");
+  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  return { name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer };
 }

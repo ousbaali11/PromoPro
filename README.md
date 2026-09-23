@@ -136,7 +136,8 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   syndic
 - **Recouvrement** : échéanciers de toutes les ventes avec filtres de période,
   paiement constaté pour le compte du client, rendez-vous
-- **Assistant Administratif** : prospects par commercial, relance
+- **Assistant Administratif** : import Excel des prospects avec aperçu et
+  répartition équilibrée entre commerciaux, suivi par commercial, relance
 - **Espace Client** : par bien (cloisonné) — échéancier et avancement, ajout de
   paiement avec preuve, contrat / copie signée / plan / reçus, photos
   d'avancement (1 demande / 6 mois), plans 2D / 3D / visite virtuelle,
@@ -229,6 +230,38 @@ suspension et restauration est tracée dans la table `journal_activite`
 lecture seule) et `/admin/journal` (Super Admin, tous promoteurs), filtrable par
 type d'action et par période.
 
+## Prospects : import Excel et répartition équilibrée
+
+L'Assistant Administratif importe un classeur `.xlsx` / `.xls` depuis
+`/dashboard/prospects` (« Importer un fichier Excel »). Le fichier est lu **en
+mémoire** côté serveur par SheetJS (paquet `xlsx`, installé depuis le CDN
+officiel `cdn.sheetjs.com` : la version publiée sur npm n'est plus maintenue)
+et n'est jamais écrit sur le disque : il ne contient que des données de travail
+dont la base devient la référence, et rien ne justifie d'en conserver une copie
+(données personnelles de tiers). Le corps des Server Actions est relevé à 5 Mo
+dans `next.config.ts` (fichier limité à 4 Mo, 5 000 lignes).
+
+Colonnes attendues sur la première feuille, **ordre libre, casse et accents
+ignorés** : `nom`, `telephone` (obligatoires), `source` (facultative, « Non
+précisée » à défaut) — alias tolérés dans `ALIAS_COLONNES` de
+`src/lib/prospects.ts`. Une ligne sans téléphone, sans nom, en doublon dans le
+fichier ou dont le téléphone est déjà connu chez le promoteur est **ignorée et
+comptée avec son motif**, sans faire échouer l'import.
+
+L'aperçu (aucune écriture à ce stade) affiche le nombre de prospects valides,
+les lignes ignorées et la **répartition prévue** : pour chaque commercial ou
+responsable commercial actif du promoteur, sa charge actuelle (prospects
+« non contactés »), les nouveaux attribués et le total. L'algorithme
+(`repartitionEquilibree`, fonction pure testée unitairement) donne chaque
+nouveau prospect au commercial dont le total courant est le plus bas ; à
+l'arrivée l'écart entre le plus chargé et le moins chargé est au plus de 1 dès
+que le lot suffit à combler les écarts de départ. « Confirmer l'import »
+recalcule la répartition sur les charges du moment, crée les prospects
+(`NON_CONTACTE`), notifie chaque commercial concerné du nombre reçu et trace
+l'import au journal d'activité (action « Import », total, détail par
+commercial, lignes ignorées). Le suivi existant (Contacté / Retour client /
+Relancer) est inchangé.
+
 ## Travaux modificatifs acquéreurs (TMA) et plans enrichis
 
 Un client peut demander une modification de son bien (cloison, prise,
@@ -307,7 +340,8 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   (`src/lib/auth.ts`), hiérarchie de recrutement et navigation
   (`src/lib/roles.ts`), détection base locale / distante et garde-fou dev
   (`src/db/guard.ts`), fenêtre et transitions des travaux modificatifs
-  (`src/lib/tma.ts`).
+  (`src/lib/tma.ts`), analyse des lignes et répartition équilibrée des
+  prospects (`src/lib/prospects.ts`).
 - **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
   (schéma + seed de démo) avec `DATABASE_URL` forcé à vide, puis Playwright
   démarre lui-même `next dev` sur le port 3100 en mode SQLite forcé
@@ -319,7 +353,10 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   paiements (saisie commerciale → validation comptable → reçu → contrat
   régénéré → espace client) ; désistements (bien remis à zéro, vérification,
   remboursement) ; espace client (rendez-vous, visite et créneaux, paiement
-  avec trop-perçu, photos d'avancement) ; travaux modificatifs
+  avec trop-perçu, photos d'avancement) ; prospects (`prospects.spec.ts` :
+  classeurs générés à la volée, lignes ignorées avec motif, aperçu puis import
+  de 10 prospects avec écart final ≤ 1 vérifié dans l'aperçu et sur la page,
+  notification et tableau du commercial, journal) ; travaux modificatifs
   (`modificatifs.spec.ts` : demande client → devis SAV → acceptation → travaux,
   notifications à chaque étape, date limite suivant le délai du projet) ;
   SAV (livraison, notaire, syndic) ;

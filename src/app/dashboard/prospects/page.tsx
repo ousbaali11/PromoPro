@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, isNull } from "drizzle-orm";
 import { Users, PhoneCall } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { ProspectRowActions, RelancerButton } from "./ProspectActions";
 import { NomCompte } from "@/components/ui/EtatCompte";
+import { ImportProspects } from "./ImportProspects";
+import { ROLES_PROSPECTS } from "@/lib/prospects-import";
 
 export default async function ProspectsPage() {
   const session = await requireStaffSession();
@@ -19,7 +21,8 @@ export default async function ProspectsPage() {
 
   const commerciaux = isAssistant
     ? await db.query.users.findMany({
-        where: and(eq(users.promoteurId, session.promoteurId!), eq(users.role, "COMMERCIAL")),
+        where: and(eq(users.promoteurId, session.promoteurId!), inArray(users.role, [...ROLES_PROSPECTS]), isNull(users.deletedAt)),
+        orderBy: (u, { asc }) => [asc(u.nom), asc(u.prenom)],
       })
     : [];
   const commercialById = new Map(commerciaux.map((c) => [c.id, c]));
@@ -33,6 +36,7 @@ export default async function ProspectsPage() {
             ? "Suivi de la répartition et du traitement des prospects par les commerciaux."
             : "Vos prospects à contacter."
         }
+        action={isAssistant ? <ImportProspects /> : undefined}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -51,7 +55,14 @@ export default async function ProspectsPage() {
           {commerciaux.map((c) => {
             const restants = rows.filter((p) => p.commercialId === c.id && p.statutContact === "NON_CONTACTE").length;
             return (
-              <Card key={c.id} accent={restants > 0 ? "warning" : "success"} className="flex items-center gap-4 px-4 py-2.5" data-testid="commercial-carte">
+              <Card
+                key={c.id}
+                accent={restants > 0 ? "warning" : "success"}
+                className="flex items-center gap-4 px-4 py-2.5"
+                data-testid="commercial-carte"
+                data-commercial-id={c.id}
+                data-restants={restants}
+              >
                 <div>
                   <p className="text-small font-medium text-navy-900">
                     {c.prenom} {c.nom}

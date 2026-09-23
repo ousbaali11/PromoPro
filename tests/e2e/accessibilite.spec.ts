@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { login, classeurXlsx } from "./helpers";
 import { verifierA11y } from "./a11y";
 
 /*
@@ -129,6 +129,20 @@ test.describe("Accessibilité — analyse axe des pages", () => {
     await expect(page.getByRole("menu")).toBeVisible();
     await verifierA11y(page, "menu d'actions ouvert");
     await page.keyboard.press("Escape");
+  });
+
+  test("import des prospects : panneau ouvert puis aperçu de la répartition (aucune écriture)", async ({ page }) => {
+    await login(page, "ASSIST");
+    await page.goto("/dashboard/prospects");
+    await page.getByTestId("bouton-import").click();
+    await expect(page.getByTestId("panneau-import")).toBeVisible();
+    await verifierA11y(page, "/dashboard/prospects panneau d'import ouvert");
+    await page
+      .getByTestId("fichier-import")
+      .setInputFiles(classeurXlsx([{ nom: "Aperçu A11y", telephone: "06 99 00 00 01", source: "Avito" }, { nom: "Sans tel", telephone: "", source: "" }], "a11y.xlsx"));
+    await page.getByRole("button", { name: "Analyser le fichier" }).click();
+    await expect(page.getByTestId("import-apercu")).toBeVisible();
+    await verifierA11y(page, "/dashboard/prospects aperçu d'import");
   });
 
   test("recouvrement (contrôle segmenté, DataTable dense, tuiles)", async ({ page }) => {

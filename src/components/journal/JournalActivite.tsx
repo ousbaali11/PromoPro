@@ -16,6 +16,7 @@ const TONES: Record<ActionJournal, Tone> = {
   SUPPRESSION: "danger",
   SUSPENSION: "warning",
   RESTAURATION: "navy",
+  IMPORT: "gold",
 };
 
 /**

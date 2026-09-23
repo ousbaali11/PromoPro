@@ -8,7 +8,7 @@ import { journalActivite } from "@/db/schema";
  * les noms sont copiés au moment de l'action.
  */
 
-export const ACTIONS_JOURNAL = ["CREATION", "MODIFICATION", "SUPPRESSION", "SUSPENSION", "RESTAURATION"] as const;
+export const ACTIONS_JOURNAL = ["CREATION", "MODIFICATION", "SUPPRESSION", "SUSPENSION", "RESTAURATION", "IMPORT"] as const;
 export type ActionJournal = (typeof ACTIONS_JOURNAL)[number];
 
 export const ACTION_LABELS: Record<ActionJournal, string> = {
@@ -17,6 +17,7 @@ export const ACTION_LABELS: Record<ActionJournal, string> = {
   SUPPRESSION: "Suppression",
   SUSPENSION: "Suspension",
   RESTAURATION: "Restauration",
+  IMPORT: "Import",
 };
 
 export const CIBLE_LABELS: Record<string, string> = {
@@ -26,6 +27,7 @@ export const CIBLE_LABELS: Record<string, string> = {
   projet: "Projet",
   bien: "Bien",
   tma: "Travaux modificatifs",
+  prospects: "Prospects",
 };
 
 type Acteur = { userId: string; nom: string; prenom: string; promoteurId: string | null };

@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
   // Build autonome (.next/standalone) : serveur Node minimal + dépendances
   // tracées, utilisé par le Dockerfile pour le déploiement conteneurisé.
   output: "standalone",
+  // Import Excel des prospects : le fichier transite par une Server Action
+  // (lu en mémoire, jamais stocké) ; la limite par défaut est de 1 Mo.
+  experimental: {
+    serverActions: { bodySizeLimit: "5mb" },
+  },
 };
 
 export default nextConfig;
