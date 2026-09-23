@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { FileDown, Paperclip, Send, CalendarClock, Receipt, Pencil } from "lucide-react";
+import { FileDown, Paperclip, Send, CalendarClock, Receipt, Pencil, Copy } from "lucide-react";
 import { db } from "@/db/client";
 import { biens, projets, clients, paiements } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
@@ -69,6 +69,16 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
           action={
             <div className="flex flex-col items-end gap-1.5">
               <div className="flex items-center gap-2">
+                {session.role === "DIRECTEUR_COMMERCIAL" && (
+                  <LinkButton
+                    href={`/dashboard/projets/${projet.id}?dupliquer=${bien.id}#ajout-bien`}
+                    variant="secondary"
+                    size="sm"
+                    data-testid="dupliquer-bien"
+                  >
+                    <Copy className="h-4 w-4" /> Dupliquer
+                  </LinkButton>
+                )}
                 {session.role === "DIRECTEUR_COMMERCIAL" && bien.statut === "DISPONIBLE" && (
                   <LinkButton href={`/dashboard/biens/${bien.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-bien">
                     <Pencil className="h-4 w-4" /> Modifier

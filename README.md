@@ -117,7 +117,8 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
 - **Super Admin** : créer un promoteur avec ses trois directions (PDG,
   Directeur Commercial, Directeur Financier), activer/suspendre son abonnement
 - **Directeur Commercial** : projets (dont le délai des travaux modificatifs)
-  et tableau de contenance, plans de chaque bien (2D PDF/image, modèle 3D
+  et tableau de contenance (bouton « Dupliquer » sur une fiche bien : nouveau
+  lot du même projet avec nature, prix et surface repris), plans de chaque bien (2D PDF/image, modèle 3D
   .glb/.gltf, lien de visite virtuelle), recrutement de son pôle (commercial, responsable
   commercial, responsable administratif, assistant administratif, SAV)
 - **PDG** : blocage de biens avec commentaire privé ; accepter / refuser /

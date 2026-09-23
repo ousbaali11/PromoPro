@@ -9,8 +9,15 @@ import { Pencil } from "lucide-react";
 import { AddBienForm } from "./AddBienForm";
 import { BiensExplorer } from "./BiensExplorer";
 
-export default async function ProjetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjetDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ dupliquer?: string }>;
+}) {
   const { id } = await params;
+  const { dupliquer } = await searchParams;
   const session = await requireStaffSession();
 
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, id) });
@@ -24,6 +31,10 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
     : [];
 
   const disponibles = listeBiens.filter((b) => b.statut === "DISPONIBLE").length;
+
+  // « Dupliquer » depuis une fiche bien : le modèle doit être un bien de CE projet (donc du promoteur), sinon ignoré
+  const source = dupliquer && session.role === "DIRECTEUR_COMMERCIAL" ? listeBiens.find((b) => b.id === dupliquer) : undefined;
+  const modele = source ? { source: source.designation, nature: source.nature, prix: source.prix, surface: source.surface } : null;
 
   return (
     <div>
@@ -59,7 +70,7 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
 
       {session.role === "DIRECTEUR_COMMERCIAL" && (
         <div className="mt-8">
-          <AddBienForm projetId={projet.id} />
+          <AddBienForm projetId={projet.id} modele={modele} />
         </div>
       )}
     </div>
