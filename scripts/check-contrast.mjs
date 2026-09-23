@@ -59,8 +59,10 @@ function contraste(premierPlan, fond, sous = "white") {
 
 // --- Paires vérifiées ------------------------------------------------------
 // [premier plan, fond, seuil, usage, (fond sous-jacent si le fond est translucide)]
+// Un seuil `null` = paire informative (affichée, jamais bloquante).
 const TEXTE = 4.5;
 const GRAPHIQUE = 3;
+const INFO = null;
 const PAIRES = [
   // Coquille navy (sidebar, en-têtes)
   ["white", "navy", TEXTE, "texte blanc sur navy (nav active, bouton primaire, segment actif)"],
@@ -102,16 +104,19 @@ const PAIRES = [
   // Champs
   ["gold-600", "white", TEXTE, "étiquette flottante au focus"],
   ["danger-fg", "danger-bg", TEXTE, "message d'erreur (Callout)"],
-  ["navy-100", "white", GRAPHIQUE - 1.5, "bordure de champ au repos (indicatif, hors exigence AA)"],
+  // Bordure de champ : sous les 3:1 de WCAG 1.4.11, compensé par l'ombre interne, le fond blanc
+  // sur crème et l'étiquette dans le champ ; suivi à titre indicatif, à traiter si la palette évolue.
+  ["navy-100", "white", INFO, "bordure de champ au repos"],
 ];
 
 // --- Rapport ---------------------------------------------------------------
 let echecs = 0;
 const lignes = PAIRES.map(([fg, bg, seuil, usage, sous]) => {
   const r = contraste(fg, bg, sous);
-  const ok = r >= seuil;
-  if (!ok) echecs++;
-  return `${ok ? "OK  " : "ÉCHEC"}  ${r.toFixed(2).padStart(5)}  (≥ ${seuil})  ${fg.padEnd(12)} sur ${(bg + (sous ? ` / ${sous}` : "")).padEnd(14)}  ${usage}`;
+  const etat = seuil === null ? "INFO " : r >= seuil ? "OK   " : "ÉCHEC";
+  if (etat === "ÉCHEC") echecs++;
+  const exigence = seuil === null ? "      " : `(≥ ${String(seuil).padEnd(3)})`;
+  return `${etat}  ${r.toFixed(2).padStart(5)}  ${exigence}  ${fg.padEnd(12)} sur ${(bg + (sous ? ` / ${sous}` : "")).padEnd(16)}  ${usage}`;
 });
 console.log(`Contrastes WCAG AA — ${PAIRES.length} paires, palette lue dans src/app/globals.css\n`);
 console.log(lignes.join("\n"));

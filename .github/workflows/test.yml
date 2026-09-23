@@ -28,6 +28,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Contrastes WCAG de la palette
+        run: npm run check:contrast
+
       - name: Build
         run: npm run build
 

@@ -271,6 +271,10 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   région `aria-live` des toasts, étiquettes flottantes associées, actions
   révélées au focus, et respect de `prefers-reduced-motion` (contexte
   Playwright émulé).
+  Les contrastes de la palette se vérifient à part, sans navigateur :
+  `npm run check:contrast` lit les tokens de `src/app/globals.css` et
+  calcule le ratio WCAG de chaque paire d'usage (texte 4,5:1, graphique
+  3:1) ; il échoue si une paire passe sous son seuil (joué aussi en CI).
   Les specs partagent la base recréée au début du run et tournent en série
   dans l'ordre alphabétique des fichiers : chacune n'agit que sur « ses »
   tranches ou biens pour rester indépendante des autres.
