@@ -1,8 +1,9 @@
 import { eq, and, count } from "drizzle-orm";
+import { KeyRound, HandCoins, FileSignature, Inbox, Users, Pin } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { biens, projets, propositions, prospects, users, epingles as epinglesTable } from "@/db/schema";
-import { Card, PageHeader } from "@/components/ui/Primitives";
+import { PageHeader, Section, Stat } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
 import { STATUT_BIEN_LABELS } from "@/lib/utils";
@@ -69,42 +70,47 @@ export default async function DashboardHome() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Biens disponibles" value={disponibles} />
-        <Stat label="Biens vendus" value={vendus} />
-        <Stat label="Propositions en cours" value={enProposition} />
-        {session.role === "PDG" && <Stat label="Propositions à valider" value={propositionsEnAttente} accent />}
+        <Stat label="Biens disponibles" value={disponibles} icon={<KeyRound />} tone={disponibles > 0 ? "success" : undefined} />
+        <Stat label="Biens vendus" value={vendus} icon={<HandCoins />} />
+        <Stat label="Propositions en cours" value={enProposition} icon={<FileSignature />} tone={enProposition > 0 ? "info" : undefined} />
+        {session.role === "PDG" && (
+          <Stat label="Propositions à valider" value={propositionsEnAttente} icon={<Inbox />} accent={propositionsEnAttente > 0} hint="Décision attendue" />
+        )}
         {["COMMERCIAL", "RESPONSABLE_COMMERCIAL", "ASSISTANT_ADMINISTRATIF"].includes(session.role) && (
-          <Stat label="Prospects non traités" value={prospectsNonTraites} accent />
+          <Stat label="Prospects non traités" value={prospectsNonTraites} icon={<Users />} accent={prospectsNonTraites > 0} hint="À contacter" />
         )}
       </div>
 
       {epingles.length > 0 && (
-        <Card className="mt-6 p-6">
-          <h2 className="text-sm font-medium text-navy-900">Biens épinglés</h2>
-          <p className="mt-1 text-xs text-navy-400">Vos accès rapides, choisis depuis la liste des biens d&apos;un projet.</p>
-          <ul className="mt-3 flex flex-wrap gap-2">
+        <Section
+          title="Biens épinglés"
+          count={epingles.length}
+          description="Vos accès rapides, choisis depuis la liste des biens d’un projet."
+          className="mt-8"
+          testId="section-epingles"
+        >
+          <ul className="flex flex-wrap gap-2">
             {epingles.map((e) => (
               <li key={e.id}>
                 <LinkButton href={`/dashboard/biens/${e.bienId}`} variant="secondary" size="sm">
+                  <Pin className="text-gold" />
                   {e.designation}
                   <span className="text-navy-400">· {STATUT_BIEN_LABELS[e.statut]}</span>
                 </LinkButton>
               </li>
             ))}
           </ul>
-        </Card>
+        </Section>
       )}
 
       {["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && (
-        <section className="mt-6">
-          <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous de mes clients</h2>
+        <Section title="Rendez-vous de mes clients" className="mt-8" testId="section-rdv-commercial">
           <RendezVousSection service="COMMERCIAL" session={session} canAct />
-        </section>
+        </Section>
       )}
 
-      <Card className="mt-6 p-6">
-        <h2 className="text-sm font-medium text-navy-900">Accès rapide</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
+      <Section title="Accès rapide" className="mt-8" testId="section-acces-rapide">
+        <div className="flex flex-wrap gap-2">
           <LinkButton href="/dashboard/projets" variant="secondary" size="sm">
             Projets &amp; biens
           </LinkButton>
@@ -119,16 +125,7 @@ export default async function DashboardHome() {
             </LinkButton>
           )}
         </div>
-      </Card>
+      </Section>
     </div>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <Card className="p-5">
-      <p className="text-xs text-navy-400">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${accent ? "text-gold-600" : "text-navy-900"}`}>{value}</p>
-    </Card>
   );
 }
