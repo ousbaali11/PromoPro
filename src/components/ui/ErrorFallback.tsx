@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { NavigationSecours } from "@/components/ui/NavigationSecours";
@@ -17,6 +18,8 @@ export type ErrorProps = {
 export function ErrorFallback({ error, retry, reset, espace }: ErrorProps & { espace: string }) {
   useEffect(() => {
     console.error(`[${espace}]`, error);
+    // Erreur de rendu captée par la frontière : remontée à Sentry (sans effet si aucune DSN)
+    Sentry.captureException(error, { tags: { espace } });
   }, [error, espace]);
 
   const relancer = () => (retry ?? reset)?.();

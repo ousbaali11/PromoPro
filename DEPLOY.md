@@ -358,6 +358,44 @@ puis `curl -i http://localhost:3200/api/health` → 503 immédiat (connexion
 refusée) ; avec un hôte non routable (`10.255.255.1`, en ajoutant
 `ALLOW_REMOTE_DB_IN_DEV=1`), le 503 arrive après le délai de 2,5 s.
 
+## 11. Suivi des erreurs (Sentry)
+
+Les erreurs non gérées (navigateur, Server Components, Server Actions, routes
+API) remontent à Sentry avec l'environnement, le type de route et la pile —
+ce qui évite de fouiller les logs Railway après coup (incident
+`SQLITE_ERROR` de la table `epingles` manquante, par exemple). Sans
+`SENTRY_DSN`, rien n'est envoyé et l'application fonctionne normalement.
+
+1. Sentry › créez un projet **Next.js** › Settings › Client Keys : copiez la
+   **DSN**.
+2. Railway › service web › **Variables** :
+   - `SENTRY_DSN` = la DSN ;
+   - `SENTRY_ENVIRONMENT` = `production` (sinon `NODE_ENV`, déjà
+     `production` sur Railway — la variable évite toute ambiguïté et sépare
+     nettement des erreurs `development` du poste local) ;
+   - facultatif, pour des piles lisibles (source maps envoyées au build) :
+     `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`. Sans jeton, le
+     build ne tente aucun envoi.
+3. Redéployez : la DSN est inscrite dans le bundle navigateur au build
+   (`NEXT_PUBLIC_SENTRY_DSN`), donc une DSN ajoutée après coup demande un
+   nouveau build.
+4. Dans Sentry, filtrez le tableau de bord par `environment:production`.
+
+Données personnelles : la règle de filtrage (mots de passe, jetons, cookie de
+session, CIN, IBAN, téléphones, e-mails, corps des formulaires) est décrite
+et testée dans SECURITY.md, « Suivi des erreurs (Sentry) ».
+
+Test en local (jamais disponible en production, 404) :
+
+```bash
+SENTRY_DSN='https://<clé>@<org>.ingest.sentry.io/<projet>' npm run dev
+```
+
+puis `curl -i http://localhost:3000/api/test-erreur` (route API → 500) et
+`http://localhost:3000/dev/test-erreur` (Server Action et erreur client).
+L'événement doit apparaître dans Sentry avec `environment: development`, et
+toutes les fausses données de test sous la forme `[masqué]`.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Correction |

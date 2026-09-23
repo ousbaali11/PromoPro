@@ -188,6 +188,62 @@ modèle (`loaded === true`, dimensions 1 × 1 × 1) et que le fichier est servi
 en `model/gltf-binary` avec `nosniff`. Le composant web vient du CDN Google :
 ce test a besoin du réseau.
 
+## Suivi des erreurs (Sentry) et données personnelles
+
+Sentry (`@sentry/nextjs`) remonte les erreurs non gérées du navigateur, des
+Server Components, des **Server Actions** et des **routes API**
+(`src/instrumentation.ts` → `onRequestError` → `captureRequestError`, tag
+`route_type` = render / action / route), plus les erreurs de rendu captées par
+les `error.tsx` et `global-error.tsx`. Configuration : `sentry.server.config.ts`,
+`sentry.edge.config.ts`, `src/instrumentation-client.ts`, options communes
+dans `src/lib/sentry-options.ts`.
+
+- [x] **DSN** uniquement par la variable `SENTRY_DSN` (copiée au build dans
+      `NEXT_PUBLIC_SENTRY_DSN` pour le navigateur — la DSN n'est pas un secret,
+      elle est visible dans tout navigateur). Sans DSN, le SDK est désactivé
+      (`enabled: false`) : rien n'est envoyé, l'application fonctionne
+      normalement.
+- [x] **Environnement** tagué sur chaque événement : `SENTRY_ENVIRONMENT`,
+      sinon `NODE_ENV` (`development` en local, `production` sur Railway) ;
+      `release` = `SENTRY_RELEASE` ou `RAILWAY_GIT_COMMIT_SHA`.
+- [x] **Aucune donnée personnelle par défaut** : `sendDefaultPii: false`
+      (pas d'adresse IP, pas de cookies), `tracesSampleRate: 0` (pas de
+      traces : elles contiendraient URL et paramètres), **pas de Session
+      Replay** (il enregistrerait les écrans avec les données des clients),
+      `includeLocalVariables: false` (pas les valeurs des variables locales
+      des piles).
+
+**RÈGLE — filtrage avant envoi** (`src/lib/sentry-filtre.ts`, hooks
+`beforeSend` et `beforeBreadcrumb` des trois runtimes ; tests dans
+`tests/unit/sentry-filtre.test.ts`). Sur chaque événement, avant qu'il ne
+quitte le processus :
+
+| Quoi | Où | Comment |
+| --- | --- | --- |
+| Utilisateur (`event.user`) | événement | retiré entièrement |
+| Corps de requête (`request.data` : valeurs de formulaire), cookies (`request.cookies`), `request.env` | requête | retirés |
+| En-têtes `cookie`, `set-cookie`, `authorization`, `x-forwarded-for`, `x-real-ip` | requête | retirés ; les autres en-têtes passent par le masquage de texte |
+| Valeur de toute clé dont le nom contient : mot de passe / `passw` / `pwd` / `hash` / `token` / `secret` / `authorization` / `cookie` / `session` / `jwt` / `cin` / `piece` / `iban` / `rib` / téléphone / `phone` / `tel` / `gsm` / `mobile` / e-mail / `courriel` / `identifiant` / `ip_address` | `query_string`, `extra`, `contexts`, `tags`, données des miettes, paramètres de `logentry` — récursivement (profondeur 8, cycles ignorés) | remplacée par `[masqué]` quel que soit son contenu |
+| Motifs dans tout texte : cookie `promopro_session=…`, valeur suivant « mot de passe / password / token / secret / jeton », jetons JWT (`aaa.bbb.ccc`), IBAN, CIN marocaine (1–2 lettres + 5–7 chiffres), téléphones marocains (`06…`, `+212…`) et internationaux (`+CC …`), e-mails | message, `logentry`, valeur de chaque exception, messages des miettes, URL de la requête, toutes les chaînes des objets parcourus | remplacés par `[masqué]` |
+| Variables locales des cadres de pile (`frames[].vars`) | exceptions | retirées |
+| Lignes de code de contexte des cadres de pile (`pre_context`, `context_line`, `post_context`) | exceptions | masquage de texte (un littéral présent dans le code ne fuit pas non plus) |
+
+Limites à connaître : un nom ou une adresse postale écrits en clair dans un
+message d'erreur ne sont pas reconnaissables par un motif — ne mettez jamais
+de données de client dans un message d'erreur ou un `console.error` (les
+miettes `console` sont envoyées, masquées). Le masquage par clé porte sur les
+noms de champs du projet (`telephone1`, `pieceNumero`, `passwordHash`,
+`motDePasse`…) : un nouveau champ sensible au nom exotique doit être ajouté à
+`CLES_SENSIBLES`.
+
+Vérification continue : `GET /api/test-erreur` et la page `/dev/test-erreur`
+(route API, Server Action, erreur client), **en développement seulement**
+(404 en production), lèvent des erreurs volontaires chargées de fausses
+données sensibles ; dans Sentry elles doivent apparaître en `[masqué]`, avec
+l'environnement `development`. Vérifié le 23 septembre 2026 sur un récepteur
+Sentry local : trois événements (route, action, client), aucune des valeurs
+de test présente dans les charges utiles.
+
 ## Données et fichiers
 
 - [x] Stockage des fichiers isolé dans `src/lib/storage.ts` ; dossier

@@ -356,7 +356,9 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   (`src/db/guard.ts`), fenêtre et transitions des travaux modificatifs
   (`src/lib/tma.ts`), analyse des lignes et répartition équilibrée des
   prospects (`src/lib/prospects.ts`), limites de débit
-  (`src/lib/rate-limit.ts`), règles de stockage — extensions et tailles par
+  (`src/lib/rate-limit.ts`), filtrage des données personnelles avant envoi à
+  Sentry (`src/lib/sentry-filtre.ts`), état de santé (`src/lib/health.ts`),
+  règles de stockage — extensions et tailles par
   type, signature du contenu, chemins publics et traversée de répertoire
   (`src/lib/storage.ts`).
 - **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
@@ -451,6 +453,12 @@ un `npm run dev` lancé ensuite dans la même fenêtre sera donc bloqué par le
 garde-fou — c'est voulu.
 
 ## Déploiement
+
+Suivi des erreurs : Sentry (`@sentry/nextjs`), activé par la seule variable
+`SENTRY_DSN`, environnement tagué, données personnelles filtrées avant envoi
+(SECURITY.md « Suivi des erreurs ») ; route de test `/api/test-erreur` et page
+`/dev/test-erreur` en développement uniquement. Mise en place : DEPLOY.md « 11 ».
+
 
 Sauvegardes quotidiennes de la base de production et vérification hebdomadaire
 de restauration : workflows GitHub Actions `backup-db.yml` et
