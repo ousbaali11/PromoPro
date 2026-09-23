@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, X, MessageSquareText } from "lucide-react";
 import { acceptProposition, refuseProposition, negotiateProposition } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Textarea, Callout } from "@/components/ui/Primitives";
+import { Textarea } from "@/components/ui/Primitives";
 
 export function PropositionActions({ propositionId }: { propositionId: string }) {
   const [pending, startTransition] = useTransition();

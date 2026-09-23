@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { createPromoteur, type Acces } from "../actions";
-import { Card, Input, PageHeader, Callout } from "@/components/ui/Primitives";
+import { Card, Input, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
 
@@ -67,6 +67,7 @@ export default function NouveauPromoteurPage() {
 
   return (
     <div className="mx-auto max-w-lg">
+      <Breadcrumb items={[{ label: "Promoteurs", href: "/admin" }, { label: "Nouveau promoteur" }]} />
       <PageHeader
         eyebrow="Administration plateforme"
         title="Nouveau promoteur"

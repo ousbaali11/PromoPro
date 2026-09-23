@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info as InfoIcon } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, Info as InfoIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Champs (client) ré-exportés ici pour conserver l'import historique `@/components/ui/Primitives`.
@@ -310,6 +311,42 @@ export function Callout({
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
+  );
+}
+
+export type Fil = { label: string; href?: string };
+
+/**
+ * Fil d'Ariane des pages de détail : chaque segment est un lien sauf le
+ * dernier (page courante, `aria-current="page"`). Toujours dans un <nav>
+ * nommé pour les lecteurs d'écran.
+ */
+export function Breadcrumb({ items, className }: { items: Fil[]; className?: string }) {
+  return (
+    <nav aria-label="Fil d'Ariane" className={cn("mb-3", className)} data-testid="fil-ariane">
+      <ol className="flex flex-wrap items-center gap-1 text-small text-navy-400">
+        {items.map((item, i) => {
+          const dernier = i === items.length - 1;
+          return (
+            <li key={`${item.label}-${i}`} className="flex items-center gap-1">
+              {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-navy-300" aria-hidden />}
+              {item.href && !dernier ? (
+                <Link
+                  href={item.href}
+                  className="rounded-xs transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <span aria-current={dernier ? "page" : undefined} className={cn(dernier && "font-medium text-navy-900")}>
+                  {item.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 

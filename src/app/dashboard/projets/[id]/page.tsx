@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db/client";
 import { projets, biens, epingles } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
-import { PageHeader } from "@/components/ui/Primitives";
+import { PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { AddBienForm } from "./AddBienForm";
 import { BiensExplorer } from "./BiensExplorer";
 
@@ -25,6 +25,7 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Projets", href: "/dashboard/projets" }, { label: projet.nom }]} />
       <PageHeader
         eyebrow="Projet"
         title={projet.nom}

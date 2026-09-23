@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { db } from "@/db/client";
 import { biens, clients, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
-import { PageHeader } from "@/components/ui/Primitives";
+import { PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { formatMoney, addMonths } from "@/lib/utils";
 import { NewPropositionForm } from "./NewPropositionForm";
 
@@ -31,12 +29,14 @@ export default async function NouvellePropositionPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link
-        href={`/dashboard/biens/${bien.id}`}
-        className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
-      >
-        <ChevronLeft className="h-4 w-4" /> {bien.designation}
-      </Link>
+      <Breadcrumb
+        items={[
+          { label: "Projets", href: "/dashboard/projets" },
+          ...(projet ? [{ label: projet.nom, href: `/dashboard/projets/${projet.id}` }] : []),
+          { label: bien.designation, href: `/dashboard/biens/${bien.id}` },
+          { label: "Nouvelle proposition" },
+        ]}
+      />
       <PageHeader
         eyebrow={projet?.nom}
         title="Envoyer une proposition"

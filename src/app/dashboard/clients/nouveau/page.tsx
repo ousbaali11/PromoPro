@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { createClient } from "../actions";
-import { Card, Input, Select, PageHeader, Callout } from "@/components/ui/Primitives";
+import { Card, Input, Select, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 
@@ -42,6 +42,7 @@ export default function NouveauClientPage() {
 
   return (
     <div className="mx-auto max-w-xl">
+      <Breadcrumb items={[{ label: "Clients", href: "/dashboard/clients" }, { label: "Nouveau client" }]} />
       <PageHeader eyebrow="Clients" title="Nouveau client" description="Création du dossier et du compte d'accès du client." />
       <Card className="p-6">
         <form action={formAction} className="space-y-6" data-testid="form-nouveau-client">

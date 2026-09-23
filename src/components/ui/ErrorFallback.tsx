@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { NavigationSecours } from "@/components/ui/NavigationSecours";
 
 export type ErrorProps = {
   error: Error & { digest?: string };
@@ -31,7 +32,7 @@ export function ErrorFallback({ error, retry, reset, espace }: ErrorProps & { es
         administrateur en indiquant le code ci-dessous.
       </p>
       {error.digest && <p className="mt-2 font-mono text-xs text-navy-400">Code : {error.digest}</p>}
-      <div className="mt-6 flex justify-center gap-2">
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Button onClick={relancer}>
           <RotateCcw className="h-4 w-4" /> Réessayer
         </Button>
@@ -39,6 +40,7 @@ export function ErrorFallback({ error, retry, reset, espace }: ErrorProps & { es
           Recharger la page
         </Button>
       </div>
+      <NavigationSecours className="mt-3 flex flex-wrap justify-center gap-2" />
     </div>
   );
 }

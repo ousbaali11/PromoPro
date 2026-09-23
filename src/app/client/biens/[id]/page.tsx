@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip, ChevronLeft, Receipt, Phone } from "lucide-react";
+import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip, Receipt, Phone } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { biens, projets, users, contrats, paiements, visites, demandesPhotos, photosAvancement, syndics } from "@/db/schema";
-import { Card, Info, PageHeader } from "@/components/ui/Primitives";
+import { Card, Info, PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { addMonths, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS } from "@/lib/utils";
@@ -88,7 +87,8 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-8">
       <div>
-        {mesBiens.length > 1 ? (
+        <Breadcrumb items={[{ label: "Mes biens", href: "/client" }, { label: bien.designation }]} />
+        {mesBiens.length > 1 && (
           <div className="mb-4">
             <SegmentedControl
               ariaLabel="Mes biens"
@@ -96,13 +96,6 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
               items={mesBiens.map((b) => ({ value: b.id, label: b.designation, href: `/client/biens/${b.id}` }))}
             />
           </div>
-        ) : (
-          <Link
-            href="/client"
-            className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
-          >
-            <ChevronLeft className="h-4 w-4" /> Mes biens
-          </Link>
         )}
 
         <PageHeader

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 
 import { createProjet } from "../actions";
-import { Card, Input, PageHeader, Callout } from "@/components/ui/Primitives";
+import { Card, Input, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 
 export default function NouveauProjetPage() {
@@ -11,6 +11,7 @@ export default function NouveauProjetPage() {
 
   return (
     <div className="mx-auto max-w-lg">
+      <Breadcrumb items={[{ label: "Projets", href: "/dashboard/projets" }, { label: "Nouveau projet" }]} />
       <PageHeader eyebrow="Projets & biens" title="Nouveau projet" description="Saisie du projet et de ses informations bancaires." />
       <Card className="p-6">
         <form action={formAction} className="space-y-4" data-testid="form-nouveau-projet">

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { ChevronLeft, FileText, Home } from "lucide-react";
+import { FileText, Home } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients, users, biens } from "@/db/schema";
-import { Card, Info, PageHeader, Section, EmptyState } from "@/components/ui/Primitives";
+import { Card, Info, PageHeader, Section, EmptyState, Breadcrumb } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
@@ -37,12 +37,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <Link
-          href="/dashboard/clients"
-          className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
-        >
-          <ChevronLeft className="h-4 w-4" /> Clients
-        </Link>
+        <Breadcrumb items={[{ label: "Clients", href: "/dashboard/clients" }, { label: `${client.prenom} ${client.nom}` }]} />
         <div className="flex items-start gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy text-small font-semibold text-gold ring-4 ring-navy-50">
             {initiales}

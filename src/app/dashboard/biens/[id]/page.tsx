@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { ChevronLeft, FileImage, FileDown, Paperclip, Send, CalendarClock, Receipt } from "lucide-react";
+import { FileImage, FileDown, Paperclip, Send, CalendarClock, Receipt } from "lucide-react";
 import { db } from "@/db/client";
 import { biens, projets, clients, paiements } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
-import { Card, EmptyState, Info, PageHeader, Section, Callout } from "@/components/ui/Primitives";
+import { Card, EmptyState, Info, PageHeader, Section, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
@@ -53,12 +53,13 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div>
-        <Link
-          href={`/dashboard/projets/${projet.id}`}
-          className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
-        >
-          <ChevronLeft className="h-4 w-4" /> {projet.nom}
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Projets", href: "/dashboard/projets" },
+            { label: projet.nom, href: `/dashboard/projets/${projet.id}` },
+            { label: bien.designation },
+          ]}
+        />
         <PageHeader
           eyebrow={bien.nature}
           title={bien.designation}
