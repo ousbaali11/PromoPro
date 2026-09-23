@@ -462,6 +462,17 @@ la fenêtre de terminal jusqu'à `Remove-Item Env:DATABASE_URL` ou sa fermeture 
 un `npm run dev` lancé ensuite dans la même fenêtre sera donc bloqué par le
 garde-fou — c'est voulu.
 
+## Pages légales (structure provisoire)
+
+`/mentions-legales` et `/politique-confidentialite`, publiques, liées en pied
+de page de `/login` : structure standard (éditeur à compléter, hébergement,
+données réellement collectées par l'application, finalités, conservation,
+droits, sécurité, cookies) avec un bandeau « CONTENU À FAIRE VALIDER PAR UN
+JURISTE AVANT PUBLICATION — texte provisoire » et des passages « [À compléter] ».
+Ce n'est pas un contenu juridique définitif. Gabarit :
+`src/components/legal/PageLegale.tsx` ; test : `legal.spec.ts` (accès sans
+session, bandeau, sections, liens, axe).
+
 ## Déploiement
 
 Suivi des erreurs : Sentry (`@sentry/nextjs`), activé par la seule variable

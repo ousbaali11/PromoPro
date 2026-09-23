@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { login } from "./actions";
 import { Input } from "@/components/ui/Fields";
@@ -73,6 +74,15 @@ export default function LoginPage() {
             ))}
           </dl>
         </details>
+
+        <footer className="mt-4 flex flex-wrap justify-center gap-x-4 text-caption text-navy-100/70" data-testid="pied-login">
+          <Link href="/mentions-legales" className="inline-block rounded-xs px-1 py-2 underline-offset-2 hover:text-white hover:underline focus-visible:outline-none focus-visible:shadow-focus">
+            Mentions légales
+          </Link>
+          <Link href="/politique-confidentialite" className="inline-block rounded-xs px-1 py-2 underline-offset-2 hover:text-white hover:underline focus-visible:outline-none focus-visible:shadow-focus">
+            Politique de confidentialité
+          </Link>
+        </footer>
       </div>
     </main>
   );
