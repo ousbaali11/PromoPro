@@ -182,7 +182,7 @@ export function DataTable({
                         type="button"
                         onClick={() => basculerTri(i)}
                         className={cn(
-                          "group inline-flex items-center gap-1 rounded-xs transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus",
+                          "group inline-flex items-center gap-1 rounded-xs uppercase transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus",
                           actif && "text-navy-900",
                           col.align === "right" && "flex-row-reverse",
                         )}

@@ -1,4 +1,4 @@
-import { Building2 } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { logout } from "@/app/login/actions";
 
@@ -7,20 +7,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="flex h-16 items-center justify-between border-b border-navy-100 bg-navy px-6">
-        <div className="flex items-center gap-2 text-white">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gold">
-            <Building2 className="h-4.5 w-4.5" />
+      <header className="sticky top-0 z-20 flex h-16 items-center justify-between bg-navy px-6 text-white shadow-e3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold shadow-e2">
+            <Building2 className="h-[18px] w-[18px]" strokeWidth={2} />
           </div>
-          <span className="text-sm font-semibold">PromoPro — Administration plateforme</span>
+          <div>
+            <p className="text-h3 leading-none tracking-tight">PromoPro</p>
+            <p className="mt-1 text-label uppercase text-navy-200/80">Administration plateforme</p>
+          </div>
         </div>
         <form action={logout}>
-          <button type="submit" className="text-xs text-navy-100/70 hover:text-white">
+          <button
+            type="submit"
+            className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-caption text-navy-100/70 transition-colors duration-fast hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:shadow-focus"
+          >
+            <LogOut className="h-3.5 w-3.5" />
             Déconnexion
           </button>
         </form>
       </header>
-      <main className="mx-auto max-w-5xl p-6">{children}</main>
+      <main className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">{children}</main>
     </div>
   );
 }

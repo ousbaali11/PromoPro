@@ -63,6 +63,40 @@ try {
   }
 } finally {
   await navigateur.close();
-  spawn(`taskkill /F /T /PID ${serveur.pid}`, { shell: true, stdio: "ignore" });
+  await arreterServeur();
+}
+
+// Arrêt du serveur : l'arbre de processus (cmd → npx → node) ne se laisse pas
+// toujours tuer d'un bloc sous Windows ; on vérifie que le port est libéré et,
+// sinon, on tue le processus qui l'écoute encore (sans quoi `next dev` garde
+// le verrou du dossier et bloque `npm run test:e2e`).
+async function arreterServeur() {
+  await execute(`taskkill /F /T /PID ${serveur.pid}`);
   serveur.kill();
+  for (let i = 0; i < 10; i++) {
+    if (!(await enVie())) return;
+    const sortie = await execute(`netstat -ano -p tcp | findstr :${PORT} | findstr LISTENING`);
+    const pids = new Set(sortie.split(/\r?\n/).map((l) => l.trim().split(/\s+/).pop()).filter((p) => /^\d+$/.test(p ?? "")));
+    for (const pid of pids) await execute(`taskkill /F /T /PID ${pid}`);
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
+async function enVie() {
+  try {
+    const r = await fetch(`${base}/api/health`);
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function execute(commande) {
+  return new Promise((resolve) => {
+    const p = spawn(commande, { shell: true, stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    p.stdout.on("data", (d) => (out += d));
+    p.on("close", () => resolve(out));
+    p.on("error", () => resolve(out));
+  });
 }

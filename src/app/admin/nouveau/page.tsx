@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
+import { AlertCircle, ArrowLeft, KeyRound } from "lucide-react";
 import { createPromoteur, type Acces } from "../actions";
-import { Card, Field, Input, PageHeader } from "@/components/ui/Primitives";
-import { Button } from "@/components/ui/Button";
+import { Card, Input, PageHeader } from "@/components/ui/Primitives";
+import { Button, LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
 
 const DIRECTIONS = [
@@ -14,16 +15,25 @@ const DIRECTIONS = [
 
 function BlocAcces({ acces }: { acces: Acces }) {
   return (
-    <div className="rounded-md border border-navy-100 p-4">
-      <p className="text-sm font-medium text-navy-900">{ROLE_LABELS[acces.role]}</p>
-      <p className="text-xs text-navy-400">
-        {acces.prenom} {acces.nom}
-      </p>
-      <div className="mt-2 space-y-1 rounded-md bg-navy-50 p-3 font-mono text-sm">
-        <p>Identifiant : {acces.identifiant}</p>
-        <p>Mot de passe : {acces.password}</p>
+    <Card elevation={0} className="p-4" data-testid="bloc-acces">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-small font-medium text-navy-900">{ROLE_LABELS[acces.role]}</p>
+          <p className="text-caption text-navy-400">
+            {acces.prenom} {acces.nom}
+          </p>
+        </div>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gold-50 text-gold-600">
+          <KeyRound className="h-4 w-4" />
+        </span>
       </div>
-    </div>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-sm bg-navy-50 px-3 py-2.5 font-mono text-small">
+        <dt className="text-navy-400">Identifiant</dt>
+        <dd className="text-navy-900">{acces.identifiant}</dd>
+        <dt className="text-navy-400">Mot de passe</dt>
+        <dd className="text-navy-900">{acces.password}</dd>
+      </dl>
+    </Card>
   );
 }
 
@@ -34,19 +44,22 @@ export default function NouveauPromoteurPage() {
     const { promoteur, acces } = state.success;
     return (
       <div className="mx-auto max-w-lg">
-        <PageHeader title="Promoteur créé" description={`${promoteur} — en attente d'activation de l'abonnement.`} />
+        <PageHeader eyebrow={promoteur} title="Promoteur créé" description="En attente d'activation de l'abonnement." />
         <Card className="space-y-4 p-6">
-          <p className="text-sm text-navy-900">
+          <p className="text-body text-navy-900">
             Trois accès ont été créés. Communiquez à chaque direction ses propres identifiants (ils ne seront pas
             affichés à nouveau) :
           </p>
           <BlocAcces acces={acces.pdg} />
           <BlocAcces acces={acces.directeurCommercial} />
           <BlocAcces acces={acces.directeurFinancier} />
-          <p className="text-xs text-navy-400">
+          <p className="text-caption text-navy-400">
             L&apos;accès reste bloqué tant que l&apos;abonnement n&apos;est pas activé depuis la liste des
             promoteurs. Les directeurs recruteront ensuite leurs équipes depuis la page « Équipe ».
           </p>
+          <LinkButton href="/admin" variant="secondary" className="w-full">
+            <ArrowLeft className="h-4 w-4" /> Retour à la liste des promoteurs
+          </LinkButton>
         </Card>
       </div>
     );
@@ -55,39 +68,51 @@ export default function NouveauPromoteurPage() {
   return (
     <div className="mx-auto max-w-lg">
       <PageHeader
+        eyebrow="Administration plateforme"
         title="Nouveau promoteur"
         description="Création du promoteur et de ses trois directions : PDG, Directeur Commercial, Directeur Financier."
       />
       <Card className="p-6">
-        <form action={formAction} className="space-y-6">
-          <div className="space-y-4">
-            <Field label="Nom du promoteur" htmlFor="nom">
-              <Input id="nom" name="nom" placeholder="ex. PromoPro" required />
-            </Field>
-            <Field label="E-mail de contact" htmlFor="contactEmail">
-              <Input id="contactEmail" name="contactEmail" type="email" />
-            </Field>
+        <form action={formAction} className="space-y-6" data-testid="form-nouveau-promoteur">
+          <div className="space-y-3">
+            <Input
+              id="nom"
+              name="nom"
+              label="Nom du promoteur"
+              hint="Raison sociale telle qu'elle apparaîtra sur les contrats."
+              required
+            />
+            <Input id="contactEmail" name="contactEmail" type="email" label="E-mail de contact" />
           </div>
 
-          {DIRECTIONS.map((d) => (
+          {DIRECTIONS.map((d, i) => (
             <fieldset key={d.champ} className="rounded-md border border-navy-100 p-4">
-              <legend className="px-1 text-sm font-medium text-navy-900">{d.libelle}</legend>
-              <p className="mb-3 text-xs text-navy-400">{d.aide}</p>
+              <legend className="flex items-center gap-2 px-1 text-small font-medium text-navy-900">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">
+                  {i + 1}
+                </span>
+                {d.libelle}
+              </legend>
+              <p className="mb-3 text-caption text-navy-400">{d.aide}</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Nom" htmlFor={`${d.champ}Nom`}>
-                  <Input id={`${d.champ}Nom`} name={`${d.champ}Nom`} required />
-                </Field>
-                <Field label="Prénom" htmlFor={`${d.champ}Prenom`}>
-                  <Input id={`${d.champ}Prenom`} name={`${d.champ}Prenom`} required />
-                </Field>
+                <Input id={`${d.champ}Nom`} name={`${d.champ}Nom`} label="Nom" required />
+                <Input id={`${d.champ}Prenom`} name={`${d.champ}Prenom`} label="Prénom" required />
               </div>
             </fieldset>
           ))}
 
-          {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
+          {state?.error && (
+            <p
+              role="alert"
+              className="flex items-start gap-2 rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-small text-danger-fg"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {state.error}
+            </p>
+          )}
 
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Création..." : "Créer le promoteur et ses trois directions"}
+          <Button type="submit" loading={pending} className="w-full">
+            Créer le promoteur et ses trois directions
           </Button>
         </form>
       </Card>
