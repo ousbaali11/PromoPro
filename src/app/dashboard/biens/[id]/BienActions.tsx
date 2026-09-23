@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
+import { Lock, LockOpen } from "lucide-react";
 import { blockBien, unblockBien, setPlanBien } from "./actions";
-import { Card, Field, Textarea } from "@/components/ui/Primitives";
+import { Card, Textarea } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 
@@ -11,18 +12,22 @@ export function BlockBienForm({ bienId }: { bienId: string }) {
 
   return (
     <Card className="p-5">
-      <h2 className="mb-1 text-sm font-medium text-navy-900">Bloquer ce bien</h2>
-      <p className="mb-3 text-xs text-navy-400">
+      <h2 className="text-h3 text-navy-900">Bloquer ce bien</h2>
+      <p className="mb-4 mt-1 text-caption text-navy-400">
         Le bien sera retiré de la vente pour tous les commerciaux. Votre commentaire reste privé.
       </p>
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="bienId" value={bienId} />
-        <Field label="Commentaire (visible par vous seul)" htmlFor="commentaire">
-          <Textarea id="commentaire" name="commentaire" rows={2} placeholder="ex. Réservé pour un partenaire..." />
-        </Field>
-        {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
-        <Button type="submit" variant="secondary" size="sm" disabled={pending}>
-          {pending ? "Blocage..." : "Bloquer ce bien"}
+        <Textarea
+          id="commentaire"
+          name="commentaire"
+          rows={2}
+          label="Commentaire (visible par vous seul)"
+          hint="ex. Réservé pour un partenaire…"
+          error={state?.error}
+        />
+        <Button type="submit" variant="secondary" size="sm" loading={pending}>
+          <Lock className="h-4 w-4" /> Bloquer ce bien
         </Button>
       </form>
     </Card>
@@ -35,9 +40,9 @@ export function PlanUploadForm({ bienId, hasPlan }: { bienId: string; hasPlan: b
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="bienId" value={bienId} />
       <FileUpload name="planUrl" type="plans" label={hasPlan ? "Remplacer le plan" : "Importer le plan"} required />
-      {state?.error && <p className="text-xs text-rose-700">{state.error}</p>}
-      <Button type="submit" variant="secondary" size="sm" disabled={pending}>
-        {pending ? "Enregistrement..." : "Enregistrer le plan"}
+      {state?.error && <p className="text-caption text-danger-fg">{state.error}</p>}
+      <Button type="submit" variant="secondary" size="sm" loading={pending}>
+        Enregistrer le plan
       </Button>
     </form>
   );
@@ -46,13 +51,8 @@ export function PlanUploadForm({ bienId, hasPlan }: { bienId: string; hasPlan: b
 export function UnblockBienButton({ bienId }: { bienId: string }) {
   const [pending, startTransition] = useTransition();
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      disabled={pending}
-      onClick={() => startTransition(() => unblockBien(bienId))}
-    >
-      {pending ? "Déblocage..." : "Débloquer ce bien"}
+    <Button variant="secondary" size="sm" loading={pending} onClick={() => startTransition(() => unblockBien(bienId))}>
+      <LockOpen className="h-4 w-4" /> Débloquer ce bien
     </Button>
   );
 }

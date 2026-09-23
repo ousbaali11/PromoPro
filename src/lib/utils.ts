@@ -54,6 +54,16 @@ export const STATUT_BIEN_LABELS: Record<string, string> = {
   LIVRE: "Livré",
 };
 
+/** Tonalité sémantique (design system) de chaque statut de bien. */
+export const STATUT_BIEN_TONES: Record<string, "success" | "warning" | "info" | "navy" | "danger" | "neutral"> = {
+  DISPONIBLE: "success",
+  BLOQUE_PDG: "warning",
+  PROPOSITION_EN_COURS: "info",
+  VENDU: "navy",
+  DESISTE: "danger",
+  LIVRE: "neutral",
+};
+
 export const STATUT_BIEN_COLORS: Record<string, string> = {
   DISPONIBLE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   BLOQUE_PDG: "bg-amber-50 text-amber-700 ring-amber-600/20",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info as InfoIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Champs (client) ré-exportés ici pour conserver l'import historique `@/components/ui/Primitives`.
@@ -15,11 +16,23 @@ export type { InputProps, SelectProps, TextareaProps } from "./Fields";
  */
 const elevations = ["shadow-none", "shadow-e2", "shadow-e3", "shadow-e4"] as const;
 
+/** Liseré vertical à gauche d'une carte (`accent`) : une couleur sémantique, jamais décorative. */
+const accentClasses: Record<Tone, string> = {
+  neutral: "before:bg-navy-300",
+  success: "before:bg-success",
+  warning: "before:bg-warning",
+  danger: "before:bg-danger",
+  info: "before:bg-info",
+  navy: "before:bg-navy",
+  gold: "before:bg-gold",
+};
+
 export function Card({
   className,
   children,
   elevation = 1,
   interactive = false,
+  accent,
   as: Tag = "div",
   ...props
 }: {
@@ -27,16 +40,21 @@ export function Card({
   children: ReactNode;
   elevation?: 0 | 1 | 2 | 3;
   interactive?: boolean;
+  /** Liseré sémantique à gauche (bien bloqué, désistement, information…). */
+  accent?: Tone;
   as?: "div" | "article" | "section" | "li";
 } & Omit<React.HTMLAttributes<HTMLElement>, "className" | "children">) {
   return (
     <Tag
       data-card=""
+      data-accent={accent}
       className={cn(
         "rounded-lg bg-white ring-1 ring-navy-100/70",
         elevations[elevation],
         interactive &&
           "transition-[transform,box-shadow] duration-normal ease-out-soft hover:-translate-y-0.5 hover:shadow-e3 focus-within:shadow-e3",
+        accent && "relative overflow-hidden before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
+        accent && accentClasses[accent],
         className,
       )}
       {...props}
@@ -237,6 +255,60 @@ export function Info({ label, value, className }: { label: string; value?: React
     <div className={className}>
       <p className="text-label uppercase text-navy-400">{label}</p>
       <div className="mt-1 text-body text-navy-900">{value || "—"}</div>
+    </div>
+  );
+}
+
+const calloutIcons: Record<Tone, ReactNode> = {
+  neutral: <InfoIcon />,
+  info: <InfoIcon />,
+  navy: <InfoIcon />,
+  gold: <InfoIcon />,
+  success: <CheckCircle2 />,
+  warning: <AlertTriangle />,
+  danger: <AlertCircle />,
+};
+
+/**
+ * Message contextuel en bloc : erreur de formulaire, avertissement, information.
+ * Toujours une icône, une couleur sémantique, jamais de fond décoratif.
+ * `role="alert"` automatique pour les tonalités danger (erreurs de soumission).
+ */
+export function Callout({
+  tone = "info",
+  title,
+  children,
+  icon,
+  action,
+  className,
+  role,
+  testId,
+}: {
+  tone?: Tone;
+  title?: string;
+  children?: ReactNode;
+  icon?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+  role?: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      role={role ?? (tone === "danger" ? "alert" : undefined)}
+      data-testid={testId}
+      className={cn(
+        "flex items-start gap-2.5 rounded-sm px-3 py-2.5 text-small ring-1 ring-inset",
+        toneClasses[tone],
+        className,
+      )}
+    >
+      <span className="mt-px shrink-0 [&_svg]:h-4 [&_svg]:w-4">{icon ?? calloutIcons[tone]}</span>
+      <div className="min-w-0 flex-1">
+        {title && <p className="font-medium">{title}</p>}
+        {children && <div className={cn(title && "mt-0.5 opacity-90")}>{children}</div>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

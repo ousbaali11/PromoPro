@@ -16,8 +16,8 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { cn, formatMoney, STATUT_BIEN_LABELS } from "@/lib/utils";
-import { Card, EmptyState, type Tone } from "@/components/ui/Primitives";
+import { cn, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
+import { Card, EmptyState } from "@/components/ui/Primitives";
 import { Input, Select, Textarea } from "@/components/ui/Fields";
 import { Button } from "@/components/ui/Button";
 import { Dropdown, type MenuItem } from "@/components/ui/Dropdown";
@@ -37,15 +37,6 @@ export type BienCarte = {
   planUrl: string | null;
   statut: string;
   epingle: boolean;
-};
-
-const TONES: Record<string, Tone> = {
-  DISPONIBLE: "success",
-  BLOQUE_PDG: "warning",
-  PROPOSITION_EN_COURS: "info",
-  VENDU: "navy",
-  DESISTE: "danger",
-  LIVRE: "neutral",
 };
 
 type Vue = "grille" | "liste";
@@ -139,7 +130,7 @@ function CarteBien({
           className="absolute left-3 top-3 inline-flex rounded-full bg-white/92 shadow-e1 backdrop-blur-sm"
           statut={bien.statut}
           label={STATUT_BIEN_LABELS[bien.statut]}
-          tone={TONES[bien.statut] ?? "neutral"}
+          tone={STATUT_BIEN_TONES[bien.statut] ?? "neutral"}
         />
         <div className="absolute right-2 top-2 rounded-sm bg-white/90 shadow-e1 backdrop-blur-sm">
           <BoutonEpingle bien={bien} onToggle={onToggle} />
@@ -228,7 +219,7 @@ function LigneBien({ bien, actions, onToggle }: { bien: BienCarte; actions: Menu
         {bien.nature} · <span className="tabular">{bien.surface} m²</span>
       </p>
       <p className="hidden text-body font-semibold tabular text-navy-900 sm:block">{formatMoney(bien.prix)}</p>
-      <StatusBadge statut={bien.statut} label={STATUT_BIEN_LABELS[bien.statut]} tone={TONES[bien.statut] ?? "neutral"} />
+      <StatusBadge statut={bien.statut} label={STATUT_BIEN_LABELS[bien.statut]} tone={STATUT_BIEN_TONES[bien.statut] ?? "neutral"} />
       <div className="flex items-center gap-1">
         <BoutonEpingle bien={bien} onToggle={onToggle} />
         {actions.length > 0 && <Dropdown items={actions} />}

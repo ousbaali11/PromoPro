@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { Building2, AlertCircle } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { login } from "./actions";
 import { Input } from "@/components/ui/Fields";
 import { Button } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Primitives";
 
 const DEMO = [
   ["Super Admin", "SUPERADMIN / admin1234"],
@@ -49,13 +50,9 @@ export default function LoginPage() {
           </div>
 
           {state?.error && (
-            <p
-              role="alert"
-              className="mt-4 flex items-start gap-2 rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-small text-danger-fg"
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <Callout tone="danger" className="mt-4">
               {state.error}
-            </p>
+            </Callout>
           )}
 
           <Button type="submit" loading={pending} className="mt-6 w-full" size="lg">

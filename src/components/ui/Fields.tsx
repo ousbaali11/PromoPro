@@ -79,6 +79,13 @@ const labelFlottant =
   "peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-label " +
   "peer-disabled:text-navy-300";
 
+/**
+ * Astérisque des champs obligatoires en pseudo-élément : il reste visible mais
+ * n'entre pas dans le texte du <label> (les tests et lecteurs d'écran lisent
+ * « Montant », pas « Montant * »).
+ */
+const obligatoire = "after:ml-0.5 after:text-danger after:content-['*']";
+
 export type InputProps = InputHTMLAttributes<HTMLInputElement> &
   Etat & {
     label?: ReactNode;
@@ -164,9 +171,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           }}
         />
         {label && (
-          <label htmlFor={inputId} className={cn(labelFlottant, leading && "left-9", error && "peer-focus:text-danger-fg")}>
+          <label htmlFor={inputId} className={cn(labelFlottant, leading && "left-9", error && "peer-focus:text-danger-fg", props.required && obligatoire)}>
             {label}
-            {props.required && <span className="text-danger"> *</span>}
+            
           </label>
         )}
         {estMotDePasse && (
@@ -236,9 +243,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           {children}
         </select>
         {/* Un select a toujours une valeur : l'étiquette est en position haute en permanence */}
-        <label htmlFor={selectId} className="pointer-events-none absolute left-3 top-2 text-label text-navy-400 peer-focus:text-gold-600">
+        <label htmlFor={selectId} className={cn("pointer-events-none absolute left-3 top-2 text-label text-navy-400 peer-focus:text-gold-600", props.required && obligatoire)}>
           {label}
-          {props.required && <span className="text-danger"> *</span>}
+          
         </label>
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-300 transition-transform duration-fast peer-focus:rotate-180" />
       </motion.div>
@@ -282,10 +289,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
             className={cn(
               "pointer-events-none absolute left-3 top-3.5 origin-left text-body text-navy-400 transition-[top,font-size,color] duration-fast ease-linear",
               "peer-focus:top-2 peer-focus:text-label peer-focus:text-gold-600 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-label",
+              props.required && obligatoire,
             )}
           >
             {label}
-            {props.required && <span className="text-danger"> *</span>}
+            
           </label>
         )}
       </motion.div>

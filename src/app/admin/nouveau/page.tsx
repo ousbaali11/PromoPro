@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { AlertCircle, ArrowLeft, KeyRound } from "lucide-react";
+import { ArrowLeft, KeyRound } from "lucide-react";
 import { createPromoteur, type Acces } from "../actions";
-import { Card, Input, PageHeader } from "@/components/ui/Primitives";
+import { Card, Input, PageHeader, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
 
@@ -101,15 +101,7 @@ export default function NouveauPromoteurPage() {
             </fieldset>
           ))}
 
-          {state?.error && (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-sm border border-danger-border bg-danger-bg px-3 py-2 text-small text-danger-fg"
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              {state.error}
-            </p>
-          )}
+          {state?.error && <Callout tone="danger">{state.error}</Callout>}
 
           <Button type="submit" loading={pending} className="w-full">
             Créer le promoteur et ses trois directions

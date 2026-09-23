@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+
 import { createProjet } from "../actions";
-import { Card, Field, Input, PageHeader } from "@/components/ui/Primitives";
+import { Card, Input, PageHeader, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 
 export default function NouveauProjetPage() {
@@ -10,25 +11,26 @@ export default function NouveauProjetPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <PageHeader title="Nouveau projet" description="Saisie du projet et de ses informations bancaires." />
+      <PageHeader eyebrow="Projets & biens" title="Nouveau projet" description="Saisie du projet et de ses informations bancaires." />
       <Card className="p-6">
-        <form action={formAction} className="space-y-4">
-          <Field label="Nom du projet" htmlFor="nom">
-            <Input id="nom" name="nom" placeholder="ex. Résidence Al Manar" required />
-          </Field>
-          <Field label="Nom du compte / société" htmlFor="nomCompte">
-            <Input id="nomCompte" name="nomCompte" placeholder="ex. SCI Al Manar" required />
-          </Field>
-          <Field label="IBAN" htmlFor="iban">
-            <Input id="iban" name="iban" placeholder="MA00 0000 0000 0000 0000 0000" required />
-          </Field>
+        <form action={formAction} className="space-y-4" data-testid="form-nouveau-projet">
+          <Input id="nom" name="nom" label="Nom du projet" hint="ex. Résidence Al Manar" required />
+          <Input id="nomCompte" name="nomCompte" label="Nom du compte / société" hint="ex. SCI Al Manar" required />
+          <Input
+            id="iban"
+            name="iban"
+            label="IBAN"
+            hint="Compte qui recevra les paiements des clients. Il figure sur les contrats."
+            className="font-mono"
+            required
+          />
 
-          {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
+          {state?.error && <Callout tone="danger">{state.error}</Callout>}
 
-          <Button type="submit" disabled={pending} className="w-full">
-            {pending ? "Création..." : "Créer le projet"}
+          <Button type="submit" loading={pending} className="w-full">
+            Créer le projet
           </Button>
-          <p className="text-xs text-navy-400">
+          <p className="text-caption text-navy-400">
             Vous pourrez ajouter le tableau de contenance (les biens) juste après la création.
           </p>
         </form>

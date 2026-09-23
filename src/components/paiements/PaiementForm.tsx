@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Field, Input, Select } from "@/components/ui/Primitives";
+import { AnimatePresence, motion } from "motion/react";
+import { Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 
@@ -18,6 +19,25 @@ const NATURES = [
 
 function fmt(n: number) {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(n);
+}
+
+/** Bloc de champ qui s'ouvre / se ferme en douceur (chèque, porteur différent). */
+function Repli({ visible, children }: { visible: boolean; children: React.ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
+          className="overflow-hidden"
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 /**
@@ -55,91 +75,86 @@ export function PaiementForm({
 
   if (state?.success) {
     return (
-      <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.success}</div>
+      <Callout tone="success" testId="paiement-succes">
+        {state.success}
+      </Callout>
     );
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4" data-testid="form-paiement">
       <input type="hidden" name="bienId" value={bienId} />
-      {intro && <p className="text-xs text-navy-400">{intro}</p>}
+      {intro && <p className="text-caption text-navy-400">{intro}</p>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Tranche concernée" htmlFor="echeanceId">
-          <Select id="echeanceId" name="echeanceId" defaultValue={defaultEcheance}>
-            {echeances.length === 0 && <option value="">Échéancier non disponible</option>}
-            {echeances.map((e) => (
-              <option key={e.id} value={e.id} disabled={e.statut === "PAYEE"}>
-                Tranche {e.numero} · {e.pourcentage}% · {fmt(e.montant)} MAD
-                {e.statut === "PAYEE" ? " (payée)" : e.montantPaye > 0 ? ` (reste ${fmt(e.montant - e.montantPaye)})` : ""}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Nature de l'opération" htmlFor="natureOperation">
-          <Select
-            id="natureOperation"
-            name="natureOperation"
-            value={nature}
-            onChange={(e) => setNature(e.target.value)}
-          >
-            {NATURES.map((n) => (
-              <option key={n.value} value={n.value}>
-                {n.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {nature === "cheque" && (
-          <Field label="Date d'encaissement prévue" htmlFor="dateEncaissementCheque">
-            <Input id="dateEncaissementCheque" name="dateEncaissementCheque" type="date" required />
-          </Field>
-        )}
-        <Field label="Banque" htmlFor="banque">
-          <Input id="banque" name="banque" placeholder="ex. Attijariwafa Bank" required />
-        </Field>
-        <Field label="Date de l'opération" htmlFor="dateOperation">
-          <Input id="dateOperation" name="dateOperation" type="date" required />
-        </Field>
-        <Field label="Montant" htmlFor="montant">
-          <Input id="montant" name="montant" type="number" min={1} step={1} required />
-        </Field>
-        <Field label="Devise" htmlFor="devise">
-          <Select id="devise" name="devise" defaultValue="MAD">
-            <option>MAD</option>
-            <option>EUR</option>
-            <option>USD</option>
-          </Select>
-        </Field>
-        <Field label="Porteur de l'opération" htmlFor="porteur" hint="Personne physique ayant réalisé le paiement.">
-          <Input id="porteur" name="porteur" required />
-        </Field>
-        {withReference && (
-          <Field label="Référence de l'opération" htmlFor="reference">
-            <Input id="reference" name="reference" placeholder="ex. VIR-2026-00123" required />
-          </Field>
-        )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Select id="echeanceId" name="echeanceId" label="Tranche concernée" defaultValue={defaultEcheance}>
+          {echeances.length === 0 && <option value="">Échéancier non disponible</option>}
+          {echeances.map((e) => (
+            <option key={e.id} value={e.id} disabled={e.statut === "PAYEE"}>
+              Tranche {e.numero} · {e.pourcentage}% · {fmt(e.montant)} MAD
+              {e.statut === "PAYEE" ? " (payée)" : e.montantPaye > 0 ? ` (reste ${fmt(e.montant - e.montantPaye)})` : ""}
+            </option>
+          ))}
+        </Select>
+        <Select id="natureOperation" name="natureOperation" label="Nature de l'opération" value={nature} onChange={(e) => setNature(e.target.value)}>
+          {NATURES.map((n) => (
+            <option key={n.value} value={n.value}>
+              {n.label}
+            </option>
+          ))}
+        </Select>
+        <Input id="banque" name="banque" label="Banque" required />
+        <Input id="dateOperation" name="dateOperation" type="date" label="Date de l'opération" clearable={false} required />
+        <Input id="montant" name="montant" type="number" label="Montant" min={1} step={1} clearable={false} required />
+        <Select id="devise" name="devise" label="Devise" defaultValue="MAD">
+          <option>MAD</option>
+          <option>EUR</option>
+          <option>USD</option>
+        </Select>
+        <Input
+          id="porteur"
+          name="porteur"
+          label="Porteur de l'opération"
+          hint="Personne physique ayant réalisé le paiement."
+          containerClassName={withReference ? undefined : "sm:col-span-2"}
+          required
+        />
+        {withReference && <Input id="reference" name="reference" label="Référence de l'opération" hint="ex. VIR-2026-00123" required />}
       </div>
+
+      <Repli visible={nature === "cheque"}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Input
+            id="dateEncaissementCheque"
+            name="dateEncaissementCheque"
+            type="date"
+            label="Date d'encaissement prévue"
+            hint="Le chèque apparaîtra en trésorerie à cette date."
+            clearable={false}
+            required={nature === "cheque"}
+          />
+        </div>
+      </Repli>
 
       <FileUpload name="preuveUrl" type="preuves-paiement" label="Preuve de paiement" required />
 
-      <label className="flex items-center gap-2 text-xs text-navy-400">
+      <label className="flex cursor-pointer items-center gap-2 text-small text-navy-400">
         <input
           type="checkbox"
           checked={porteurDifferent}
           onChange={(e) => setPorteurDifferent(e.target.checked)}
-          className="h-3.5 w-3.5 accent-gold"
+          className="h-4 w-4 accent-gold"
         />
         Le porteur n&apos;est pas le client (joindre sa pièce d&apos;identité)
       </label>
-      {porteurDifferent && (
-        <FileUpload name="porteurPieceUrl" type="pieces-identite" label="Pièce d'identité du porteur" required />
-      )}
+      <Repli visible={porteurDifferent}>
+        <FileUpload name="porteurPieceUrl" type="pieces-identite" label="Pièce d'identité du porteur" required={porteurDifferent} />
+      </Repli>
 
-      {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
+      {state?.error && <Callout tone="danger">{state.error}</Callout>}
 
-      <Button type="submit" disabled={pending} variant="gold">
-        {pending ? "Enregistrement..." : submitLabel}
+      <Button type="submit" loading={pending} variant="gold">
+        {submitLabel}
       </Button>
     </form>
   );
