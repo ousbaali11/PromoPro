@@ -238,7 +238,8 @@ noms de champs du projet (`telephone1`, `pieceNumero`, `passwordHash`,
 
 Vérification continue : `GET /api/test-erreur` et la page `/dev/test-erreur`
 (route API, Server Action, erreur client), **en développement seulement**
-(404 en production), lèvent des erreurs volontaires chargées de fausses
+(404 en production — vérifié par `tests/e2e/production.spec.ts` sur un vrai
+`next start`), lèvent des erreurs volontaires chargées de fausses
 données sensibles ; dans Sentry elles doivent apparaître en `[masqué]`, avec
 l'environnement `development`. Vérifié le 23 septembre 2026 sur un récepteur
 Sentry local : trois événements (route, action, client), aucune des valeurs

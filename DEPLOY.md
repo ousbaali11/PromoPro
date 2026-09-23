@@ -385,7 +385,9 @@ Données personnelles : la règle de filtrage (mots de passe, jetons, cookie de
 session, CIN, IBAN, téléphones, e-mails, corps des formulaires) est décrite
 et testée dans SECURITY.md, « Suivi des erreurs (Sentry) ».
 
-Test en local (jamais disponible en production, 404) :
+Test en local (jamais disponible en production : route, page et Server Action
+répondent 404, ce que `tests/e2e/production.spec.ts` vérifie sur un vrai
+`next start`) :
 
 ```bash
 SENTRY_DSN='https://<clé>@<org>.ingest.sentry.io/<projet>' npm run dev

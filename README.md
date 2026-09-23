@@ -384,7 +384,10 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   routes API ; règles de dépôt de fichiers et limite de débit) ; rendu 3D
   (`plans3d.spec.ts` : dépôt du cube `tests/fixtures/cube.glb`, onglet
   « Modèle 3D », modèle effectivement chargé par `<model-viewer>` — a besoin
-  du réseau pour le CDN Google) ; travaux modificatifs
+  du réseau pour le CDN Google) ; serveur de production (`production.spec.ts` :
+  `next start` sur le build, les points de test d'erreur Sentry `/api/test-erreur`
+  et `/dev/test-erreur` répondent 404, témoin 500 / 200 en développement — le
+  build doit précéder la suite) ; travaux modificatifs
   (`modificatifs.spec.ts` : demande client → devis SAV → acceptation → travaux,
   notifications à chaque étape, date limite suivant le délai du projet) ;
   SAV (livraison, notaire, syndic) ;
@@ -457,7 +460,8 @@ garde-fou — c'est voulu.
 Suivi des erreurs : Sentry (`@sentry/nextjs`), activé par la seule variable
 `SENTRY_DSN`, environnement tagué, données personnelles filtrées avant envoi
 (SECURITY.md « Suivi des erreurs ») ; route de test `/api/test-erreur` et page
-`/dev/test-erreur` en développement uniquement. Mise en place : DEPLOY.md « 11 ».
+`/dev/test-erreur` en développement uniquement (404 en production, vérifié par
+`production.spec.ts`). Mise en place : DEPLOY.md « 11 ».
 
 
 Sauvegardes quotidiennes de la base de production et vérification hebdomadaire
