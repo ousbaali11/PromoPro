@@ -17,6 +17,21 @@ export async function getSession() {
   return verifySession(token);
 }
 
+/**
+ * Session staff dont le compte est encore actif (ni suspendu, ni supprimé),
+ * sinon null. Pour les routes API, qui répondent 401 au lieu de rediriger.
+ */
+export async function getStaffSessionActive(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (!session || session.kind !== "staff") return null;
+  const compte = await db.query.users.findFirst({
+    where: eq(users.id, session.userId),
+    columns: { actif: true, deletedAt: true },
+  });
+  if (!compte || !compte.actif || compte.deletedAt) return null;
+  return session as SessionPayload;
+}
+
 /** Requires a logged-in staff (promoteur or super admin) session, or redirects to /login. */
 export async function requireStaffSession(): Promise<SessionPayload> {
   const session = await getSession();
@@ -24,11 +39,7 @@ export async function requireStaffSession(): Promise<SessionPayload> {
     redirect("/login");
   }
   // Suspension ou suppression douce : la session en cours est fermée sans attendre son expiration
-  const compte = await db.query.users.findFirst({
-    where: eq(users.id, session.userId),
-    columns: { actif: true, deletedAt: true },
-  });
-  if (!compte || !compte.actif || compte.deletedAt) await fermerSession();
+  if (!(await getStaffSessionActive())) await fermerSession();
   return session as SessionPayload;
 }
 

@@ -143,6 +143,52 @@ test.describe("Suspension d'un client avec vente en cours", () => {
   });
 });
 
+test.describe("Route de restauration (bouton « Annuler » du toast) : autorisation par compte", () => {
+  test("refuse un rôle sans droit sur ce compte précis, un client et un appelant non connecté", async ({ page }) => {
+    // Identifiants des cibles : le client d'Hamid (géré par COM1) et le compte de Youssef (pôle commercial)
+    await login(page, "COM1");
+    await page.goto("/dashboard/clients");
+    const hrefHamid = await page.getByRole("link", { name: "Hamid Naciri" }).getAttribute("href");
+    const idHamid = hrefHamid!.split("/").pop()!;
+    await login(page, "DIRCOM");
+    await page.goto("/dashboard/equipe");
+    const hrefYoussef = await page.getByTestId("membre-ligne").filter({ hasText: "Youssef Idrissi" }).getByTestId("modifier-membre").getAttribute("href");
+    const idYoussef = hrefYoussef!.split("/").at(-2)!;
+
+    const appeler = (data: unknown) => page.request.post("/api/comptes/restaurer", { data });
+
+    // COM2 ne gère pas Hamid Naciri → refus (même règle que la suppression), rien n'est modifié
+    await login(page, "COM2");
+    let rep = await appeler({ type: "client", id: idHamid });
+    expect(rep.status()).toBe(403);
+    expect((await rep.json()).error).toContain("commercial qui gère ce client");
+
+    // Le Directeur Financier ne gère pas le pôle commercial → refus
+    await login(page, "DIRFIN");
+    rep = await appeler({ type: "user", id: idYoussef });
+    expect(rep.status()).toBe(403);
+    expect((await rep.json()).error).toContain("rôles que vous êtes autorisé à créer");
+
+    // Le PDG ne gère aucun compte interne → refus ; sa propre session est pourtant valide
+    await login(page, "PDG");
+    rep = await appeler({ type: "user", id: idYoussef });
+    expect(rep.status()).toBe(403);
+
+    // Un client connecté ou un visiteur anonyme → 401 ; corps invalide → 400
+    await login(page, "CLIENT");
+    expect((await appeler({ type: "client", id: idHamid })).status()).toBe(401);
+    await page.context().clearCookies();
+    expect((await appeler({ type: "client", id: idHamid })).status()).toBe(401);
+    await login(page, "COM1");
+    expect((await appeler({ type: "autre", id: idHamid })).status()).toBe(400);
+
+    // Le commercial gérant est autorisé : sur un compte déjà actif, l'appel est reçu mais sans effet
+    rep = await appeler({ type: "client", id: idHamid });
+    expect(rep.status()).toBe(403);
+    expect((await rep.json()).error).toContain("déjà actif");
+  });
+});
+
 test.describe("Comptes internes (Équipe)", () => {
   const nom = `Recrue${SUFFIXE}`;
 
