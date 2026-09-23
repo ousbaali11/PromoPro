@@ -8,6 +8,8 @@ import { Card, EmptyState, PageHeader, Badge, Section, Stat } from "@/components
 import { formatMoney, formatDate } from "@/lib/utils";
 import { NomCompte } from "@/components/ui/EtatCompte";
 import { calculerTresorerie, dateTresorerie, montantValide } from "@/lib/tresorerie";
+import { projeterEcheances } from "@/lib/projection";
+import { ProjectionTresorerie } from "@/components/finance/ProjectionTresorerie";
 
 /** Section 8 — tableau de bord trésorerie du Directeur Financier. */
 export default async function FinancePage() {
@@ -29,6 +31,22 @@ export default async function FinancePage() {
   const remboursements = (await db.query.desistements.findMany()).filter((d) => bienById.has(d.bienId) && d.statut !== "REMBOURSE");
 
   const t = calculerTresorerie(tousPaiements, toutesEcheances);
+
+  // Projection théorique à 90 jours : échéances non soldées des ventes en cours (propositions acceptées), empilées par projet
+  const projection = projeterEcheances(
+    toutesEcheances.map((e) => {
+      const projet = projetById.get(bienById.get(e.bienId)?.projetId ?? "");
+      return {
+        id: e.id,
+        montant: e.montant,
+        montantPaye: e.montantPaye,
+        statut: e.statut,
+        dateEcheance: e.dateEcheance,
+        segmentCle: projet?.id ?? "inconnu",
+        segmentLibelle: projet?.nom ?? "Projet inconnu",
+      };
+    }),
+  );
   const libelle = (p: (typeof tousPaiements)[number]) => {
     const bien = bienById.get(p.bienId);
     const client = clientById.get(p.clientId);
@@ -83,6 +101,14 @@ export default async function FinancePage() {
         <Stat label="Chèques encaissés" value={formatMoney(t.totalChequesEncaisses)} hint={`${t.chequesEncaisses.length} chèque(s)`} icon={<Receipt />} />
         <Stat label="Chèques à venir" value={formatMoney(t.totalChequesAVenir)} hint={`${t.chequesAVenir.length} chèque(s) à encaisser`} icon={<Landmark />} />
       </div>
+
+      <Section
+        title="Projection à 30, 60 et 90 jours"
+        description="Montants attendus des échéances déjà connues des ventes en cours, si chacune est payée à sa date."
+        testId="section-projection"
+      >
+        <ProjectionTresorerie projection={projection} />
+      </Section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Section title="Portefeuille chèques" className="space-y-4" testId="section-cheques">

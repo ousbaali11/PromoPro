@@ -133,7 +133,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   PDF et mise à jour de l'échéancier (trop-perçu reporté), syndic à valider,
   biens vendus par commercial
 - **Directeur Financier** : trésorerie (total du jour, à 7 jours, chèques
-  encaissés / à venir, virements, échéances à venir, remboursements),
+  encaissés / à venir, virements, échéances à venir, remboursements,
+  projection à 30, 60 et 90 jours des échéances connues des ventes en cours en
+  barres empilées par projet — projection théorique, retards non anticipés),
   recrutement de son pôle (comptable interne, recouvrement)
 - **Service Après-Vente** : rendez-vous, demandes de visite (autorisation PDF,
   créneaux contrôlés), photos d'avancement, travaux modificatifs acquéreurs
