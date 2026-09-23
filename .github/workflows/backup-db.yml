@@ -1,0 +1,114 @@
+name: Sauvegarde de la base
+
+# Sauvegarde quotidienne de la base PostgreSQL de production (Railway) :
+# pg_dump au format « custom » (compressé), vérifié par pg_restore --list,
+# publié comme artefact du run (rétention 30 jours). Voir DEPLOY.md
+# « Sauvegardes » pour le déclenchement manuel, le téléchargement et la
+# restauration d'urgence ; la restauration est éprouvée chaque semaine par
+# backup-restore-check.yml sur une base jetable.
+#
+# Secret requis : RAILWAY_DATABASE_PUBLIC_URL (Settings › Secrets and variables
+# › Actions) = DATABASE_PUBLIC_URL du service Postgres Railway. Jamais en clair ici.
+#
+# Mode « auto-test » (déclenchement manuel) : ne touche pas à Railway, ni au
+# secret — il sauvegarde une base jetable du job, initialisée avec le schéma et
+# la démo de l'application, pour éprouver la chaîne complète sans production.
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # tous les jours à 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Base à sauvegarder"
+        type: choice
+        default: railway
+        options:
+          - railway
+          - auto-test
+
+permissions:
+  contents: read
+
+env:
+  RETENTION_JOURS: 30
+
+jobs:
+  sauvegarde:
+    name: pg_dump → artefact (Railway)
+    if: github.event_name == 'schedule' || inputs.source == 'railway'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: postgres:18 # pg_dump / pg_restore de l'image officielle (18 lit toute base ≤ 18)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sauvegarde (le secret n'est jamais affiché)
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_PUBLIC_URL }}
+        run: bash scripts/db-backup.sh sauvegarde
+
+      - name: Résumé
+        run: cat sauvegarde/resume.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publication de l'artefact (30 jours)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-postgres-${{ github.run_id }}
+          path: sauvegarde/
+          retention-days: ${{ env.RETENTION_JOURS }}
+          if-no-files-found: error
+          compression-level: 0 # le format custom de pg_dump est déjà compressé
+
+  auto-test:
+    name: pg_dump → artefact (base jetable, sans Railway)
+    if: github.event_name == 'workflow_dispatch' && inputs.source == 'auto-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: postgres:18
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: promopro
+          POSTGRES_PASSWORD: promopro
+          POSTGRES_DB: promopro
+        options: >-
+          --health-cmd "pg_isready -U promopro"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      # Base jetable du job : hôte « postgres » (service), jamais Railway
+      DATABASE_URL: postgresql://promopro:promopro@postgres:5432/promopro
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Dépendances
+        run: npm ci --no-audit --no-fund
+
+      - name: Schéma et données de démonstration sur la base jetable
+        run: |
+          npx drizzle-kit push --force
+          npm run db:seed
+
+      - name: Sauvegarde (mêmes commandes que le job Railway)
+        run: bash scripts/db-backup.sh sauvegarde
+
+      - name: Résumé
+        run: cat sauvegarde/resume.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publication de l'artefact (30 jours)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-postgres-${{ github.run_id }}
+          path: sauvegarde/
+          retention-days: ${{ env.RETENTION_JOURS }}
+          if-no-files-found: error
+          compression-level: 0

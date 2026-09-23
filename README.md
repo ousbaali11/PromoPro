@@ -452,6 +452,12 @@ garde-fou — c'est voulu.
 
 ## Déploiement
 
+Sauvegardes quotidiennes de la base de production et vérification hebdomadaire
+de restauration : workflows GitHub Actions `backup-db.yml` et
+`backup-restore-check.yml`, procédure de restauration d'urgence dans DEPLOY.md
+(section « Sauvegardes »).
+
+
 Le projet se construit en image Docker (`Dockerfile`, build Next.js
 `standalone`) avec une sonde de vie `GET /api/health`. Le pas-à-pas Railway
 (repo GitHub, variables, volume persistant, initialisation de la base) est

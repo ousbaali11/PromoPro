@@ -178,6 +178,143 @@ lignes (à appliquer avant le prochain déploiement, tous additifs) : table
 table `journal_activite`, colonnes `biens.plan_3d_url`, `biens.visite_virtuelle_url`,
 `projets.delai_tma_jours`, table `demandes_tma`.
 
+## 9. Sauvegardes
+
+Deux workflows GitHub Actions, sans rien installer sur Railway :
+
+- **Sauvegarde de la base** (`.github/workflows/backup-db.yml`) : tous les jours
+  à 03:00 UTC, `pg_dump --format=custom` (déjà compressé) de la base de
+  production, vérifié par `pg_restore --list`, publié comme **artefact du run**
+  conservé **30 jours**.
+- **Vérification de restauration** (`.github/workflows/backup-restore-check.yml`) :
+  chaque dimanche à 04:00 UTC, le dernier dump est restauré dans une base
+  PostgreSQL **jetable du job** (service `postgres` de GitHub Actions, jamais
+  Railway) et les tables `users`, `biens` et `paiements` doivent contenir des
+  lignes — un backup jamais restauré n'est pas vérifié. La liste des tables se
+  règle dans `TABLES_OBLIGATOIRES` du workflow.
+
+Les commandes vivent dans `scripts/db-backup.sh` et
+`scripts/db-restore-check.sh` (utilisables aussi en local avec les outils
+PostgreSQL installés).
+
+### Mise en place (une fois)
+
+1. Railway › service Postgres › **Variables** › copiez la valeur de
+   `DATABASE_PUBLIC_URL` (l'URL publique, joignable depuis GitHub ; l'URL
+   `*.railway.internal` ne l'est pas).
+2. GitHub › dépôt › **Settings › Secrets and variables › Actions › New
+   repository secret** : nom `RAILWAY_DATABASE_PUBLIC_URL`, valeur = l'URL.
+   Elle n'apparaît jamais dans les workflows ni dans les journaux (GitHub la
+   masque) ; ne l'écrivez nulle part dans le dépôt.
+3. Lancez une première sauvegarde manuelle (ci-dessous) et vérifiez l'artefact.
+
+Sans le secret, le job quotidien échoue avec un message explicite.
+
+### Sauvegarde manuelle
+
+Onglet **Actions** › « Sauvegarde de la base » › **Run workflow** › source
+`railway` › Run. Ou en ligne de commande :
+
+```bash
+gh workflow run backup-db.yml -f source=railway
+```
+
+La source `auto-test` sauvegarde une base jetable du job initialisée avec le
+schéma et la démo de l'application : elle éprouve toute la chaîne
+(dump → artefact → restauration) sans le secret et sans toucher à Railway.
+
+### Télécharger une sauvegarde
+
+Onglet **Actions** › « Sauvegarde de la base » › ouvrez le run voulu › bloc
+**Artifacts** en bas de page › `sauvegarde-postgres-<run>` (zip contenant
+`promopro-<date>.dump`, son sommaire `.toc.txt` et `resume.txt`). En ligne
+de commande :
+
+```bash
+gh run list --workflow backup-db.yml --status success --limit 5
+```
+
+```bash
+gh run download <RUN_ID> --dir sauvegarde
+```
+
+### Vérifier une restauration à la demande
+
+Onglet **Actions** › « Vérification de restauration » › **Run workflow**
+(`run_id` vide = dernier run de sauvegarde réussi) ; le résumé du run liste
+le nombre de lignes de chaque table restaurée.
+
+```bash
+gh workflow run backup-restore-check.yml -f run_id=<RUN_ID>
+```
+
+### Restauration d'urgence vers Railway
+
+Prérequis : `pg_restore` et `psql` de la **même version majeure ou plus
+récente** que le `pg_dump` du workflow (PostgreSQL 18) — outils PostgreSQL
+installés, ou l'image officielle via Docker. Mettez le service web en pause
+pendant l'opération (Railway › service web › Settings › *Sleep* / *Remove*
+temporairement, ou redéployez après) : `--clean` supprime puis recrée chaque
+table, l'application ne doit pas écrire pendant ce temps.
+
+1. Récupérez le dump (ci-dessus) et l'URL publique de la base :
+
+```bash
+export RAILWAY_DATABASE_PUBLIC_URL='postgresql://postgres:MOT_DE_PASSE@HOTE.proxy.rlwy.net:PORT/railway'
+```
+
+2. Contrôlez le fichier avant de toucher à la base (liste des objets qu'il
+   contient ; s'il n'affiche rien, ne continuez pas) :
+
+```bash
+pg_restore --list sauvegarde/promopro-*.dump | grep -c 'TABLE DATA'
+```
+
+3. Restaurez — chaque table est supprimée puis recréée avec les données du
+   dump, le reste de la base n'est pas touché ; `--exit-on-error` arrête tout
+   à la première anomalie :
+
+```bash
+pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error --dbname "$RAILWAY_DATABASE_PUBLIC_URL" sauvegarde/promopro-*.dump
+```
+
+Sans outils installés, la même commande via Docker (le dossier `sauvegarde`
+est monté dans le conteneur) :
+
+```bash
+docker run --rm -v "$PWD/sauvegarde:/s" -e RAILWAY_DATABASE_PUBLIC_URL postgres:18 sh -c 'pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error --dbname "$RAILWAY_DATABASE_PUBLIC_URL" /s/promopro-*.dump'
+```
+
+4. Contrôlez les tables clés, puis relancez le service web :
+
+```bash
+psql "$RAILWAY_DATABASE_PUBLIC_URL" -c "SELECT (SELECT count(*) FROM users) AS users, (SELECT count(*) FROM biens) AS biens, (SELECT count(*) FROM paiements) AS paiements;"
+```
+
+Si le schéma a évolué depuis la sauvegarde (colonne ou table ajoutée après),
+relancez `npm run db:push` après la restauration (section 8) : le dump
+recrée les tables telles qu'elles étaient à la date de la sauvegarde.
+
+Procédure répétée le 23 septembre 2026 avec les vrais outils (pg_dump /
+pg_restore 18.1) sur une base PostgreSQL 18 jetable locale initialisée avec
+le schéma et la démo : dump, suppression volontaire de lignes, restauration
+par la commande ci-dessus, lignes revenues à l'identique. Railway n'autorisait
+pas de base temporaire ce jour-là (limite du plan gratuit) ; la chaîne
+GitHub complète a été éprouvée par un run `auto-test` puis une
+« Vérification de restauration » sur ce run.
+
+### Limite actuelle et évolution
+
+Les artefacts GitHub sont gardés **30 jours** au plus et comptent dans le
+quota de stockage Actions du compte (gratuit dans la limite du plan ; une
+sauvegarde de démo pèse quelques dizaines de Ko, la taille suit celle de la
+base). Il n'y a donc pas d'historique au-delà d'un mois ni de copie hors
+GitHub. Si la base grossit nettement (plusieurs centaines de Mo) ou si une
+rétention plus longue devient nécessaire, remplacez la publication en artefact
+par un envoi vers un stockage objet (S3, Backblaze B2, Cloudflare R2) avec
+une politique de rétention, en gardant `scripts/db-backup.sh` tel quel : seule
+l'étape de publication change. À réévaluer à ce moment-là.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Correction |
