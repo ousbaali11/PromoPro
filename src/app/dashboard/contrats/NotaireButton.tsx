@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Landmark } from "lucide-react";
 import { marquerTransmisNotaire } from "./actions";
 import { Button } from "@/components/ui/Button";
 
@@ -12,7 +13,7 @@ export function NotaireButton({ bienId }: { bienId: string }) {
       <Button
         size="sm"
         variant="secondary"
-        disabled={pending}
+        loading={pending}
         onClick={() =>
           startTransition(async () => {
             const res = await marquerTransmisNotaire(bienId);
@@ -20,9 +21,9 @@ export function NotaireButton({ bienId }: { bienId: string }) {
           })
         }
       >
-        {pending ? "..." : "Dossier transmis au notaire"}
+        <Landmark className="h-4 w-4" /> Dossier transmis au notaire
       </Button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
     </div>
   );
 }

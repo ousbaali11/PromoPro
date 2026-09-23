@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check } from "lucide-react";
 import { validerSyndic } from "./actions";
 import { Button } from "@/components/ui/Button";
 
@@ -11,7 +12,7 @@ export function ValiderSyndicButton({ syndicId }: { syndicId: string }) {
     <div className="inline-flex flex-col items-end gap-1">
       <Button
         size="sm"
-        disabled={pending}
+        loading={pending}
         onClick={() =>
           startTransition(async () => {
             const res = await validerSyndic(syndicId);
@@ -19,9 +20,9 @@ export function ValiderSyndicButton({ syndicId }: { syndicId: string }) {
           })
         }
       >
-        {pending ? "..." : "Valider le syndic"}
+        <Check className="h-4 w-4" /> Valider le syndic
       </Button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
     </div>
   );
 }

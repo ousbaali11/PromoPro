@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { BadgeCheck, HandCoins } from "lucide-react";
 import { verifierDesistement, marquerRembourse } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Primitives";
+import { Input, Callout } from "@/components/ui/Primitives";
 
 export function VerifierButton({ desistementId }: { desistementId: string }) {
   const [pending, startTransition] = useTransition();
@@ -12,7 +13,7 @@ export function VerifierButton({ desistementId }: { desistementId: string }) {
     <div className="inline-flex flex-col items-end gap-1">
       <Button
         size="sm"
-        disabled={pending}
+        loading={pending}
         onClick={() =>
           startTransition(async () => {
             const res = await verifierDesistement(desistementId);
@@ -20,9 +21,9 @@ export function VerifierButton({ desistementId }: { desistementId: string }) {
           })
         }
       >
-        {pending ? "..." : "Papiers vérifiés"}
+        <BadgeCheck className="h-4 w-4" /> Papiers vérifiés
       </Button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
     </div>
   );
 }
@@ -31,16 +32,22 @@ export function RembourserForm({ desistementId }: { desistementId: string }) {
   const action = marquerRembourse.bind(null, desistementId);
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-3 rounded-md bg-navy-50 p-3">
-      <div className="min-w-64 flex-1">
-        <Field label="Décharge" htmlFor={`decharge-${desistementId}`} hint="Indiquez si une décharge signée par le payeur a été fournie.">
-          <Input id={`decharge-${desistementId}`} name="dechargeNote" placeholder="ex. Décharge fournie le 12/10/2026" />
-        </Field>
-      </div>
-      <Button type="submit" size="sm" variant="gold" disabled={pending}>
-        {pending ? "..." : "Marquer remboursé"}
+    <form action={formAction} className="flex flex-wrap items-start gap-3 rounded-md bg-navy-50 p-3" data-testid="form-rembourser">
+      <Input
+        id={`decharge-${desistementId}`}
+        name="dechargeNote"
+        label="Décharge"
+        hint="Indiquez si une décharge signée par le payeur a été fournie (ex. fournie le 12/10/2026)."
+        containerClassName="min-w-64 flex-1"
+      />
+      <Button type="submit" variant="gold" loading={pending} className="h-12">
+        <HandCoins className="h-4 w-4" /> Marquer remboursé
       </Button>
-      {state?.error && <p className="w-full text-xs text-rose-700">{state.error}</p>}
+      {state?.error && (
+        <Callout tone="danger" className="w-full">
+          {state.error}
+        </Callout>
+      )}
     </form>
   );
 }

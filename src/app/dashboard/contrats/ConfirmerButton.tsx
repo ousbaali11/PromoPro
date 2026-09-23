@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { FileCheck2 } from "lucide-react";
 import { confirmerContrat } from "./actions";
 import { Button } from "@/components/ui/Button";
 
@@ -11,7 +12,8 @@ export function ConfirmerButton({ contratId }: { contratId: string }) {
     <div className="inline-flex flex-col items-end gap-1">
       <Button
         size="sm"
-        disabled={pending}
+        loading={pending}
+        title="Génère le contrat PDF"
         onClick={() =>
           startTransition(async () => {
             const res = await confirmerContrat(contratId);
@@ -19,9 +21,9 @@ export function ConfirmerButton({ contratId }: { contratId: string }) {
           })
         }
       >
-        {pending ? "Génération du PDF..." : "Vérifier et confirmer"}
+        <FileCheck2 className="h-4 w-4" /> Vérifier et confirmer
       </Button>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
     </div>
   );
 }
