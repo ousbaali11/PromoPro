@@ -174,7 +174,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             type="button"
             tabIndex={-1}
             onClick={() => setVisible((v) => !v)}
-            aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            aria-label={visible ? "Masquer la saisie" : "Afficher la saisie"}
             aria-pressed={visible}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xs p-1.5 text-navy-300 transition-colors duration-fast hover:bg-navy-50 hover:text-navy"
           >
