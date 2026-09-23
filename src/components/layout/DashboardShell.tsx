@@ -16,6 +16,7 @@ export function DashboardShell({
   prenom,
   roleLabel,
   bell,
+  recherche,
   children,
 }: {
   role: Role;
@@ -23,6 +24,8 @@ export function DashboardShell({
   prenom: string;
   roleLabel: string;
   bell: React.ReactNode;
+  /** Recherche globale (bouton + Ctrl/Cmd+K), à droite de l'en-tête */
+  recherche?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -90,7 +93,10 @@ export function DashboardShell({
               <p className="text-small font-medium text-navy-900">{roleLabel}</p>
             </div>
           </div>
-          {bell}
+          <div className="flex items-center gap-2">
+            {recherche}
+            {bell}
+          </div>
         </header>
         <main className="min-w-0 flex-1 bg-cream p-4 sm:p-6 lg:p-8">{children}</main>
       </div>

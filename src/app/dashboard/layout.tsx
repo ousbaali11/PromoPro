@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { notifications as notificationsTable } from "@/db/schema";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { RechercheGlobale } from "@/components/layout/RechercheGlobale";
 import { ROLE_LABELS } from "@/lib/roles";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       prenom={session.prenom}
       roleLabel={ROLE_LABELS[session.role as never]}
       bell={<NotificationBell notifications={notifs} />}
+      recherche={<RechercheGlobale />}
     >
       {children}
     </DashboardShell>

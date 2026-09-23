@@ -165,6 +165,18 @@ test("pages, fichiers et journal : les identifiants de B répondent 404 / 403 au
   await page.context().clearCookies();
   expect((await page.request.get(B.fichier)).status()).toBe(401);
 
+  // Recherche globale : le staff de A ne trouve ni le bien, ni le client, ni le projet de B ; B les trouve
+  await login(page, "DIRCOM");
+  for (const q of [B.bien, B.clientNom, B.projet]) {
+    const r = await page.request.get(`/api/recherche?q=${encodeURIComponent(q)}`);
+    expect(r.status(), q).toBe(200);
+    expect((await r.json()).groupes, q).toEqual([]);
+  }
+  await loginAvec(page, B.dircom.identifiant, B.dircom.mdp, /\/dashboard$/);
+  const trouve = await (await page.request.get(`/api/recherche?q=${encodeURIComponent(B.bien)}`)).json();
+  expect(trouve.groupes.map((g: { type: string }) => g.type)).toEqual(["bien"]);
+  expect(trouve.groupes[0].resultats[0].href).toBe(`/dashboard/biens/${B.bienId}`);
+
   // Journal : rien de B chez le PDG de A ; tout chez le Super Admin
   await login(page, "PDG");
   await page.goto("/dashboard/journal?periode=jour");

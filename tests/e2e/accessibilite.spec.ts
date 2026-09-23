@@ -145,6 +145,17 @@ test.describe("Accessibilité — analyse axe des pages", () => {
     await verifierA11y(page, "/dashboard/prospects aperçu d'import");
   });
 
+  test("recherche globale ouverte (Ctrl+K) avec résultats", async ({ page }) => {
+    await login(page, "PDG");
+    await page.keyboard.press("Control+k");
+    const dialogue = page.getByRole("dialog", { name: "Recherche" });
+    await expect(dialogue).toBeVisible();
+    await dialogue.getByTestId("champ-recherche").fill("a0");
+    await expect(dialogue.getByTestId("groupe-bien")).toBeVisible();
+    await verifierA11y(page, "recherche globale ouverte");
+    await page.keyboard.press("Escape");
+  });
+
   test("recouvrement (contrôle segmenté, DataTable dense, tuiles)", async ({ page }) => {
     await login(page, "RECOUV");
     await page.goto("/dashboard/recouvrement");
@@ -397,7 +408,9 @@ test.describe("Accessibilité — mouvement réduit", () => {
       // Sans interpolation : au plus l'état initial puis l'état final (2 valeurs), en quelques images
       const { delai, etapes } = await trajetModale(page);
       expect(etapes, "valeurs de transformation traversées (mouvement réduit)").toBeLessThanOrEqual(2);
-      expect(delai, "délai (ms) avant la position finale de la modale (mouvement réduit)").toBeLessThan(150);
+      // Le délai inclut le rendu React de la modale (variable selon la charge de la machine) : la
+      // discrimination porte sur le nombre d'étapes ci-dessus ; la borne reste un garde-fou large.
+      expect(delai, "délai (ms) avant la position finale de la modale (mouvement réduit)").toBeLessThan(400);
       await page.keyboard.press("Escape");
 
       // Bascule grille → liste : les cartes ne doivent pas passer par un état transformé

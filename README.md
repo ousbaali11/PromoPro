@@ -106,6 +106,10 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
 
 ## Fonctionnalités par profil
 
+- Recherche globale du dashboard (Ctrl/Cmd+K ou bouton de l'en-tête) : biens,
+  clients et projets du promoteur courant, résultats groupés avec lien vers la
+  fiche, mêmes règles de cloisonnement que les pages ; export CSV (Excel) des
+  tableaux clients, paiements, contrats, propositions, prospects et recouvrement
 - Authentification par identifiant + mot de passe (Super Admin, tous les rôles
   internes, clients), sessions signées, routes protégées par rôle,
   rate-limiting sur la connexion, notifications (cloche) pour le staff **et**

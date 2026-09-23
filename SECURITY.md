@@ -72,6 +72,7 @@ lire ou modifier les données du promoteur B.
 | `login/actions.ts` | — | rate-limiting, comptes désactivés refusés | OK |
 | `GET /api/files/[type]/[filename]` | `getSession` → **`getSessionActive`** | `file-access.ts` : promoteur du fichier (staff) ou client du dossier (client), orphelin jamais servi ; nom `uuid.ext` strict | **F3 / F5 — corrigés** |
 | `POST /api/upload` | `getSession` → **`getSessionActive`** | extension et taille par type ; **contenu non vérifié, tout type ouvert aux clients, pas de limite de débit** | **F3 / F4 / F5 / F6 / F7 — corrigés** |
+| `GET /api/recherche?q=` (recherche globale) | `getStaffSessionActive` | projets et biens du promoteur de la session ; clients du promoteur, limités aux siens pour un commercial / responsable commercial (même règle que la fiche client) ; comptes supprimés exclus | OK — couvert par `recherche.spec.ts` et `isolation.spec.ts` |
 | `GET/POST /api/cron/rappels-echeance` | `CRON_SECRET` | n/a (traitement global) | OK |
 | `GET /api/health` | aucune (sonde) | n/a, aucun accès base | OK |
 | Pages de détail (`/dashboard/biens/[id]`, `/dashboard/projets/[id]`, `/dashboard/clients/[id]`, leurs `/modifier`, `/dashboard/equipe/[id]/modifier`, `/client/biens/[id]`) | `requireStaffSession` / `requireRole` / `requireClientSession` | `promoteurId` ou `clientId` comparé, sinon `notFound()` | OK — couvert par `isolation.spec.ts` |
