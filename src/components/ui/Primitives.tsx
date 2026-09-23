@@ -145,6 +145,102 @@ export function EmptyState({
   );
 }
 
+/**
+ * Section de page : titre de niveau 2 avec compteur facultatif, action à droite,
+ * contenu en dessous. Utilisée pour découper les tableaux de bord par rôle.
+ */
+export function Section({
+  title,
+  count,
+  countTone = "neutral",
+  description,
+  action,
+  children,
+  className,
+  testId,
+}: {
+  title: string;
+  count?: number;
+  countTone?: Tone;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  testId?: string;
+}) {
+  return (
+    <section className={cn("space-y-3", className)} data-testid={testId}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-h2 text-navy-900">
+            {title}
+            {count !== undefined && (
+              <Badge tone={countTone} className="tabular">
+                {count}
+              </Badge>
+            )}
+          </h2>
+          {description && <p className="mt-0.5 text-small text-navy-400">{description}</p>}
+        </div>
+        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Tuile de chiffre-clé : libellé, valeur, précision, accent facultatif. */
+export function Stat({
+  label,
+  value,
+  hint,
+  accent = false,
+  tone,
+  icon,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  accent?: boolean;
+  tone?: Tone;
+  icon?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={cn("relative overflow-hidden p-5", className)}>
+      {icon && (
+        <span className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md bg-navy-50 text-navy-300 [&_svg]:h-4 [&_svg]:w-4">
+          {icon}
+        </span>
+      )}
+      <p className="text-label uppercase text-navy-400">{label}</p>
+      <p className={cn("mt-2 text-display tabular", accent ? "text-gold-600" : tone ? toneText[tone] : "text-navy-900")}>{value}</p>
+      {hint && <p className="mt-1 text-caption text-navy-400">{hint}</p>}
+    </Card>
+  );
+}
+
+const toneText: Record<Tone, string> = {
+  neutral: "text-navy-400",
+  success: "text-success-fg",
+  warning: "text-warning-fg",
+  danger: "text-danger-fg",
+  info: "text-info-fg",
+  navy: "text-navy-900",
+  gold: "text-gold-600",
+};
+
+/** Libellé + valeur, pour les fiches (deux colonnes). */
+export function Info({ label, value, className }: { label: string; value?: ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-label uppercase text-navy-400">{label}</p>
+      <div className="mt-1 text-body text-navy-900">{value || "—"}</div>
+    </div>
+  );
+}
+
 /** Label statique au-dessus d'un champ nu (mode historique, toujours supporté). */
 export function Field({
   label,
