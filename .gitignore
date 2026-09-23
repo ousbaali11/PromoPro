@@ -53,3 +53,6 @@ next-env.d.ts
 
 # captures d ecran de revue design (generees par scripts/captures-biens.mjs)
 /docs/captures/
+
+# Résumés du test de charge (npm run charge --json)
+perf-resultat*.json

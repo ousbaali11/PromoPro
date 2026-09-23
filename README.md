@@ -462,6 +462,14 @@ la fenêtre de terminal jusqu'à `Remove-Item Env:DATABASE_URL` ou sa fermeture 
 un `npm run dev` lancé ensuite dans la même fenêtre sera donc bloqué par le
 garde-fou — c'est voulu.
 
+## Test de charge
+
+`npm run charge` (autocannon, `scripts/charge.ts`) : une vingtaine de
+connexions simultanées en lecture seule sur `/dashboard/projets`,
+`/dashboard/propositions` et `/client` contre un serveur de production **local**
+(`next start`, base SQLite jetable, jamais Railway). Méthode, commandes exactes
+et mesure de référence dans PERFORMANCE.md.
+
 ## Pages légales (structure provisoire)
 
 `/mentions-legales` et `/politique-confidentialite`, publiques, liées en pied
