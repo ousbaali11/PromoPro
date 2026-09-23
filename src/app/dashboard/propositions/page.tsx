@@ -1,4 +1,5 @@
 import { eq, desc } from "drizzle-orm";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { FileSignature, Inbox } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
@@ -40,9 +41,9 @@ function CarteProposition({ ligne, isPdg }: { ligne: Ligne; isPdg: boolean }) {
           <p className="text-h3 text-navy-900">{bien?.designation}</p>
           <p className="mt-0.5 text-small text-navy-400">
             <span className="font-medium text-navy-900">
-              {client?.prenom} {client?.nom}
+              <NomCompte compte={client} />
             </span>
-            {" · "}proposé par {commercial.prenom} {commercial.nom}
+            {" · "}proposé par <NomCompte compte={commercial} />
             {bien && (
               <>
                 {" · "}

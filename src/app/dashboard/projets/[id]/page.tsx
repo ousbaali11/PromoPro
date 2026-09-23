@@ -4,6 +4,8 @@ import { db } from "@/db/client";
 import { projets, biens, epingles } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
 import { PageHeader, Breadcrumb } from "@/components/ui/Primitives";
+import { LinkButton } from "@/components/ui/Button";
+import { Pencil } from "lucide-react";
 import { AddBienForm } from "./AddBienForm";
 import { BiensExplorer } from "./BiensExplorer";
 
@@ -30,6 +32,13 @@ export default async function ProjetDetailPage({ params }: { params: Promise<{ i
         eyebrow="Projet"
         title={projet.nom}
         description={`${projet.nomCompte} · IBAN ${projet.iban} · ${listeBiens.length} bien${listeBiens.length > 1 ? "s" : ""}, ${disponibles} disponible${disponibles > 1 ? "s" : ""}`}
+        action={
+          session.role === "DIRECTEUR_COMMERCIAL" ? (
+            <LinkButton href={`/dashboard/projets/${projet.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-projet">
+              <Pencil className="h-4 w-4" /> Modifier
+            </LinkButton>
+          ) : undefined
+        }
       />
 
       <BiensExplorer

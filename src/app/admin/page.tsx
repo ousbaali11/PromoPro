@@ -1,8 +1,13 @@
 import { desc } from "drizzle-orm";
 import { Building2, Plus } from "lucide-react";
 import { db } from "@/db/client";
-import { promoteurs } from "@/db/schema";
-import { PageHeader, Stat, type Tone } from "@/components/ui/Primitives";
+import { promoteurs, users } from "@/db/schema";
+import { inArray } from "drizzle-orm";
+import { EtatCompte } from "@/components/ui/EtatCompte";
+import { ActionsCompte } from "@/components/comptes/ActionsCompte";
+import { ROLE_LABELS } from "@/lib/roles";
+import { etatCompte } from "@/lib/comptes";
+import { PageHeader, Stat, Section, type Tone } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
@@ -15,6 +20,13 @@ const TONES: Record<string, Tone> = { EN_ATTENTE: "warning", ACTIF: "success", S
 export default async function AdminPage() {
   const rows = await db.query.promoteurs.findMany({ orderBy: [desc(promoteurs.createdAt)] });
   const nb = (statut: string) => rows.filter((p) => p.statut === statut).length;
+  // Directions de chaque promoteur : le Super Admin peut les suspendre, supprimer (douce) ou réactiver
+  const directions = rows.length
+    ? (await db.query.users.findMany({ where: inArray(users.role, ["PDG", "DIRECTEUR_COMMERCIAL", "DIRECTEUR_FINANCIER"]) })).filter((u) =>
+        rows.some((p) => p.id === u.promoteurId),
+      )
+    : [];
+  const nomPromoteur = new Map(rows.map((p) => [p.id, p.nom]));
 
   return (
     <div>
@@ -81,6 +93,48 @@ export default async function AdminPage() {
           ),
         }}
       />
+
+      {directions.length > 0 && (
+        <Section
+          title="Directions des promoteurs"
+          count={directions.length}
+          description="PDG, Directeur Commercial et Directeur Financier de chaque promoteur. Suspension et suppression conservent l'historique."
+          className="mt-8"
+          testId="section-directions"
+        >
+          <DataTable
+            testId="table-directions"
+            caption="Directions des promoteurs"
+            columns={[
+              { header: "Nom", sortable: true },
+              { header: "Promoteur", sortable: true, hideBelow: "sm" },
+              { header: "Rôle", sortable: true },
+              { header: "Identifiant", hideBelow: "md" },
+              { header: <span className="sr-only">Actions</span>, align: "right", width: "1%" },
+            ]}
+            rows={directions.map((u) => ({
+              key: u.id,
+              testId: "direction-ligne",
+              muted: etatCompte(u) !== "actif",
+              sort: [`${u.nom} ${u.prenom}`, nomPromoteur.get(u.promoteurId ?? "") ?? "", ROLE_LABELS[u.role], null, null],
+              cells: [
+                <span key="nom" className="inline-flex flex-wrap items-center gap-2 font-medium">
+                  {u.prenom} {u.nom}
+                  <EtatCompte compte={u} />
+                </span>,
+                <span key="promo" className="text-navy-400">
+                  {nomPromoteur.get(u.promoteurId ?? "") ?? "—"}
+                </span>,
+                ROLE_LABELS[u.role],
+                <span key="id" className="font-mono text-caption">
+                  {u.identifiant}
+                </span>,
+                <ActionsCompte key="actions" type="user" id={u.id} nom={`${u.prenom} ${u.nom}`} etat={etatCompte(u)} compact />,
+              ],
+            }))}
+          />
+        </Section>
+      )}
     </div>
   );
 }

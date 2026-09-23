@@ -46,6 +46,7 @@ test("workflow de vente : projet → blocage → proposition → acceptation →
   await page.goto(hrefA!);
   await page.getByRole("link", { name: "Envoyer une proposition" }).click();
   await expect(page).toHaveURL(/\/dashboard\/propositions\/nouvelle\?bienId=/);
+  await page.locator('form[data-hydrated="true"]').first().waitFor();
   await page.locator('select[name="clientId"]').evaluate((el) => {
     const sel = el as HTMLSelectElement;
     const opt = [...sel.options].find((o) => o.textContent?.includes("Naciri"));

@@ -36,6 +36,8 @@ test.describe("Hiérarchie de recrutement", () => {
   test("un rôle hors pôle forcé dans le formulaire est refusé par le serveur", async ({ page }) => {
     await login(page, "DIRFIN");
     await page.goto("/dashboard/equipe");
+    // Attendre l'hydratation : avant, React régénérerait le formulaire et perdrait l'option injectée
+    await page.locator('form[data-hydrated="true"]').first().waitFor();
     // On injecte une option interdite dans le <select> et on la sélectionne
     await page.locator('select[name="role"]').evaluate((el) => {
       const sel = el as HTMLSelectElement;

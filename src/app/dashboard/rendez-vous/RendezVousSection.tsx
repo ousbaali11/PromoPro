@@ -3,6 +3,7 @@ import { CalendarClock } from "lucide-react";
 import { Card, EmptyState, type Tone } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { rendezvousPourService, partitionnerRendezVous, type RdvRow } from "@/lib/rendezvous";
 import type { Service } from "@/lib/creneaux";
 import { RendezVousActions } from "./RendezVousActions";
@@ -40,7 +41,7 @@ function Ligne({ row, canAct }: { row: RdvRow; canAct: boolean }) {
           <p className="text-caption text-navy-400">
             {client ? (
               <Link href={`/dashboard/clients/${client.id}`} className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
-                {client.prenom} {client.nom}
+                <NomCompte compte={client} />
               </Link>
             ) : (
               "—"

@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { projets, clients, echeances, propositions } from "@/db/schema";
 import { Card, EmptyState, PageHeader, Badge, Section, Stat } from "@/components/ui/Primitives";
 import { formatMoney, formatDate } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { calculerTresorerie, dateTresorerie, montantValide } from "@/lib/tresorerie";
 
 /** Section 8 — tableau de bord trésorerie du Directeur Financier. */
@@ -31,7 +32,11 @@ export default async function FinancePage() {
   const libelle = (p: (typeof tousPaiements)[number]) => {
     const bien = bienById.get(p.bienId);
     const client = clientById.get(p.clientId);
-    return `${client ? `${client.prenom} ${client.nom}` : "—"} · ${bien?.designation ?? "—"}`;
+    return (
+      <>
+        <NomCompte compte={client} /> · {bien?.designation ?? "—"}
+      </>
+    );
   };
 
   const lignePaiement = (p: (typeof tousPaiements)[number]) => (
@@ -97,7 +102,7 @@ export default async function FinancePage() {
                 <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 text-small" data-testid="ligne-echeance-a-venir">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-navy-900">
-                      {client ? `${client.prenom} ${client.nom}` : "—"} ·{" "}
+                      <NomCompte compte={client} /> ·{" "}
                       {bien ? (
                         <Link href={`/dashboard/biens/${bien.id}`} className="rounded-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
                           {bien.designation}
@@ -131,7 +136,7 @@ export default async function FinancePage() {
                 <div key={d.id} className="flex items-center justify-between gap-3 px-4 py-3 text-small" data-testid="ligne-remboursement">
                   <div>
                     <p className="font-medium text-navy-900">
-                      {client ? `${client.prenom} ${client.nom}` : "—"} · {bien?.designation ?? "—"}
+                      <NomCompte compte={client} /> · {bien?.designation ?? "—"}
                     </p>
                     <p className="text-caption text-navy-400">Désistement du {formatDate(d.createdAt)}</p>
                   </div>

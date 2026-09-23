@@ -13,7 +13,14 @@ import { cn } from "@/lib/utils";
  */
 
 export type ToastKind = "success" | "error" | "info";
-export type ToastOptions = { title: string; description?: string; kind?: ToastKind; duration?: number };
+export type ToastOptions = {
+  title: string;
+  description?: string;
+  kind?: ToastKind;
+  duration?: number;
+  /** Action proposée dans le toast (ex. « Annuler ») : exécutée puis le toast se ferme. */
+  action?: { label: string; onClick: () => void | Promise<void> };
+};
 type ToastItem = ToastOptions & { id: number; kind: ToastKind };
 
 const ToastContext = createContext<{ toast: (o: ToastOptions) => void } | null>(null);
@@ -72,6 +79,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div className="min-w-0 flex-1">
                 <p className="text-small font-medium text-navy-900">{t.title}</p>
                 {t.description && <p className="mt-0.5 text-caption text-navy-400">{t.description}</p>}
+                {t.action && (
+                  <button
+                    type="button"
+                    data-testid="toast-action"
+                    onClick={async () => {
+                      fermer(t.id);
+                      await t.action?.onClick();
+                    }}
+                    className="mt-2 inline-flex h-7 items-center rounded-xs bg-navy px-2.5 text-caption font-medium text-white shadow-e1 transition-[background-color,box-shadow] duration-fast hover:bg-navy-600 hover:shadow-e2 focus-visible:outline-none focus-visible:shadow-focus"
+                  >
+                    {t.action.label}
+                  </button>
+                )}
               </div>
               <button
                 type="button"

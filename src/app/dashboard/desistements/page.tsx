@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { desc, eq } from "drizzle-orm";
 import { Paperclip, UserRoundX, Inbox } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -56,13 +57,20 @@ export default async function DesistementsPage() {
             <p className="mt-0.5 text-small text-navy-400">
               {client ? (
                 <Link href={`/dashboard/clients/${client.id}`} className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
-                  {client.prenom} {client.nom}
+                  <NomCompte compte={client} />
                 </Link>
               ) : (
                 "—"
               )}
               {client?.pieceNumero && ` · ${client.pieceType ?? "CIN"} ${client.pieceNumero}`}
-              {commercial && ` · enregistré par ${commercial.prenom} ${commercial.nom}`} · {formatDate(d.createdAt)}
+              {commercial && (
+                <>
+                  {" · enregistré par "}
+                  <NomCompte compte={commercial} />
+                </>
+              )}
+              {" · "}
+              {formatDate(d.createdAt)}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">

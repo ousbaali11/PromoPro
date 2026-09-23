@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { FileImage, FileDown, Paperclip, Send, CalendarClock, Receipt } from "lucide-react";
+import { FileImage, FileDown, Paperclip, Send, CalendarClock, Receipt, Pencil } from "lucide-react";
 import { db } from "@/db/client";
 import { biens, projets, clients, paiements } from "@/db/schema";
 import { requireStaffSession } from "@/lib/session";
@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
 import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { echeancierDuBien } from "@/lib/paiements";
 import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
 import { DesistementForm } from "./DesistementForm";
@@ -66,7 +67,14 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
           description={`${projet.nom} · ${bien.surface} m²`}
           action={
             <div className="flex flex-col items-end gap-1.5">
-              <StatusBadge statut={bien.statut} label={STATUT_BIEN_LABELS[bien.statut]} tone={STATUT_BIEN_TONES[bien.statut] ?? "neutral"} />
+              <div className="flex items-center gap-2">
+                {session.role === "DIRECTEUR_COMMERCIAL" && bien.statut === "DISPONIBLE" && (
+                  <LinkButton href={`/dashboard/biens/${bien.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-bien">
+                    <Pencil className="h-4 w-4" /> Modifier
+                  </LinkButton>
+                )}
+                <StatusBadge statut={bien.statut} label={STATUT_BIEN_LABELS[bien.statut]} tone={STATUT_BIEN_TONES[bien.statut] ?? "neutral"} />
+              </div>
               <p className="text-price text-navy-900">{formatMoney(bien.prix)}</p>
             </div>
           }
@@ -105,7 +113,7 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
                     href={`/dashboard/clients/${client.id}`}
                     className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
                   >
-                    {client.prenom} {client.nom}
+                    <NomCompte compte={client} />
                   </Link>
                 ) : undefined
               }

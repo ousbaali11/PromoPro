@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { FileText, Home } from "lucide-react";
+import { FileText, Home, Pencil } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients, users, biens } from "@/db/schema";
-import { Card, Info, PageHeader, Section, EmptyState, Breadcrumb } from "@/components/ui/Primitives";
+import { Card, Info, PageHeader, Section, EmptyState, Breadcrumb, Callout } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
 import { ResetPasswordButton } from "../ResetPasswordButton";
+import { EtatCompte, NomCompte } from "@/components/ui/EtatCompte";
+import { ActionsCompte } from "@/components/comptes/ActionsCompte";
+import { etatCompte, peutGererClient, peutModifierClient } from "@/lib/comptes";
+import { clientAUneVenteEnCours } from "@/lib/comptes-service";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,7 +35,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const projetsList = projetIds.length ? await db.query.projets.findMany() : [];
   const projetById = new Map(projetsList.map((p) => [p.id, p]));
 
-  const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role);
+  const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && etatCompte(client) === "actif";
+  const peutGerer = peutGererClient(session, client);
+  const peutModifier = peutModifierClient(session, client) && etatCompte(client) === "actif";
+  const venteEnCours = peutGerer ? await clientAUneVenteEnCours(client.id) : false;
   const initiales = `${client.prenom[0] ?? ""}${client.nom[0] ?? ""}`.toUpperCase();
 
   return (
@@ -47,11 +54,43 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               eyebrow="Client"
               title={`${client.prenom} ${client.nom}`}
               description={`Identifiant ${client.identifiant} · créé le ${formatDate(client.createdAt)}`}
-              action={canReset ? <ResetPasswordButton clientId={client.id} /> : undefined}
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <EtatCompte compte={client} />
+                  {peutModifier && (
+                    <LinkButton href={`/dashboard/clients/${client.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-client">
+                      <Pencil className="h-4 w-4" /> Modifier
+                    </LinkButton>
+                  )}
+                  {canReset && <ResetPasswordButton clientId={client.id} />}
+                  {peutGerer && (
+                    <ActionsCompte
+                      type="client"
+                      id={client.id}
+                      nom={`${client.prenom} ${client.nom}`}
+                      etat={etatCompte(client)}
+                      venteEnCours={venteEnCours}
+                      compact
+                    />
+                  )}
+                </div>
+              }
             />
           </div>
         </div>
       </div>
+
+      {etatCompte(client) === "supprime" && (
+        <Callout tone="neutral" title="Compte supprimé" testId="bandeau-supprime">
+          Ce client n&apos;apparaît plus dans la liste active et ne peut plus se connecter ; son historique (ventes, paiements,
+          propositions) reste intact. Réactivez le compte pour revenir en arrière.
+        </Callout>
+      )}
+      {etatCompte(client) === "suspendu" && (
+        <Callout tone="warning" title="Compte suspendu" testId="bandeau-suspendu">
+          Ce client ne peut plus se connecter à son espace ; ses données restent visibles. Réactivez le compte pour lever la suspension.
+        </Callout>
+      )}
 
       <Card className="grid grid-cols-1 gap-x-4 gap-y-5 p-5 sm:grid-cols-2">
         <Info label="Date de naissance" value={client.dateNaissance} />
@@ -78,7 +117,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <Info label="Téléphone 1" value={<span className="tabular">{client.telephone1}</span>} />
         <Info label="Téléphone 2" value={client.telephone2 ? <span className="tabular">{client.telephone2}</span> : undefined} />
         <Info label="E-mail" value={client.email} />
-        <Info label="Commercial" value={commercial ? `${commercial.prenom} ${commercial.nom}` : undefined} />
+        <Info label="Commercial" value={commercial ? <NomCompte compte={commercial} /> : undefined} />
       </Card>
 
       <Section title="Biens du client" count={mesBiens.length > 0 ? mesBiens.length : undefined}>

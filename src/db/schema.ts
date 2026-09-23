@@ -43,6 +43,7 @@ export const demandesPhotos = s.demandesPhotos;
 export const photosAvancement = s.photosAvancement;
 export const syndics = s.syndics;
 export const notifications = s.notifications;
+export const journalActivite = s.journalActivite;
 
 export const ROLES = sqlite.ROLES;
 export type Role = sqlite.Role;

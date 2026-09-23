@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { biens, clients, projets } from "@/db/schema";
@@ -20,7 +20,8 @@ export default async function NouvellePropositionPage({
   if (!bien || bien.statut !== "DISPONIBLE") notFound();
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
 
-  const listeClients = await db.query.clients.findMany({ where: eq(clients.promoteurId, session.promoteurId!) });
+  // Seuls les clients actifs (ni suspendus, ni supprimés) peuvent recevoir une nouvelle proposition
+  const listeClients = (await db.query.clients.findMany({ where: and(eq(clients.promoteurId, session.promoteurId!), isNull(clients.deletedAt)) })).filter((c) => c.actif);
 
   const today = new Date();
   const defaultDates = [today, addMonths(today, 6), addMonths(today, 12), addMonths(today, 18)].map(

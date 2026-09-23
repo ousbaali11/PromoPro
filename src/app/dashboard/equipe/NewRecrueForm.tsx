@@ -5,10 +5,12 @@ import { KeyRound, UserRoundPlus } from "lucide-react";
 import { createRecrue } from "./actions";
 import { Card, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { useHydrated } from "@/components/ui/useHydrated";
 
 /** Formulaire de recrutement : les statuts proposés sont ceux du pôle du directeur connecté. */
 export function NewRecrueForm({ roles }: { roles: { value: string; label: string }[] }) {
   const [state, formAction, pending] = useActionState(createRecrue, undefined);
+  const hydrated = useHydrated();
 
   return (
     <Card className="p-5 lg:sticky lg:top-24" data-testid="form-recrue">
@@ -42,7 +44,7 @@ export function NewRecrueForm({ roles }: { roles: { value: string; label: string
           </Card>
         </div>
       ) : (
-        <form action={formAction} className="space-y-3">
+        <form action={formAction} className="space-y-3" data-hydrated={hydrated ? "true" : undefined}>
           <Input id="nom" name="nom" label="Nom" required />
           <Input id="prenom" name="prenom" label="Prénom" required />
           <Input id="email" name="email" type="email" label="E-mail" />

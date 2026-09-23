@@ -1,4 +1,5 @@
-import { Building2, LogOut } from "lucide-react";
+import Link from "next/link";
+import { Building2, LogOut, ScrollText } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { logout } from "@/app/login/actions";
 
@@ -17,7 +18,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <p className="mt-1 text-label uppercase text-navy-200/80">Administration plateforme</p>
           </div>
         </div>
-        <form action={logout}>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/admin/journal"
+            className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-caption text-navy-100/70 transition-colors duration-fast hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:shadow-focus"
+          >
+            <ScrollText className="h-3.5 w-3.5" />
+            Journal d&apos;activité
+          </Link>
+          <form action={logout}>
           <button
             type="submit"
             className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-caption text-navy-100/70 transition-colors duration-fast hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:shadow-focus"
@@ -25,7 +34,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogOut className="h-3.5 w-3.5" />
             Déconnexion
           </button>
-        </form>
+          </form>
+        </div>
       </header>
       <main className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">{children}</main>
     </div>

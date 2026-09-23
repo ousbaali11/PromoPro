@@ -8,6 +8,7 @@ import { PageHeader, type Tone } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 
 const LABELS: Record<string, string> = { EN_ATTENTE: "À vérifier", VERIFIE: "Vérifié", REMBOURSE: "Remboursé" };
 const TONES: Record<string, Tone> = { EN_ATTENTE: "danger", VERIFIE: "info", REMBOURSE: "success" };
@@ -70,9 +71,9 @@ export default async function BiensDesistesPage() {
               <span key="projet" className="text-navy-400">
                 {projetById.get(bien.projetId)?.nom}
               </span>,
-              client ? `${client.prenom} ${client.nom}` : "—",
+              <NomCompte key="client" compte={client} />,
               <span key="com" className="text-navy-400">
-                {com ? `${com.prenom} ${com.nom}` : "—"}
+                <NomCompte compte={com} />
               </span>,
               <span key="date" className="tabular text-navy-400">
                 {formatDate(d.createdAt)}

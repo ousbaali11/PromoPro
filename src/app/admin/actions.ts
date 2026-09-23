@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { promoteurs, users, type Role } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
+import { enregistrerActivite } from "@/lib/journal";
 
 export type Acces = { role: Role; nom: string; prenom: string; identifiant: string; password: string };
 
@@ -33,7 +34,7 @@ export async function createPromoteur(
   _prev: CreatePromoteurState,
   formData: FormData,
 ): Promise<CreatePromoteurState> {
-  await requireRole(["SUPER_ADMIN"]);
+  const session = await requireRole(["SUPER_ADMIN"]);
 
   const nom = String(formData.get("nom") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "").trim();
@@ -68,12 +69,23 @@ export async function createPromoteur(
     acces[d.cle] = { role: d.role, ...identites[d.cle], identifiant, password };
   }
 
+  await enregistrerActivite({
+    acteur: session,
+    action: "CREATION",
+    cibleType: "promoteur",
+    cibleId: promoteur.id,
+    cibleNom: nom,
+    details: `Trois directions créées : ${DIRECTIONS.map((d) => `${d.libelle} ${acces[d.cle].identifiant}`).join(", ")}`,
+    promoteurId: promoteur.id,
+  });
+
   revalidatePath("/admin");
+  revalidatePath("/admin/journal");
   return { success: { promoteur: nom, acces } };
 }
 
 export async function activerAbonnement(promoteurId: string, formule: string, dureeMois: number) {
-  await requireRole(["SUPER_ADMIN"]);
+  const session = await requireRole(["SUPER_ADMIN"]);
   const debut = new Date();
   const fin = new Date(debut);
   fin.setMonth(fin.getMonth() + dureeMois);
@@ -82,12 +94,34 @@ export async function activerAbonnement(promoteurId: string, formule: string, du
     .update(promoteurs)
     .set({ statut: "ACTIF", abonnementFormule: formule, abonnementDebut: debut, abonnementFin: fin })
     .where(eq(promoteurs.id, promoteurId));
+  const p = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "promoteur",
+    cibleId: promoteurId,
+    cibleNom: p?.nom ?? promoteurId,
+    details: `Abonnement activé : ${formule}, ${dureeMois} mois`,
+    promoteurId,
+  });
 
   revalidatePath("/admin");
+  revalidatePath("/admin/journal");
 }
 
 export async function suspendrePromoteur(promoteurId: string) {
-  await requireRole(["SUPER_ADMIN"]);
+  const session = await requireRole(["SUPER_ADMIN"]);
   await db.update(promoteurs).set({ statut: "SUSPENDU" }).where(eq(promoteurs.id, promoteurId));
+  const p = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
+  await enregistrerActivite({
+    acteur: session,
+    action: "SUSPENSION",
+    cibleType: "promoteur",
+    cibleId: promoteurId,
+    cibleNom: p?.nom ?? promoteurId,
+    details: "Abonnement suspendu : les comptes du promoteur ne peuvent plus se connecter",
+    promoteurId,
+  });
   revalidatePath("/admin");
+  revalidatePath("/admin/journal");
 }

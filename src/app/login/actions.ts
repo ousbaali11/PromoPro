@@ -51,7 +51,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   // 1) Comptes internes (Super Admin + tous les rôles du promoteur)
   const staff = await db.query.users.findFirst({ where: eq(users.identifiant, identifiant) });
   if (staff) {
-    if (!staff.actif) return echec("Ce compte a été désactivé.");
+    if (!staff.actif || staff.deletedAt) return echec("Ce compte a été désactivé. Contactez votre direction.");
     const ok = await verifyPassword(motDePasse, staff.passwordHash);
     if (!ok) return echec("Identifiant ou mot de passe incorrect.");
 
@@ -86,6 +86,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   // 2) Comptes clients
   const client = await db.query.clients.findFirst({ where: eq(clients.identifiant, identifiant) });
   if (client) {
+    if (!client.actif || client.deletedAt) return echec("Ce compte a été désactivé. Contactez votre commercial.");
     const ok = await verifyPassword(motDePasse, client.passwordHash);
     if (!ok) return echec("Identifiant ou mot de passe incorrect.");
 

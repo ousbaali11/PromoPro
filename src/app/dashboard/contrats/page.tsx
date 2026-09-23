@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { desc, eq } from "drizzle-orm";
 import { FileDown, FileCheck2, FileSignature, PackageCheck, Landmark } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -107,7 +108,7 @@ export default async function ContratsPage() {
                   href={`/dashboard/clients/${client.id}`}
                   className="rounded-xs text-navy-400 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
                 >
-                  {client.prenom} {client.nom}
+                  <NomCompte compte={client} />
                 </Link>
               ) : (
                 "—"
@@ -175,7 +176,7 @@ export default async function ContratsPage() {
                       <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
                     </p>
                     <p className="text-caption text-navy-400">
-                      {client ? `${client.prenom} ${client.nom}` : "—"} · livré le {formatDate(b.livreAt)}
+                      <NomCompte compte={client} /> · livré le {formatDate(b.livreAt)}
                     </p>
                   </div>
                   {b.notaireTransmisAt ? (

@@ -7,6 +7,9 @@ import { clients } from "@/db/schema";
 import { requireRole, requireStaffSession } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { parsePublicPath } from "@/lib/storage";
+import { enregistrerActivite, decrireChangements } from "@/lib/journal";
+import { peutModifierClient, etatCompte } from "@/lib/comptes";
+import { redirect } from "next/navigation";
 
 export type CreateClientState = { error?: string; success?: { identifiant: string; password: string } } | undefined;
 
@@ -32,7 +35,7 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
   const identifiant = generateIdentifiant("CL");
   const password = generateTempPassword();
 
-  await db.insert(clients).values({
+  const [cree] = await db.insert(clients).values({
     promoteurId: session.promoteurId!,
     nom,
     prenom,
@@ -48,9 +51,18 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
     identifiant,
     passwordHash: await hashPassword(password),
     commercialId: session.userId,
+  }).returning();
+  await enregistrerActivite({
+    acteur: session,
+    action: "CREATION",
+    cibleType: "client",
+    cibleId: cree.id,
+    cibleNom: `${prenom} ${nom}`,
+    details: `Identifiant ${identifiant} · e-mail ${email}`,
   });
 
   revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/journal");
   return { success: { identifiant, password } };
 }
 
@@ -64,4 +76,69 @@ export async function resetClientPassword(clientId: string): Promise<{ password:
   await db.update(clients).set({ passwordHash: await hashPassword(password) }).where(eq(clients.id, clientId));
   revalidatePath("/dashboard/clients");
   return { password };
+}
+
+export type ModifClientState = { error?: string } | undefined;
+
+const LIBELLES_CLIENT = {
+  nom: "Nom",
+  prenom: "Prénom",
+  dateNaissance: "Date de naissance",
+  lieuNaissance: "Lieu de naissance",
+  adresse: "Adresse",
+  pieceType: "Type de pièce",
+  pieceNumero: "Numéro de pièce",
+  pieceDocUrl: "Scan de la pièce",
+  telephone1: "Téléphone 1",
+  telephone2: "Téléphone 2",
+  email: "E-mail",
+} as const;
+
+/** Le commercial qui gère le client, ou tout membre du pôle commercial, corrige ses informations. */
+export async function modifierClient(_prev: ModifClientState, formData: FormData): Promise<ModifClientState> {
+  const session = await requireStaffSession();
+  const clientId = String(formData.get("clientId") ?? "");
+  const client = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
+  if (!client || client.promoteurId !== session.promoteurId) return { error: "Client introuvable." };
+  if (!peutModifierClient(session, client)) return { error: "Vous n'êtes pas autorisé à modifier ce client." };
+  if (etatCompte(client) !== "actif") return { error: "Réactivez d'abord ce compte pour le modifier." };
+
+  const champ = (n: string) => String(formData.get(n) ?? "").trim();
+  const pieceDocUrl = champ("pieceDocUrl");
+  if (pieceDocUrl && !parsePublicPath(pieceDocUrl)) {
+    return { error: "Le document d'identité importé est invalide, merci de le réimporter." };
+  }
+  const apres = {
+    nom: champ("nom"),
+    prenom: champ("prenom"),
+    dateNaissance: champ("dateNaissance") || null,
+    lieuNaissance: champ("lieuNaissance") || null,
+    adresse: champ("adresse") || null,
+    pieceType: champ("pieceType") || "CIN",
+    pieceNumero: champ("pieceNumero") || null,
+    pieceDocUrl: pieceDocUrl || client.pieceDocUrl,
+    telephone1: champ("telephone1"),
+    telephone2: champ("telephone2") || null,
+    email: champ("email"),
+  };
+  if (!apres.nom || !apres.prenom || !apres.telephone1 || !apres.email) {
+    return { error: "Nom, prénom, téléphone et e-mail sont obligatoires." };
+  }
+  const details = decrireChangements(client, apres, LIBELLES_CLIENT);
+  if (!details) return { error: "Aucune modification à enregistrer." };
+
+  await db.update(clients).set(apres).where(eq(clients.id, clientId));
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "client",
+    cibleId: clientId,
+    cibleNom: `${apres.prenom} ${apres.nom}`,
+    details,
+  });
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${clientId}`);
+  revalidatePath("/dashboard/journal");
+  redirect(`/dashboard/clients/${clientId}`);
 }

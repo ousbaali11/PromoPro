@@ -8,6 +8,7 @@ import { EmptyState, Card, Badge, PageHeader, Section, type Tone } from "@/compo
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 import { VisiteActions } from "./VisiteActions";
 import { DeposerPhotosForm } from "./DeposerPhotosForm";
@@ -81,7 +82,7 @@ export default async function SavPage() {
             {bien && <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
           </p>
           <p className="text-caption text-navy-400">
-            {client ? `${client.prenom} ${client.nom}` : "—"}
+            <NomCompte compte={client} />
             {client?.telephone1 && <span className="tabular"> · {client.telephone1}</span>} · demandé le {formatDate(v.createdAt)}
             {v.dateVisite && ` · visite le ${formatDateTime(v.dateVisite)}`}
           </p>
@@ -158,7 +159,7 @@ export default async function SavPage() {
                       {bien && <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
                     </p>
                     <p className="text-caption text-navy-400">
-                      {client ? `${client.prenom} ${client.nom}` : "—"} · demandé le {formatDate(d.createdAt)}
+                      <NomCompte compte={client} /> · demandé le {formatDate(d.createdAt)}
                       {d.traiteAt && ` · ${photosParDemande.get(d.id) ?? 0} photo(s) déposée(s) le ${formatDate(d.traiteAt)}`}
                     </p>
                   </div>
@@ -197,7 +198,7 @@ export default async function SavPage() {
                       <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
                     </p>
                     <p className="text-caption text-navy-400">
-                      {client ? `${client.prenom} ${client.nom}` : "—"}
+                      <NomCompte compte={client} />
                       {b.livreAt && ` · livré le ${formatDate(b.livreAt)}`}
                     </p>
                     <div className="mt-2 flex gap-2">
@@ -254,7 +255,7 @@ export default async function SavPage() {
                   {bien?.designation ?? "—"}
                 </span>,
                 <span key="client" className="text-navy-400">
-                  {client ? `${client.prenom} ${client.nom}` : "—"}
+                  <NomCompte compte={client} />
                 </span>,
                 <span key="montant" className="tabular">
                   {formatMoney(s.montant)}

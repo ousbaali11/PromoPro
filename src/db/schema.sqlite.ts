@@ -58,7 +58,8 @@ export const users = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   email: text("email"),
   telephone: text("telephone"),
-  actif: integer("actif", { mode: "boolean" }).notNull().default(true),
+  actif: integer("actif", { mode: "boolean" }).notNull().default(true), // false = suspendu (connexion refusée)
+  deletedAt: integer("deleted_at", { mode: "timestamp" }), // suppression douce : historique conservé, connexion refusée
   createdAt: createdAt(),
 });
 
@@ -134,6 +135,8 @@ export const clients = sqliteTable("clients", {
   identifiant: text("identifiant").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   commercialId: text("commercial_id").references(() => users.id),
+  actif: integer("actif", { mode: "boolean" }).notNull().default(true), // false = suspendu (connexion refusée)
+  deletedAt: integer("deleted_at", { mode: "timestamp" }), // suppression douce : historique conservé, connexion refusée
   createdAt: createdAt(),
 });
 
@@ -385,5 +388,23 @@ export const notifications = sqliteTable("notifications", {
   message: text("message"),
   lien: text("lien"),
   lu: integer("lu", { mode: "boolean" }).notNull().default(false),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Journal d'activité (traçabilité) : créations, modifications, suppressions,
+// suspensions et restaurations. Les noms sont copiés au moment de l'action
+// pour rester lisibles même si l'acteur ou la cible est supprimé ensuite.
+// ---------------------------------------------------------------------------
+export const journalActivite = sqliteTable("journal_activite", {
+  id: id(),
+  promoteurId: text("promoteur_id").references(() => promoteurs.id), // null : action de plateforme (Super Admin)
+  acteurId: text("acteur_id"), // volontairement sans clé étrangère : la ligne survit à la suppression de l'acteur
+  acteurNom: text("acteur_nom").notNull(),
+  action: text("action").notNull(), // CREATION | MODIFICATION | SUPPRESSION | SUSPENSION | RESTAURATION
+  cibleType: text("cible_type").notNull(), // user | client | promoteur | projet | bien
+  cibleId: text("cible_id"),
+  cibleNom: text("cible_nom").notNull(),
+  details: text("details"),
   createdAt: createdAt(),
 });

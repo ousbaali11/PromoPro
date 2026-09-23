@@ -200,6 +200,31 @@ SQLite locale. Attention : sur une base existante, drizzle-kit peut recréer une
 table et perdre son contenu. En développement, relancez simplement
 `npm run db:seed` après un `db:push` pour retrouver le jeu de démonstration.
 
+## Comptes : suspension, suppression douce, journal d'activité
+
+Aucun compte n'est jamais effacé. Un utilisateur interne ou un client peut être
+**suspendu** (`actif = false`) ou **supprimé** (`deleted_at` renseigné) : dans
+les deux cas la connexion est refusée et la session en cours est fermée, mais
+toutes ses données (ventes, paiements, propositions, notifications) restent en
+place et s'affichent normalement, le nom suivi d'un badge « (suspendu) » ou
+« (compte supprimé) ». Les comptes supprimés sortent des listes actives
+(Clients, Équipe) et restent consultables via « Voir les comptes supprimés »,
+d'où ils peuvent être **réactivés** ; juste après une suspension ou une
+suppression, un toast propose « Annuler » pendant 8 secondes.
+
+Qui peut agir suit exactement la hiérarchie de création (`ROLES_GERABLES_PAR`
+dans `src/lib/comptes.ts`) : chaque directeur pour son pôle, le Super Admin pour
+les trois directions (tableau « Directions des promoteurs » de `/admin`), le
+commercial gérant (ou la direction commerciale) pour ses clients — la suppression
+d'un client ayant une vente ou une proposition en cours est refusée, seule la
+suspension reste possible.
+
+Chaque création, modification (avec le détail « avant → après »), suppression,
+suspension et restauration est tracée dans la table `journal_activite`
+(`src/lib/journal.ts`), consultable sur `/dashboard/journal` (PDG, directeurs,
+lecture seule) et `/admin/journal` (Super Admin, tous promoteurs), filtrable par
+type d'action et par période.
+
 ## Fichiers uploadés en production
 
 Les fichiers (pièces d'identité, preuves de paiement, PDF générés, photos)

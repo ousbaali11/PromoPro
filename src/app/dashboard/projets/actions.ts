@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { projets, biens, epingles } from "@/db/schema";
 import { requireRole, requireStaffSession } from "@/lib/session";
+import { enregistrerActivite, decrireChangements } from "@/lib/journal";
 
 export async function createProjet(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
@@ -23,7 +24,17 @@ export async function createProjet(_prev: { error?: string } | undefined, formDa
     .values({ promoteurId: session.promoteurId!, nom, nomCompte, iban, createdById: session.userId })
     .returning();
 
+  await enregistrerActivite({
+    acteur: session,
+    action: "CREATION",
+    cibleType: "projet",
+    cibleId: projet.id,
+    cibleNom: nom,
+    details: `Compte ${nomCompte} · IBAN ${iban}`,
+  });
+
   revalidatePath("/dashboard/projets");
+  revalidatePath("/dashboard/journal");
   redirect(`/dashboard/projets/${projet.id}`);
 }
 
@@ -46,9 +57,18 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
   }
   if (!(await projetDuPromoteur(projetId, session.promoteurId))) return { error: "Projet introuvable." };
 
-  await db.insert(biens).values({ projetId, designation, nature, prix, surface });
+  const [bien] = await db.insert(biens).values({ projetId, designation, nature, prix, surface }).returning();
+  await enregistrerActivite({
+    acteur: session,
+    action: "CREATION",
+    cibleType: "bien",
+    cibleId: bien.id,
+    cibleNom: designation,
+    details: `${nature} · ${prix} MAD · ${surface} m²`,
+  });
 
   revalidatePath(`/dashboard/projets/${projetId}`);
+  revalidatePath("/dashboard/journal");
   return { error: undefined };
 }
 
@@ -82,5 +102,74 @@ export async function deleteBien(bienId: string, projetId: string) {
   // On ne supprime qu'un bien encore libre de tout engagement
   if (!bien || bien.projetId !== projetId || !["DISPONIBLE", "BLOQUE_PDG"].includes(bien.statut)) return;
   await db.delete(biens).where(eq(biens.id, bienId));
+  await enregistrerActivite({
+    acteur: session,
+    action: "SUPPRESSION",
+    cibleType: "bien",
+    cibleId: bienId,
+    cibleNom: bien.designation,
+    details: `Bien retiré du tableau de contenance (${bien.statut === "DISPONIBLE" ? "disponible" : "bloqué"}, ${bien.prix} MAD)`,
+  });
   revalidatePath(`/dashboard/projets/${projetId}`);
+  revalidatePath("/dashboard/journal");
+}
+
+export type ModifState = { error?: string } | undefined;
+
+/** Le Directeur Commercial corrige le nom, le compte ou l'IBAN d'un projet. */
+export async function modifierProjet(_prev: ModifState, formData: FormData): Promise<ModifState> {
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const projetId = String(formData.get("projetId") ?? "");
+  const projet = await projetDuPromoteur(projetId, session.promoteurId);
+  if (!projet) return { error: "Projet introuvable." };
+
+  const apres = {
+    nom: String(formData.get("nom") ?? "").trim(),
+    nomCompte: String(formData.get("nomCompte") ?? "").trim(),
+    iban: String(formData.get("iban") ?? "").trim(),
+  };
+  if (!apres.nom || !apres.nomCompte || !apres.iban) {
+    return { error: "Merci de renseigner le nom du projet, le nom du compte et l'IBAN." };
+  }
+  const details = decrireChangements(projet, apres, { nom: "Nom", nomCompte: "Nom du compte", iban: "IBAN" });
+  if (!details) return { error: "Aucune modification à enregistrer." };
+
+  await db.update(projets).set(apres).where(eq(projets.id, projetId));
+  await enregistrerActivite({ acteur: session, action: "MODIFICATION", cibleType: "projet", cibleId: projetId, cibleNom: apres.nom, details });
+
+  revalidatePath("/dashboard/projets");
+  revalidatePath(`/dashboard/projets/${projetId}`);
+  revalidatePath("/dashboard/journal");
+  redirect(`/dashboard/projets/${projetId}`);
+}
+
+/** Le Directeur Commercial corrige un bien tant qu'il est encore disponible (jamais après une proposition ou une vente). */
+export async function modifierBien(_prev: ModifState, formData: FormData): Promise<ModifState> {
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const bienId = String(formData.get("bienId") ?? "");
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
+  if (!bien || !(await projetDuPromoteur(bien.projetId, session.promoteurId))) return { error: "Bien introuvable." };
+  if (bien.statut !== "DISPONIBLE") {
+    return { error: "Ce bien n'est plus modifiable : une proposition ou une vente est en cours ou conclue." };
+  }
+
+  const apres = {
+    designation: String(formData.get("designation") ?? "").trim(),
+    nature: String(formData.get("nature") ?? "").trim(),
+    prix: Number(formData.get("prix")),
+    surface: Number(formData.get("surface")),
+  };
+  if (!apres.designation || !apres.nature || !(apres.prix > 0) || !(apres.surface > 0)) {
+    return { error: "Merci de compléter la désignation, la nature, le prix et la surface." };
+  }
+  const details = decrireChangements(bien, apres, { designation: "Désignation", nature: "Nature", prix: "Prix", surface: "Surface" });
+  if (!details) return { error: "Aucune modification à enregistrer." };
+
+  await db.update(biens).set(apres).where(eq(biens.id, bienId));
+  await enregistrerActivite({ acteur: session, action: "MODIFICATION", cibleType: "bien", cibleId: bienId, cibleNom: apres.designation, details });
+
+  revalidatePath(`/dashboard/projets/${bien.projetId}`);
+  revalidatePath(`/dashboard/biens/${bienId}`);
+  revalidatePath("/dashboard/journal");
+  redirect(`/dashboard/biens/${bienId}`);
 }

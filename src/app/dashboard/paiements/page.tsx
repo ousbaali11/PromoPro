@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { desc, eq } from "drizzle-orm";
 import { FileDown, Paperclip, Receipt, Building, Wallet, HandCoins } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -46,7 +47,7 @@ export default async function PaiementsPage() {
   const auteur = (p: (typeof all)[number]) => {
     if (p.saisiParClientId) return "Client";
     const u = p.saisiParId ? userById.get(p.saisiParId) : null;
-    return u ? `${u.prenom} ${u.nom}` : "—";
+    return u ? <NomCompte compte={u} /> : "—";
   };
 
   return (
@@ -94,7 +95,7 @@ export default async function PaiementsPage() {
                         )}
                       </p>
                       <p className="mt-0.5 text-small text-navy-400">
-                        {client ? `${client.prenom} ${client.nom}` : "—"} · saisi par {auteur(p)} le {formatDate(p.createdAt)}
+                        <NomCompte compte={client} /> · saisi par {auteur(p)} le {formatDate(p.createdAt)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -160,7 +161,7 @@ export default async function PaiementsPage() {
                   {bien?.designation ?? "—"}
                 </span>,
                 <span key="client" className="text-navy-400">
-                  {client ? `${client.prenom} ${client.nom}` : "—"}
+                  <NomCompte compte={client} />
                 </span>,
                 <span key="tranche" className="text-navy-400">
                   {p.trancheNumero ? `Tranche ${p.trancheNumero}` : "—"}
@@ -214,7 +215,7 @@ export default async function PaiementsPage() {
                       </Badge>
                     </p>
                     <p className="text-caption text-navy-400">
-                      {client ? `${client.prenom} ${client.nom}` : "—"} · {s.natureOperation} · {s.banque} · {formatDate(s.dateOperation)} · porteur {s.porteur}
+                      <NomCompte compte={client} /> · {s.natureOperation} · {s.banque} · {formatDate(s.dateOperation)} · porteur {s.porteur}
                     </p>
                     {s.preuveUrl && (
                       <a href={s.preuveUrl} target="_blank" rel="noreferrer" className={`${lien} mt-1`}>
@@ -258,7 +259,7 @@ export default async function PaiementsPage() {
               testId: "vente-ligne",
               sort: [com ? `${com.nom} ${com.prenom}` : "", null, bien?.designation ?? "", bien?.prix ?? 0, null, v.decidedAt?.getTime() ?? 0],
               cells: [
-                com ? `${com.prenom} ${com.nom}` : "—",
+                <NomCompte key="com" compte={com} />,
                 <span key="nature" className="text-navy-400">
                   {bien?.nature ?? "—"}
                 </span>,
@@ -269,7 +270,7 @@ export default async function PaiementsPage() {
                   {bien ? formatMoney(bien.prix) : "—"}
                 </span>,
                 <span key="client" className="text-navy-400">
-                  {client ? `${client.prenom} ${client.nom}` : "—"}
+                  <NomCompte compte={client} />
                 </span>,
                 <span key="date" className="tabular text-navy-400">
                   {formatDate(v.decidedAt)}

@@ -172,6 +172,11 @@ Si vous modifiez `src/db/schema.sqlite.ts` :
    demande confirmation ; relisez-les avant d'accepter — une suppression de
    colonne perd ses données).
 
+Changements de schéma en attente sur la base Railway au moment d'écrire ces
+lignes (à appliquer avant le prochain déploiement, tous additifs) : table
+`epingles`, colonnes `users.deleted_at`, `clients.actif`, `clients.deleted_at`,
+table `journal_activite`.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Correction |

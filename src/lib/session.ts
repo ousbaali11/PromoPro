@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { users, clients } from "@/db/schema";
 import {
   SESSION_COOKIE,
   verifySession,
@@ -20,7 +23,19 @@ export async function requireStaffSession(): Promise<SessionPayload> {
   if (!session || session.kind !== "staff") {
     redirect("/login");
   }
+  // Suspension ou suppression douce : la session en cours est fermée sans attendre son expiration
+  const compte = await db.query.users.findFirst({
+    where: eq(users.id, session.userId),
+    columns: { actif: true, deletedAt: true },
+  });
+  if (!compte || !compte.actif || compte.deletedAt) await fermerSession();
   return session as SessionPayload;
+}
+
+async function fermerSession(): Promise<never> {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+  redirect("/login");
 }
 
 /** Requires a logged-in client session, or redirects to /login. */
@@ -29,6 +44,11 @@ export async function requireClientSession(): Promise<ClientSessionPayload> {
   if (!session || session.kind !== "client") {
     redirect("/login");
   }
+  const compte = await db.query.clients.findFirst({
+    where: eq(clients.id, session.clientId),
+    columns: { actif: true, deletedAt: true },
+  });
+  if (!compte || !compte.actif || compte.deletedAt) await fermerSession();
   return session as ClientSessionPayload;
 }
 

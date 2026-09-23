@@ -63,7 +63,8 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   email: text("email"),
   telephone: text("telephone"),
-  actif: boolean("actif").notNull().default(true),
+  actif: boolean("actif").notNull().default(true), // false = suspendu (connexion refusée)
+  deletedAt: timestamp("deleted_at", { withTimezone: true }), // suppression douce : historique conservé, connexion refusée
   createdAt: createdAt(),
 });
 
@@ -139,6 +140,8 @@ export const clients = pgTable("clients", {
   identifiant: text("identifiant").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   commercialId: text("commercial_id").references(() => users.id),
+  actif: boolean("actif").notNull().default(true), // false = suspendu (connexion refusée)
+  deletedAt: timestamp("deleted_at", { withTimezone: true }), // suppression douce : historique conservé, connexion refusée
   createdAt: createdAt(),
 });
 
@@ -390,5 +393,23 @@ export const notifications = pgTable("notifications", {
   message: text("message"),
   lien: text("lien"),
   lu: boolean("lu").notNull().default(false),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Journal d'activité (traçabilité) : créations, modifications, suppressions,
+// suspensions et restaurations. Les noms sont copiés au moment de l'action
+// pour rester lisibles même si l'acteur ou la cible est supprimé ensuite.
+// ---------------------------------------------------------------------------
+export const journalActivite = pgTable("journal_activite", {
+  id: id(),
+  promoteurId: text("promoteur_id").references(() => promoteurs.id), // null : action de plateforme (Super Admin)
+  acteurId: text("acteur_id"), // volontairement sans clé étrangère : la ligne survit à la suppression de l'acteur
+  acteurNom: text("acteur_nom").notNull(),
+  action: text("action").notNull(), // CREATION | MODIFICATION | SUPPRESSION | SUSPENSION | RESTAURATION
+  cibleType: text("cible_type").notNull(), // user | client | promoteur | projet | bien
+  cibleId: text("cible_id"),
+  cibleNom: text("cible_nom").notNull(),
+  details: text("details"),
   createdAt: createdAt(),
 });

@@ -11,6 +11,7 @@ import {
   BadgeEuro,
   Landmark,
   UsersRound,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -77,14 +78,15 @@ const SAV: NavItem = { href: "/dashboard/sav", label: "Service après-vente", ic
 const RECOUVREMENT: NavItem = { href: "/dashboard/recouvrement", label: "Recouvrement", icon: BadgeEuro };
 const FINANCE: NavItem = { href: "/dashboard/finance", label: "Trésorerie", icon: Landmark };
 const EQUIPE: NavItem = { href: "/dashboard/equipe", label: "Équipe", icon: UsersRound };
+const JOURNAL: NavItem = { href: "/dashboard/journal", label: "Journal d'activité", icon: ScrollText };
 
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
-  PDG: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES],
-  DIRECTEUR_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, EQUIPE],
+  PDG: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, JOURNAL],
+  DIRECTEUR_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, EQUIPE, JOURNAL],
   COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_ADMINISTRATIF: [...COMMON, CONTRATS, DESISTEMENTS],
-  DIRECTEUR_FINANCIER: [...COMMON, FINANCE, EQUIPE],
+  DIRECTEUR_FINANCIER: [...COMMON, FINANCE, EQUIPE, JOURNAL],
   COMPTABLE_INTERNE: [...COMMON, PAIEMENTS],
   ASSISTANT_ADMINISTRATIF: [...COMMON, PROSPECTS],
   SERVICE_APRES_VENTE: [...COMMON, SAV],

@@ -7,6 +7,7 @@ import { Card, PageHeader, Badge, Stat } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { ProspectRowActions, RelancerButton } from "./ProspectActions";
+import { NomCompte } from "@/components/ui/EtatCompte";
 
 export default async function ProspectsPage() {
   const session = await requireStaffSession();
@@ -98,7 +99,7 @@ export default async function ProspectsPage() {
                 {p.source}
               </Badge>,
               <StatusBadge key="statut" statut={p.statutContact} label={contacte ? "Contacté" : "Non contacté"} tone={contacte ? "success" : "warning"} />,
-              ...(isAssistant ? [<span key="com" className="text-navy-400">{com ? `${com.prenom} ${com.nom}` : "—"}</span>] : []),
+              ...(isAssistant ? [<span key="com" className="text-navy-400"><NomCompte compte={com} /></span>] : []),
               <span key="retour" className="line-clamp-2 max-w-xs text-navy-400">
                 {p.retourClient || "—"}
               </span>,

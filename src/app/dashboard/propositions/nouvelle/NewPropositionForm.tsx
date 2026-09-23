@@ -7,6 +7,7 @@ import { createProposition } from "../actions";
 import { Card, Input, Select, Badge, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { formatMoney } from "@/lib/utils";
+import { useHydrated } from "@/components/ui/useHydrated";
 
 type ClientRow = { id: string; nom: string; prenom: string; telephone1: string | null };
 
@@ -26,10 +27,11 @@ export function NewPropositionForm({
   const [state, formAction, pending] = useActionState(createProposition, undefined);
   const [clientChoice, setClientChoice] = useState(clients[0]?.id ?? "__nouveau__");
   const [pct, setPct] = useState<number[]>(DEFAULT_PCT);
+  const hydrated = useHydrated();
   const total = pct.reduce((s, p) => s + (Number.isFinite(p) ? p : 0), 0);
 
   return (
-    <form action={formAction} className="space-y-6" data-testid="form-nouvelle-proposition">
+    <form action={formAction} className="space-y-6" data-testid="form-nouvelle-proposition" data-hydrated={hydrated ? "true" : undefined}>
       <input type="hidden" name="bienId" value={bienId} />
 
       <Card className="p-5">

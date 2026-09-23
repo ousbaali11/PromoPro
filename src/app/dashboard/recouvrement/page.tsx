@@ -8,6 +8,7 @@ import { Card, EmptyState, PageHeader, Section, Stat } from "@/components/ui/Pri
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate } from "@/lib/utils";
+import { NomCompte } from "@/components/ui/EtatCompte";
 import { bornesPeriode } from "@/lib/periodes";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 import { PeriodeFilter } from "./PeriodeFilter";
@@ -130,7 +131,7 @@ export default async function RecouvrementPage({
                           href={`/dashboard/clients/${client.id}`}
                           className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
                         >
-                          {client.prenom} {client.nom}
+                          <NomCompte compte={client} />
                         </Link>
                       ) : (
                         "—"
