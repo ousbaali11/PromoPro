@@ -61,7 +61,8 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
             { label: bien.designation },
           ]}
         />
-        <PageHeader
+        <span hidden data-testid="bien-id" data-id={bien.id} />
+      <PageHeader
           eyebrow={bien.nature}
           title={bien.designation}
           description={`${projet.nom} · ${bien.surface} m²`}

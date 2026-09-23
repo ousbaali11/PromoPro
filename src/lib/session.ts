@@ -71,3 +71,21 @@ export async function requireRole(roles: string[]): Promise<SessionPayload> {
   }
   return session;
 }
+
+/**
+ * Session (staff ou client) dont le compte est encore actif, sinon null.
+ * Pour les routes API (/api/upload, /api/files) : un compte suspendu ou
+ * supprimé ne doit plus rien lire ni déposer, même avec un cookie encore
+ * valide — même règle que requireStaffSession / requireClientSession.
+ */
+export async function getSessionActive(): Promise<SessionPayload | ClientSessionPayload | null> {
+  const session = await getSession();
+  if (!session) return null;
+  if (session.kind === "staff") return getStaffSessionActive();
+  const compte = await db.query.clients.findFirst({
+    where: eq(clients.id, session.clientId),
+    columns: { actif: true, deletedAt: true },
+  });
+  if (!compte || !compte.actif || compte.deletedAt) return null;
+  return session as ClientSessionPayload;
+}

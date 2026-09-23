@@ -8,7 +8,7 @@ import { requireRole, requireStaffSession } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { parsePublicPath } from "@/lib/storage";
 import { enregistrerActivite, decrireChangements } from "@/lib/journal";
-import { peutModifierClient, etatCompte } from "@/lib/comptes";
+import { peutModifierClient, peutGererClient, etatCompte } from "@/lib/comptes";
 import { redirect } from "next/navigation";
 
 export type CreateClientState = { error?: string; success?: { identifiant: string; password: string } } | undefined;
@@ -66,15 +66,31 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
   return { success: { identifiant, password } };
 }
 
-/** Le commercial réinitialise le mot de passe d'un de ses clients (identifiant inchangé). */
+/**
+ * Réinitialisation du mot de passe d'un client (identifiant inchangé) : le
+ * commercial qui le gère ou la direction commerciale (même règle que la
+ * suspension, `peutGererClient`), sur un compte actif, tracée au journal.
+ * Avant : tout membre du promoteur pouvait réinitialiser n'importe quel client.
+ */
 export async function resetClientPassword(clientId: string): Promise<{ password: string } | { error: string }> {
   const session = await requireStaffSession();
   const client = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
   if (!client || client.promoteurId !== session.promoteurId) return { error: "Client introuvable." };
+  if (!peutGererClient(session, client)) return { error: "Seul le commercial qui gère ce client, ou sa direction, peut réinitialiser son mot de passe." };
+  if (etatCompte(client) !== "actif") return { error: "Réactivez d'abord ce compte." };
 
   const password = generateTempPassword();
   await db.update(clients).set({ passwordHash: await hashPassword(password) }).where(eq(clients.id, clientId));
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "client",
+    cibleId: clientId,
+    cibleNom: `${client.prenom} ${client.nom}`,
+    details: "Mot de passe réinitialisé (mot de passe temporaire remis au client)",
+  });
   revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/journal");
   return { password };
 }
 

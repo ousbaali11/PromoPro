@@ -125,7 +125,7 @@ function DemandeTma({ demande }: { demande: DemandeTmaVue }) {
   const statut = demande.statut as StatutTma;
   const [state, formAction, pending] = useActionState(accepterDevisTma, undefined);
   return (
-    <div className="space-y-3 p-4" data-testid="demande-tma" data-statut-tma={demande.statut}>
+    <div className="space-y-3 p-4" data-testid="demande-tma" data-statut-tma={demande.statut} data-id={demande.id}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-small text-navy-900">{demande.description}</p>

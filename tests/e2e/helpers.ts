@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { inflateSync } from "node:zlib";
 import * as XLSX from "xlsx";
 
@@ -23,12 +23,59 @@ export const COMPTES = {
 /** Repart d'une session vierge, se connecte et attend l'atterrissage. */
 export async function login(page: Page, compte: keyof typeof COMPTES) {
   const c = COMPTES[compte];
+  await loginAvec(page, c.identifiant, c.mdp, c.atterrissage);
+}
+
+/** Connexion avec des identifiants arbitraires (comptes créés pendant le test). */
+export async function loginAvec(page: Page, identifiant: string, mdp: string, atterrissage: RegExp = /\/(dashboard|admin|client(\/biens\/[^/]+)?)$/) {
   await page.context().clearCookies();
   await page.goto("/login");
-  await page.getByLabel("Identifiant").fill(c.identifiant);
-  await page.getByLabel("Mot de passe").fill(c.mdp);
+  await page.getByLabel("Identifiant").fill(identifiant);
+  await page.getByLabel("Mot de passe").fill(mdp);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page).toHaveURL(c.atterrissage);
+  await expect(page).toHaveURL(atterrissage);
+}
+
+/** Bouton de confirmation à deux temps (ConfirmButton) : premier clic arme, second confirme. */
+export async function confirmer(page: Page, testId: string, dans?: Locator) {
+  const bouton = (dans ?? page).getByTestId(testId);
+  await bouton.click();
+  await expect(bouton).toHaveAttribute("data-armed", "true");
+  await bouton.click();
+}
+
+/**
+ * Forge l'argument d'une Server Action : remplace `ancien` par `nouveau` dans le
+ * corps de la prochaine requête d'action (en-tête Next-Action), comme le ferait
+ * un client HTTP modifié. Renvoie une fonction qui retire l'interception.
+ */
+export async function forgerArgumentAction(page: Page, ancien: string, nouveau: string) {
+  const handler = async (route: import("@playwright/test").Route) => {
+    const req = route.request();
+    const corps = req.postData();
+    if (req.method() === "POST" && req.headers()["next-action"] && corps && corps.includes(ancien)) {
+      await route.continue({ postData: corps.split(ancien).join(nouveau) });
+    } else {
+      await route.continue();
+    }
+  };
+  await page.route("**/*", handler);
+  return () => page.unroute("**/*", handler);
+}
+
+/** PDF minimal valide (en-tête %PDF), pour les pièces jointes .pdf. */
+export const PDF_MIN = Buffer.from(
+  ["%PDF-1.4", "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj", "2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj", "trailer<</Root 1 0 R>>", "%%EOF", ""].join("\n"),
+  "latin1",
+);
+
+/** Type MIME et contenu par défaut selon l'extension (le serveur vérifie la signature du contenu). */
+export function fichierDeTest(name: string, buffer?: Buffer) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return { name, mimeType: "application/pdf", buffer: buffer ?? PDF_MIN };
+  if (ext === "glb") return { name, mimeType: "model/gltf-binary", buffer: buffer ?? Buffer.alloc(0) };
+  if (ext === "jpg" || ext === "jpeg") return { name, mimeType: "image/jpeg", buffer: buffer ?? PNG_1x1 };
+  return { name, mimeType: "image/png", buffer: buffer ?? PNG_1x1 };
 }
 
 /** PNG 1×1 valide, utilisé comme pièce jointe (preuve, document, photo). */
@@ -47,7 +94,7 @@ export async function deposerFichier(
   fichiers: { name: string; buffer?: Buffer }[] = [{ name: "piece.png" }],
 ) {
   const input = conteneur.locator('input[type="file"]').first();
-  await input.setInputFiles(fichiers.map((f) => ({ name: f.name, mimeType: "image/png", buffer: f.buffer ?? PNG_1x1 })));
+  await input.setInputFiles(fichiers.map((f) => fichierDeTest(f.name, f.buffer)));
   const caches = conteneur.locator(`input[type="hidden"][name="${nomChampCache}"]`);
   await expect
     .poll(async () => (await caches.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).filter((v) => v.startsWith("/api/files/")).length)

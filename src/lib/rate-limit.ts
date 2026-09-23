@@ -49,3 +49,27 @@ if (typeof setInterval === "function") {
   // Ne bloque pas l'arrêt du processus
   (timer as unknown as { unref?: () => void }).unref?.();
 }
+
+/**
+ * Limite d'usage : autorise l'appel si `key` compte moins de `max` événements
+ * dans la fenêtre, et l'enregistre alors. Sinon renvoie le délai avant réessai.
+ * Utilisé sur les dépôts de fichiers, l'import Excel et les demandes TMA.
+ */
+export function consommer(key: string, max: number, windowMs: number, now = Date.now()) {
+  const etat = estBloque(key, max, windowMs, now);
+  if (etat.bloque) return { autorise: false as const, reessaiDansSec: etat.reessaiDansSec };
+  enregistrerEchec(key, windowMs, now);
+  return { autorise: true as const, reessaiDansSec: 0 };
+}
+
+/** Limites d'usage (par utilisateur ou client), fenêtre en ms. */
+export const LIMITES = {
+  upload: { max: 30, fenetreMs: 10 * 60 * 1000 }, // 30 fichiers / 10 min
+  importProspects: { max: 10, fenetreMs: 10 * 60 * 1000 }, // 10 analyses / 10 min
+  demandeTma: { max: 10, fenetreMs: 60 * 60 * 1000 }, // 10 demandes / heure
+} as const;
+
+export function messageLimite(sec: number) {
+  const min = Math.ceil(sec / 60);
+  return `Trop de demandes en peu de temps. Réessayez dans ${min} minute${min > 1 ? "s" : ""}.`;
+}

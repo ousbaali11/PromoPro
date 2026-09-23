@@ -285,12 +285,26 @@ horodatée (`signature_client_at`), pas une signature électronique au sens
 juridique (aucun certificat ni archivage probant). Pour une valeur légale, il
 faudra brancher un prestataire de signature qualifiée.
 
+Le fichier `tests/fixtures/cube.glb` (cube texturé, 2 Ko) est généré par
+`node scripts/generer-cube-glb.mjs` ; il sert au test de rendu 3D.
+
 Les plans d'un bien sont désormais trois champs : `plan_url` (plan 2D, image ou
 PDF, inchangé), `plan_3d_url` (modèle `.glb` / `.gltf`, jusqu'à 50 Mo, affiché
 par le composant web `<model-viewer>` de Google chargé depuis son CDN, sans
 dépendance npm) et `visite_virtuelle_url` (lien `https://` externe, affiché
 dans une iframe isolée avec lien d'ouverture). La fiche bien, côté staff comme
 côté client, n'affiche que les onglets renseignés (`PlansBien`).
+
+## Dépôts de fichiers : règles côté serveur
+
+`POST /api/upload` n'accepte qu'un compte connecté **et actif**, contrôle
+l'extension et la taille **par type** (10 Mo ; 50 Mo et `.glb` / `.gltf` pour
+`plans-3d`), vérifie la signature du contenu (un HTML nommé `.png` est
+refusé), réserve certains types au staff (un client ne dépose que preuves de
+paiement, pièce du porteur et croquis TMA) et limite chaque compte à 30
+dépôts par 10 minutes. Les fichiers sont servis par `GET /api/files/...`
+après contrôle de rattachement, avec `X-Content-Type-Options: nosniff`.
+Détail, tableau des types et limites de débit : SECURITY.md.
 
 ## Fichiers uploadés en production
 
@@ -341,7 +355,10 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   (`src/lib/roles.ts`), détection base locale / distante et garde-fou dev
   (`src/db/guard.ts`), fenêtre et transitions des travaux modificatifs
   (`src/lib/tma.ts`), analyse des lignes et répartition équilibrée des
-  prospects (`src/lib/prospects.ts`).
+  prospects (`src/lib/prospects.ts`), limites de débit
+  (`src/lib/rate-limit.ts`), règles de stockage — extensions et tailles par
+  type, signature du contenu, chemins publics et traversée de répertoire
+  (`src/lib/storage.ts`).
 - **Bout en bout** (`tests/e2e/`) : `test:e2e:setup` recrée `data/test.db`
   (schéma + seed de démo) avec `DATABASE_URL` forcé à vide, puis Playwright
   démarre lui-même `next dev` sur le port 3100 en mode SQLite forcé
@@ -356,7 +373,16 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   avec trop-perçu, photos d'avancement) ; prospects (`prospects.spec.ts` :
   classeurs générés à la volée, lignes ignorées avec motif, aperçu puis import
   de 10 prospects avec écart final ≤ 1 vérifié dans l'aperçu et sur la page,
-  notification et tableau du commercial, journal) ; travaux modificatifs
+  notification et tableau du commercial, journal) ; isolation
+  multi-promoteur (`isolation.spec.ts` : un second promoteur est créé de
+  toutes pièces, puis le staff du promoteur de démo tente d'atteindre ses
+  biens, clients, fichiers, journal et demandes par URL directe, arguments
+  de Server Action substitués et route de restauration — tableau appelant ×
+  cible × réponse dans SECURITY.md ; session suspendue refusée par les
+  routes API ; règles de dépôt de fichiers et limite de débit) ; rendu 3D
+  (`plans3d.spec.ts` : dépôt du cube `tests/fixtures/cube.glb`, onglet
+  « Modèle 3D », modèle effectivement chargé par `<model-viewer>` — a besoin
+  du réseau pour le CDN Google) ; travaux modificatifs
   (`modificatifs.spec.ts` : demande client → devis SAV → acceptation → travaux,
   notifications à chaque étape, date limite suivant le délai du projet) ;
   SAV (livraison, notaire, syndic) ;

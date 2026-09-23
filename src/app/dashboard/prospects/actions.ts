@@ -8,7 +8,8 @@ import { requireRole } from "@/lib/session";
 import { notify } from "@/lib/notifications";
 import { enregistrerActivite } from "@/lib/journal";
 import { analyserLignes, repartitionEquilibree, MAX_LIGNES_IMPORT, type LigneProspect } from "@/lib/prospects";
-import { commerciauxDisponibles, lireFeuilleProspects, telephonesConnus, EXTENSIONS_IMPORT, MAX_TAILLE_IMPORT } from "@/lib/prospects-import";
+import { commerciauxDisponibles, lireFeuilleProspects, telephonesConnus, EXTENSIONS_IMPORT, MAX_TAILLE_IMPORT, ROLES_PROSPECTS } from "@/lib/prospects-import";
+import { consommer, LIMITES, messageLimite } from "@/lib/rate-limit";
 
 export async function markContacted(prospectId: string) {
   const session = await requireRole(["COMMERCIAL", "RESPONSABLE_COMMERCIAL"]);
@@ -59,8 +60,20 @@ export async function submitRetourClient(_prev: { error?: string } | undefined, 
   return { error: undefined };
 }
 
-export async function relancerCommercial(commercialId: string) {
+export async function relancerCommercial(commercialId: string): Promise<{ error?: string } | undefined> {
   const session = await requireRole(["ASSISTANT_ADMINISTRATIF"]);
+  // La cible doit être un commercial actif du même promoteur : sans ce contrôle, n'importe quel
+  // utilisateur (y compris d'un autre promoteur) pouvait recevoir la notification de relance.
+  const cible = await db.query.users.findFirst({ where: eq(users.id, commercialId) });
+  if (
+    !cible ||
+    cible.promoteurId !== session.promoteurId ||
+    !(ROLES_PROSPECTS as readonly string[]).includes(cible.role) ||
+    !cible.actif ||
+    cible.deletedAt
+  ) {
+    return { error: "Commercial introuvable." };
+  }
   const enAttente = await db.query.prospects.findMany({
     where: and(
       eq(prospects.promoteurId, session.promoteurId!),
@@ -75,6 +88,7 @@ export async function relancerCommercial(commercialId: string) {
     message: `${enAttente.length} prospect(s) non encore traité(s) : ${enAttente.map((p) => p.nom).join(", ")}.`,
     lien: "/dashboard/prospects",
   });
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +136,8 @@ function decrireRepartition(rep: ReturnType<typeof repartitionEquilibree<LignePr
 /** Étape 1 — lecture du fichier en mémoire, contrôle des lignes et aperçu de la répartition (aucune écriture). */
 export async function analyserImportProspects(_prev: AnalyseImportState, formData: FormData): Promise<AnalyseImportState> {
   const session = await requireRole(["ASSISTANT_ADMINISTRATIF"]);
+  const limite = consommer(`import-prospects:${session.userId}`, LIMITES.importProspects.max, LIMITES.importProspects.fenetreMs);
+  if (!limite.autorise) return { error: messageLimite(limite.reessaiDansSec) };
   const fichier = formData.get("fichier");
   if (!(fichier instanceof File) || fichier.size === 0) return { error: "Choisissez un fichier Excel (.xlsx ou .xls)." };
   const nomFichier = fichier.name;

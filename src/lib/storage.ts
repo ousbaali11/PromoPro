@@ -45,6 +45,35 @@ export function extensionsPour(type: UploadType): readonly string[] {
   return EXTENSIONS_PAR_TYPE[type] ?? ALLOWED_EXTENSIONS;
 }
 
+/** Types qu'une session client peut déposer (preuve de paiement, pièce du porteur, croquis TMA) ; le reste est réservé au staff. */
+export const TYPES_UPLOAD_CLIENT: readonly UploadType[] = ["preuves-paiement", "pieces-identite", "tma-croquis"];
+
+/**
+ * Le contenu correspond-il à l'extension annoncée ? Signatures (magic bytes) :
+ * PDF « %PDF », PNG 89 50 4E 47, JPEG FF D8 FF, GLB « glTF », glTF JSON « { ».
+ * Empêche de stocker un fichier HTML ou un exécutable sous un nom d'image.
+ */
+export function contenuCoherent(filename: string, data: Uint8Array): boolean {
+  const ext = extensionOf(filename);
+  const debut = (n: number) => Array.from(data.subarray(0, n));
+  const texte = (n: number) => new TextDecoder("utf8", { fatal: false }).decode(data.subarray(0, n));
+  switch (ext) {
+    case "pdf":
+      return texte(4) === "%PDF";
+    case "png":
+      return debut(4).join(",") === "137,80,78,71";
+    case "jpg":
+    case "jpeg":
+      return debut(3).join(",") === "255,216,255";
+    case "glb":
+      return texte(4) === "glTF";
+    case "gltf":
+      return /^\uFEFF?\s*\{/.test(texte(16));
+    default:
+      return false;
+  }
+}
+
 const MIME_BY_EXT: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",
@@ -91,7 +120,8 @@ export function publicPath(type: UploadType, filename: string) {
 /** Inverse de `publicPath` : retrouve type + nom de fichier depuis un chemin public (ou null). */
 export function parsePublicPath(url: string | null | undefined): { type: UploadType; filename: string } | null {
   if (!url) return null;
-  const m = url.match(/^\/api\/files\/([a-z-]+)\/([^/]+)$/);
+  // Types en minuscules, tirets et chiffres (« plans-3d ») ; la classe sans chiffre rejetait les modèles 3D
+  const m = url.match(/^\/api\/files\/([a-z0-9-]+)\/([^/]+)$/);
   if (!m) return null;
   const [, type, filename] = m;
   if (!isUploadType(type) || !isSafeFilename(filename)) return null;
@@ -107,9 +137,10 @@ function diskPath(type: UploadType, filename: string) {
  * sous-dossier et retourne son chemin public.
  */
 export async function saveUpload(type: UploadType, originalName: string, data: Buffer | Uint8Array) {
-  if (!isAllowedExtension(originalName)) {
-    throw new Error("Extension non autorisée (pdf, jpg, jpeg, png uniquement).");
+  if (!isAllowedExtension(originalName, type)) {
+    throw new Error(`Extension non autorisée pour ${type} (${extensionsPour(type).join(", ")} uniquement).`);
   }
+  if (!contenuCoherent(originalName, data)) throw new Error("Le contenu du fichier ne correspond pas à son extension.");
   const filename = `${crypto.randomUUID()}.${extensionOf(originalName)}`;
   await fs.mkdir(path.join(UPLOAD_ROOT, type), { recursive: true });
   await fs.writeFile(diskPath(type, filename), data);

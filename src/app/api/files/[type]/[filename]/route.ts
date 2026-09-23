@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSession } from "@/lib/session";
+import { getSessionActive } from "@/lib/session";
 import { isSafeFilename, isUploadType, mimeFor, readUpload } from "@/lib/storage";
 import { clientCanAccessFile, staffCanAccessFile } from "@/lib/file-access";
 
@@ -10,7 +10,8 @@ import { clientCanAccessFile, staffCanAccessFile } from "@/lib/file-access";
  * Un fichier qu'aucun enregistrement ne référence n'est jamais servi.
  */
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/files/[type]/[filename]">) {
-  const session = await getSession();
+  // Compte connecté ET actif : un compte suspendu ou supprimé ne lit plus rien, même avec un cookie encore valide
+  const session = await getSessionActive();
   if (!session) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
 
   const { type, filename } = await ctx.params;
@@ -31,6 +32,8 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/files/[type
       "Content-Type": mimeFor(filename),
       "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "private, no-store",
+      // Le navigateur ne doit jamais réinterpréter un fichier déposé (image, PDF, modèle) comme du HTML ou un script
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }
