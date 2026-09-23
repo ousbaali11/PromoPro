@@ -1,28 +1,34 @@
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
-import { FileDown } from "lucide-react";
+import { FileDown, DoorOpen, Camera, PackageCheck, Building } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
-import { syndics, clients, visites, biens, projets, demandesPhotos } from "@/db/schema";
-import { EmptyState, Card, Badge, PageHeader } from "@/components/ui/Primitives";
+import { syndics, clients, visites, projets, demandesPhotos } from "@/db/schema";
+import { EmptyState, Card, Badge, PageHeader, Section, type Tone } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 import { VisiteActions } from "./VisiteActions";
 import { DeposerPhotosForm } from "./DeposerPhotosForm";
 import { ConfirmerLivraisonButton, DefinirSyndicForm } from "./LivraisonSyndicActions";
 
-const SYNDIC_STATUT: Record<string, { label: string; cls: string }> = {
-  A_PAYER: { label: "À payer", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  EN_ATTENTE_VALIDATION: { label: "En attente de validation comptable", cls: "bg-sky-50 text-sky-700 ring-sky-600/20" },
-  PAYE: { label: "Payé", cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+const SYNDIC_STATUT: Record<string, { label: string; tone: Tone }> = {
+  A_PAYER: { label: "À payer", tone: "warning" },
+  EN_ATTENTE_VALIDATION: { label: "En attente de validation comptable", tone: "info" },
+  PAYE: { label: "Payé", tone: "success" },
 };
 
-const VISITE_STATUT: Record<string, { label: string; cls: string }> = {
-  DEMANDEE: { label: "À traiter", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  ACCEPTEE: { label: "Acceptée — créneau à choisir par le client", cls: "bg-sky-50 text-sky-700 ring-sky-600/20" },
-  PLANIFIEE: { label: "Planifiée", cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
-  REFUSEE: { label: "Refusée", cls: "bg-rose-50 text-rose-700 ring-rose-600/20" },
+const VISITE_STATUT: Record<string, { label: string; tone: Tone }> = {
+  DEMANDEE: { label: "À traiter", tone: "warning" },
+  ACCEPTEE: { label: "Acceptée — créneau à choisir par le client", tone: "info" },
+  PLANIFIEE: { label: "Planifiée", tone: "success" },
+  REFUSEE: { label: "Refusée", tone: "danger" },
 };
+
+const lien =
+  "inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus";
+const lienTitre = "rounded-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus";
 
 export default async function SavPage() {
   const session = await requireRole(["SERVICE_APRES_VENTE", "PDG"]);
@@ -57,34 +63,34 @@ export default async function SavPage() {
     if (p.demandeId) photosParDemande.set(p.demandeId, (photosParDemande.get(p.demandeId) ?? 0) + 1);
   }
 
-  const VisiteLigne = ({ v }: { v: (typeof listeVisites)[number] }) => {
+  const visiteLigne = (v: (typeof listeVisites)[number]) => {
     const client = clientById.get(v.clientId);
     const bien = bienById.get(v.bienId);
     const s = VISITE_STATUT[v.statut];
     return (
-      <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-        <div>
+      <div key={v.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="visite-ligne">
+        <div className="min-w-0">
           <p className="font-medium text-navy-900">
             {bien ? (
-              <Link href={`/dashboard/biens/${bien.id}`} className="hover:underline">
+              <Link href={`/dashboard/biens/${bien.id}`} className={lienTitre}>
                 {bien.designation}
               </Link>
             ) : (
               "—"
             )}
-            {bien && <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
+            {bien && <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
           </p>
-          <p className="text-xs text-navy-400">
+          <p className="text-caption text-navy-400">
             {client ? `${client.prenom} ${client.nom}` : "—"}
-            {client?.telephone1 && ` · ${client.telephone1}`} · demandé le {formatDate(v.createdAt)}
+            {client?.telephone1 && <span className="tabular"> · {client.telephone1}</span>} · demandé le {formatDate(v.createdAt)}
             {v.dateVisite && ` · visite le ${formatDateTime(v.dateVisite)}`}
           </p>
-          {v.motifRefus && <p className="mt-1 text-xs text-navy-400">Motif : {v.motifRefus}</p>}
+          {v.motifRefus && <p className="mt-1 text-caption text-navy-400">Motif : {v.motifRefus}</p>}
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={s.cls}>{s.label}</Badge>
+          <StatusBadge statut={v.statut} label={s.label} tone={s.tone} />
           {v.autorisationUrl && (
-            <a href={v.autorisationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-gold-600 hover:underline">
+            <a href={v.autorisationUrl} target="_blank" rel="noreferrer" className={lien}>
               <FileDown className="h-3.5 w-3.5" /> Autorisation
             </a>
           )}
@@ -101,68 +107,57 @@ export default async function SavPage() {
         description="Rendez-vous, demandes de visite, photos d'avancement, livraisons et syndic."
       />
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous</h2>
+      <Section title="Rendez-vous" testId="section-rendez-vous">
         <RendezVousSection service="SAV" session={session} canAct={isSav} />
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">
-          Demandes de visite{" "}
-          <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-            {visitesATraiter.length}
-          </span>
-        </h2>
+      <Section
+        title="Demandes de visite"
+        count={visitesATraiter.length}
+        countTone={visitesATraiter.length > 0 ? "warning" : "neutral"}
+        testId="section-visites"
+      >
         {listeVisites.length === 0 ? (
-          <EmptyState title="Aucune demande de visite" description="Les demandes formulées par les clients apparaîtront ici." />
+          <EmptyState icon={<DoorOpen />} title="Aucune demande de visite" description="Les demandes formulées par les clients apparaîtront ici." />
         ) : (
           <div className="space-y-4">
             {visitesATraiter.length > 0 && (
-              <Card className="divide-y divide-navy-50">
-                {visitesATraiter.map((v) => (
-                  <VisiteLigne key={v.id} v={v} />
-                ))}
+              <Card accent="warning" className="divide-y divide-navy-50">
+                {visitesATraiter.map(visiteLigne)}
               </Card>
             )}
-            {visitesAutres.length > 0 && (
-              <Card className="divide-y divide-navy-50">
-                {visitesAutres.map((v) => (
-                  <VisiteLigne key={v.id} v={v} />
-                ))}
-              </Card>
-            )}
+            {visitesAutres.length > 0 && <Card className="divide-y divide-navy-50">{visitesAutres.map(visiteLigne)}</Card>}
           </div>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">
-          Demandes de photos d&apos;avancement{" "}
-          <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-inset ring-amber-600/20">
-            {demandesEnAttente.length}
-          </span>
-        </h2>
+      <Section
+        title="Demandes de photos d'avancement"
+        count={demandesEnAttente.length}
+        countTone={demandesEnAttente.length > 0 ? "warning" : "neutral"}
+        testId="section-photos"
+      >
         {demandes.length === 0 ? (
-          <EmptyState title="Aucune demande de photos" description="Les demandes des clients (une par bien tous les 6 mois) apparaîtront ici." />
+          <EmptyState icon={<Camera />} title="Aucune demande de photos" description="Les demandes des clients (une par bien tous les 6 mois) apparaîtront ici." />
         ) : (
           <Card className="divide-y divide-navy-50">
             {[...demandesEnAttente, ...demandesTraitees].map((d) => {
               const client = clientById.get(d.clientId);
               const bien = bienById.get(d.bienId);
               return (
-                <div key={d.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-                  <div>
+                <div key={d.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="demande-photos">
+                  <div className="min-w-0">
                     <p className="font-medium text-navy-900">
                       {bien ? (
-                        <Link href={`/dashboard/biens/${bien.id}`} className="hover:underline">
+                        <Link href={`/dashboard/biens/${bien.id}`} className={lienTitre}>
                           {bien.designation}
                         </Link>
                       ) : (
                         "—"
                       )}
-                      {bien && <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
+                      {bien && <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(bien.projetId)?.nom}</span>}
                     </p>
-                    <p className="text-xs text-navy-400">
+                    <p className="text-caption text-navy-400">
                       {client ? `${client.prenom} ${client.nom}` : "—"} · demandé le {formatDate(d.createdAt)}
                       {d.traiteAt && ` · ${photosParDemande.get(d.id) ?? 0} photo(s) déposée(s) le ${formatDate(d.traiteAt)}`}
                     </p>
@@ -172,10 +167,10 @@ export default async function SavPage() {
                       isSav ? (
                         <DeposerPhotosForm demandeId={d.id} />
                       ) : (
-                        <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">En attente</Badge>
+                        <StatusBadge statut="EN_ATTENTE" label="En attente" tone="warning" />
                       )
                     ) : (
-                      <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">Traitée</Badge>
+                      <StatusBadge statut="TRAITEE" label="Traitée" tone="success" />
                     )}
                   </div>
                 </div>
@@ -183,45 +178,40 @@ export default async function SavPage() {
             })}
           </Card>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">Livraisons</h2>
+      <Section title="Livraisons" count={biensVendus.length + biensLivres.length || undefined} testId="section-livraisons">
         {biensVendus.length === 0 && biensLivres.length === 0 ? (
-          <EmptyState title="Aucun bien vendu" description="Les biens vendus apparaîtront ici pour confirmation de livraison." />
+          <EmptyState icon={<PackageCheck />} title="Aucun bien vendu" description="Les biens vendus apparaîtront ici pour confirmation de livraison." />
         ) : (
           <Card className="divide-y divide-navy-50">
             {[...biensVendus, ...biensLivres].map((b) => {
               const client = b.clientId ? clientById.get(b.clientId) : null;
               return (
-                <div key={b.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-                  <div>
+                <div key={b.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="livraison-ligne">
+                  <div className="min-w-0">
                     <p className="font-medium text-navy-900">
-                      <Link href={`/dashboard/biens/${b.id}`} className="hover:underline">
+                      <Link href={`/dashboard/biens/${b.id}`} className={lienTitre}>
                         {b.designation}
                       </Link>
-                      <span className="ml-2 text-xs font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
+                      <span className="ml-2 text-caption font-normal text-navy-400">{projetById.get(b.projetId)?.nom}</span>
                     </p>
-                    <p className="text-xs text-navy-400">
+                    <p className="text-caption text-navy-400">
                       {client ? `${client.prenom} ${client.nom}` : "—"}
                       {b.livreAt && ` · livré le ${formatDate(b.livreAt)}`}
                     </p>
                     <div className="mt-2 flex gap-2">
-                      <Badge className={b.livraisonConfirmeeClient ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-navy-50 text-navy-400 ring-navy-100"}>
-                        Client {b.livraisonConfirmeeClient ? "✓" : "—"}
-                      </Badge>
-                      <Badge className={b.livraisonConfirmeeSav ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-navy-50 text-navy-400 ring-navy-100"}>
-                        SAV {b.livraisonConfirmeeSav ? "✓" : "—"}
-                      </Badge>
+                      <Badge tone={b.livraisonConfirmeeClient ? "success" : "neutral"}>Client {b.livraisonConfirmeeClient ? "✓" : "—"}</Badge>
+                      <Badge tone={b.livraisonConfirmeeSav ? "success" : "neutral"}>SAV {b.livraisonConfirmeeSav ? "✓" : "—"}</Badge>
                     </div>
                   </div>
                   <div>
                     {b.statut === "LIVRE" ? (
-                      <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">Livré</Badge>
+                      <StatusBadge statut="LIVRE" label="Livré" tone="success" />
                     ) : isSav && !b.livraisonConfirmeeSav ? (
                       <ConfirmerLivraisonButton bienId={b.id} />
                     ) : (
-                      <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">En attente du client</Badge>
+                      <StatusBadge statut="ATTENTE_CLIENT" label="En attente du client" tone="warning" />
                     )}
                   </div>
                 </div>
@@ -229,55 +219,56 @@ export default async function SavPage() {
             })}
           </Card>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">Syndic obligatoire (2 ans)</h2>
+      <Section title="Syndic obligatoire (2 ans)" count={listeSyndics.length || undefined} className="space-y-4" testId="section-syndic">
         {isSav && biensAvecClient.length > 0 && (
-          <div className="mb-4">
-            <DefinirSyndicForm
-              biens={biensAvecClient.map((b) => {
-                const c = b.clientId ? clientById.get(b.clientId) : null;
-                return { id: b.id, label: `${b.designation} — ${c ? `${c.prenom} ${c.nom}` : "?"}` };
-              })}
-            />
-          </div>
+          <DefinirSyndicForm
+            biens={biensAvecClient.map((b) => {
+              const c = b.clientId ? clientById.get(b.clientId) : null;
+              return { id: b.id, label: `${b.designation} — ${c ? `${c.prenom} ${c.nom}` : "?"}` };
+            })}
+          />
         )}
-        {listeSyndics.length === 0 ? (
-          <EmptyState title="Aucun syndic défini" description="Définissez le montant dû par chaque client ; il sera notifié." />
-        ) : (
-          <Card className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="border-b border-navy-100 text-left text-xs text-navy-400">
-                  <th className="px-5 py-3 font-medium">Bien</th>
-                  <th className="px-5 py-3 font-medium">Client</th>
-                  <th className="px-5 py-3 font-medium">Montant</th>
-                  <th className="px-5 py-3 font-medium">Période</th>
-                  <th className="px-5 py-3 font-medium">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listeSyndics.map((s) => {
-                  const client = clientById.get(s.clientId);
-                  const bien = bienById.get(s.bienId);
-                  return (
-                    <tr key={s.id} className="border-b border-navy-50 last:border-0">
-                      <td className="px-5 py-3 font-medium text-navy-900">{bien?.designation ?? "—"}</td>
-                      <td className="px-5 py-3 text-navy-400">{client ? `${client.prenom} ${client.nom}` : "—"}</td>
-                      <td className="px-5 py-3 text-navy-900">{formatMoney(s.montant)}</td>
-                      <td className="px-5 py-3 text-navy-400">{s.periode ?? "—"}</td>
-                      <td className="px-5 py-3">
-                        <Badge className={SYNDIC_STATUT[s.statut]?.cls ?? ""}>{SYNDIC_STATUT[s.statut]?.label ?? s.statut}</Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-        )}
-      </section>
+        <DataTable
+          testId="table-syndics"
+          caption="Syndic par bien"
+          minWidth={560}
+          columns={[
+            { header: "Bien", sortable: true },
+            { header: "Client", hideBelow: "sm" },
+            { header: "Montant", align: "right", sortable: true },
+            { header: "Période", hideBelow: "md" },
+            { header: "Statut", sortable: true },
+          ]}
+          rows={listeSyndics.map((s) => {
+            const client = clientById.get(s.clientId);
+            const bien = bienById.get(s.bienId);
+            const st = SYNDIC_STATUT[s.statut];
+            return {
+              key: s.id,
+              testId: "syndic-ligne",
+              sort: [bien?.designation ?? "", null, s.montant, null, st?.label ?? s.statut],
+              cells: [
+                <span key="bien" className="font-medium">
+                  {bien?.designation ?? "—"}
+                </span>,
+                <span key="client" className="text-navy-400">
+                  {client ? `${client.prenom} ${client.nom}` : "—"}
+                </span>,
+                <span key="montant" className="tabular">
+                  {formatMoney(s.montant)}
+                </span>,
+                <span key="periode" className="text-navy-400">
+                  {s.periode ?? "—"}
+                </span>,
+                <StatusBadge key="statut" statut={s.statut} label={st?.label ?? s.statut} tone={st?.tone ?? "neutral"} />,
+              ],
+            };
+          })}
+          empty={{ icon: <Building />, title: "Aucun syndic défini", description: "Définissez le montant dû par chaque client ; il sera notifié." }}
+        />
+      </Section>
     </div>
   );
 }

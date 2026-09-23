@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, CalendarClock } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, CalendarClock, Send } from "lucide-react";
 import { accepterRendezVous, reproposerRendezVous } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Primitives";
+import { Input, Callout } from "@/components/ui/Primitives";
 
 export function RendezVousActions({ rdvId }: { rdvId: string }) {
   const [pending, startTransition] = useTransition();
@@ -14,11 +15,11 @@ export function RendezVousActions({ rdvId }: { rdvId: string }) {
   const [state, formAction, formPending] = useActionState(reproposer, undefined);
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-2 text-left">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button
           size="sm"
-          disabled={pending}
+          loading={pending}
           onClick={() =>
             startTransition(async () => {
               const res = await accepterRendezVous(rdvId);
@@ -28,25 +29,36 @@ export function RendezVousActions({ rdvId }: { rdvId: string }) {
         >
           <Check className="h-4 w-4" /> Accepter
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => setOpen((v) => !v)}>
+        <Button size="sm" variant="secondary" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           <CalendarClock className="h-4 w-4" /> Reproposer
         </Button>
       </div>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
-      {open && (
-        <form action={formAction} className="flex flex-wrap items-end gap-3 rounded-md bg-navy-50 p-3">
-          <Field label="Nouvelle date et heure" htmlFor={`date-${rdvId}`}>
-            <Input id={`date-${rdvId}`} name="date" type="datetime-local" required />
-          </Field>
-          <Field label="Message (facultatif)" htmlFor={`notes-${rdvId}`}>
-            <Input id={`notes-${rdvId}`} name="notes" placeholder="ex. Créneau du matin indisponible" />
-          </Field>
-          <Button type="submit" size="sm" variant="gold" disabled={formPending}>
-            {formPending ? "..." : "Envoyer"}
-          </Button>
-          {state?.error && <p className="w-full text-xs text-rose-700">{state.error}</p>}
-        </form>
-      )}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.form
+            action={formAction}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap items-start gap-2 rounded-md bg-navy-50 p-3">
+              <Input id={`date-${rdvId}`} name="date" type="datetime-local" label="Nouvelle date et heure" containerClassName="w-56" clearable={false} required />
+              <Input id={`notes-${rdvId}`} name="notes" label="Message (facultatif)" containerClassName="w-64" />
+              <Button type="submit" size="md" variant="gold" loading={formPending} className="h-12">
+                <Send className="h-4 w-4" /> Envoyer
+              </Button>
+              {state?.error && (
+                <Callout tone="danger" className="w-full">
+                  {state.error}
+                </Callout>
+              )}
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { CalendarClock, AlertTriangle, Wallet } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
-import { biens, projets, clients, echeances, propositions } from "@/db/schema";
-import { Card, Badge, EmptyState, PageHeader } from "@/components/ui/Primitives";
+import { projets, clients, echeances, propositions } from "@/db/schema";
+import { Card, EmptyState, PageHeader, Section, Stat } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { bornesPeriode } from "@/lib/periodes";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
@@ -62,6 +65,14 @@ export default async function RecouvrementPage({
   const groupes = new Map<string, typeof rows>();
   for (const e of rows) groupes.set(e.bienId, [...(groupes.get(e.bienId) ?? []), e]);
 
+  const etat = (e: (typeof rows)[number]) => {
+    const late = e.statut !== "PAYEE" && e.dateEcheance.getTime() < now;
+    if (e.statut === "PAYEE") return { statut: "PAYEE", label: "Payée", tone: "success" as const };
+    if (late) return { statut: "RETARD", label: "En retard", tone: "danger" as const };
+    if (e.statut === "PARTIELLE") return { statut: "PARTIELLE", label: "Partielle", tone: "info" as const };
+    return { statut: "A_VENIR", label: "À venir", tone: "warning" as const };
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -69,32 +80,28 @@ export default async function RecouvrementPage({
         description="Échéanciers de toutes les ventes : vert = payé, rouge = en retard. Filtrez par période pour identifier les clients à relancer."
       />
 
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-navy-900">Rendez-vous</h2>
+      <Section title="Rendez-vous" testId="section-rendez-vous">
         <RendezVousSection service="RECOUVREMENT" session={session} canAct={isRecouvrement} />
-      </section>
+      </Section>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-medium text-navy-900">Échéances</h2>
+      <Section title="Échéances" className="space-y-4" testId="section-echeances">
         <PeriodeFilter periode={periode} du={du} au={au} />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="p-4">
-            <p className="text-xs text-navy-400">{bornes ? bornes.label : "Toutes périodes"} · échéances</p>
-            <p className="mt-1 text-2xl font-semibold text-navy-900">{rows.length}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-navy-400">Restant dû sur la période</p>
-            <p className="mt-1 text-2xl font-semibold text-navy-900">{formatMoney(totalDu)}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-navy-400">En retard</p>
-            <p className={`mt-1 text-2xl font-semibold ${enRetard.length ? "text-rose-700" : "text-navy-900"}`}>{enRetard.length}</p>
-          </Card>
+          <Stat label={`${bornes ? bornes.label : "Toutes périodes"} · échéances`} value={rows.length} icon={<CalendarClock />} />
+          <Stat label="Restant dû sur la période" value={formatMoney(totalDu)} icon={<Wallet />} />
+          <Stat
+            label="En retard"
+            value={enRetard.length}
+            tone={enRetard.length ? "danger" : undefined}
+            icon={<AlertTriangle />}
+            hint={enRetard.length ? "Clients à relancer" : "Aucun retard"}
+          />
         </div>
 
         {rows.length === 0 ? (
           <EmptyState
+            icon={<CalendarClock />}
             title="Aucune échéance"
             description={bornes ? `Aucune échéance ${bornes.label.toLowerCase()}.` : "Les échéanciers des ventes conclues apparaîtront ici."}
           />
@@ -104,69 +111,69 @@ export default async function RecouvrementPage({
               const bien = bienById.get(bienId)!;
               const client = bien.clientId ? clientById.get(bien.clientId) : null;
               const complet = echeancierParBien.get(bienId) ?? liste;
+              const retardBien = liste.some((e) => e.statut !== "PAYEE" && e.dateEcheance.getTime() < now);
               return (
-                <Card key={bienId} className="overflow-hidden">
+                <Card key={bienId} accent={retardBien ? "danger" : undefined} className="overflow-hidden" data-testid="recouvrement-bien">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-navy-50 px-5 py-3">
                     <div>
-                      <Link href={`/dashboard/biens/${bien.id}`} className="font-medium text-navy-900 hover:underline">
+                      <Link
+                        href={`/dashboard/biens/${bien.id}`}
+                        className="rounded-xs text-h3 text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                      >
                         {bien.designation}
                       </Link>
-                      <span className="ml-2 text-xs text-navy-400">{projetById.get(bien.projetId)?.nom}</span>
+                      <span className="ml-2 text-caption text-navy-400">{projetById.get(bien.projetId)?.nom}</span>
                     </div>
-                    <div className="text-sm text-navy-400">
+                    <div className="text-small text-navy-400">
                       {client ? (
-                        <Link href={`/dashboard/clients/${client.id}`} className="hover:underline">
+                        <Link
+                          href={`/dashboard/clients/${client.id}`}
+                          className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                        >
                           {client.prenom} {client.nom}
                         </Link>
                       ) : (
                         "—"
                       )}
-                      {client?.telephone1 && ` · ${client.telephone1}`}
+                      {client?.telephone1 && <span className="tabular"> · {client.telephone1}</span>}
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[560px] text-sm">
-                      <thead>
-                        <tr className="border-b border-navy-50 text-left text-xs text-navy-400">
-                          <th className="px-5 py-2 font-medium">Tranche</th>
-                          <th className="px-5 py-2 font-medium">Montant</th>
-                          <th className="px-5 py-2 font-medium">Restant dû</th>
-                          <th className="px-5 py-2 font-medium">Échéance</th>
-                          <th className="px-5 py-2 font-medium">Statut</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {liste.map((e) => {
-                          const late = e.statut !== "PAYEE" && e.dateEcheance.getTime() < now;
-                          const restant = Math.max(0, e.montant - e.montantPaye);
-                          return (
-                            <tr key={e.id} className="border-b border-navy-50 last:border-0">
-                              <td className="px-5 py-2.5 text-navy-900">
-                                Tranche {e.numero} · {e.pourcentage}%
-                              </td>
-                              <td className="px-5 py-2.5 text-navy-900">{formatMoney(e.montant)}</td>
-                              <td className="px-5 py-2.5 text-navy-400">{formatMoney(restant)}</td>
-                              <td className="px-5 py-2.5 text-navy-400">{formatDate(e.dateEcheance)}</td>
-                              <td className="px-5 py-2.5">
-                                <Badge
-                                  className={
-                                    e.statut === "PAYEE"
-                                      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-                                      : late
-                                        ? "bg-rose-50 text-rose-700 ring-rose-600/20"
-                                        : e.statut === "PARTIELLE"
-                                          ? "bg-sky-50 text-sky-700 ring-sky-600/20"
-                                          : "bg-amber-50 text-amber-700 ring-amber-600/20"
-                                  }
-                                >
-                                  {e.statut === "PAYEE" ? "Payée" : late ? "En retard" : e.statut === "PARTIELLE" ? "Partielle" : "À venir"}
-                                </Badge>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="[&>div]:rounded-none [&>div]:shadow-none [&>div]:ring-0">
+                    <DataTable
+                      caption={`Échéances de ${bien.designation}`}
+                      dense
+                      minWidth={560}
+                      columns={[
+                        { header: "Tranche" },
+                        { header: "Montant", align: "right" },
+                        { header: "Restant dû", align: "right" },
+                        { header: "Échéance", hideBelow: "sm" },
+                        { header: "Statut" },
+                      ]}
+                      rows={liste.map((e) => {
+                        const s = etat(e);
+                        return {
+                          key: e.id,
+                          testId: "ligne-echeance",
+                          accent: s.statut === "RETARD" ? "danger" : undefined,
+                          cells: [
+                            <span key="t" className="font-medium">
+                              Tranche {e.numero} · {e.pourcentage}%
+                            </span>,
+                            <span key="m" className="tabular">
+                              {formatMoney(e.montant)}
+                            </span>,
+                            <span key="r" className={s.statut === "RETARD" ? "tabular font-medium text-danger-fg" : "tabular text-navy-400"}>
+                              {formatMoney(Math.max(0, e.montant - e.montantPaye))}
+                            </span>,
+                            <span key="d" className="tabular text-navy-400">
+                              {formatDate(e.dateEcheance)}
+                            </span>,
+                            <StatusBadge key="s" statut={s.statut} label={s.label} tone={s.tone} />,
+                          ],
+                        };
+                      })}
+                    />
                   </div>
                   {isRecouvrement && client && ["VENDU", "LIVRE"].includes(bien.statut) && (
                     <div className="border-t border-navy-50 px-5 py-3">
@@ -189,7 +196,7 @@ export default async function RecouvrementPage({
             })}
           </div>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

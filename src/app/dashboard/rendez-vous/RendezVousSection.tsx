@@ -1,53 +1,65 @@
 import Link from "next/link";
-import { Card, Badge, EmptyState } from "@/components/ui/Primitives";
+import { CalendarClock } from "lucide-react";
+import { Card, EmptyState, type Tone } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDateTime } from "@/lib/utils";
 import { rendezvousPourService, partitionnerRendezVous, type RdvRow } from "@/lib/rendezvous";
 import type { Service } from "@/lib/creneaux";
 import { RendezVousActions } from "./RendezVousActions";
 
-const STATUT: Record<string, { label: string; cls: string }> = {
-  PROPOSE: { label: "Proposé par le client", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  REPROPOSE_SERVICE: { label: "En attente du client", cls: "bg-sky-50 text-sky-700 ring-sky-600/20" },
-  REPROPOSE_CLIENT: { label: "Reproposé par le client", cls: "bg-amber-50 text-amber-700 ring-amber-600/20" },
-  ACCEPTE: { label: "Confirmé", cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20" },
+const STATUT: Record<string, { label: string; tone: Tone }> = {
+  PROPOSE: { label: "Proposé par le client", tone: "warning" },
+  REPROPOSE_SERVICE: { label: "En attente du client", tone: "info" },
+  REPROPOSE_CLIENT: { label: "Reproposé par le client", tone: "warning" },
+  ACCEPTE: { label: "Confirmé", tone: "success" },
 };
 
 function statutDe(r: RdvRow["rdv"]) {
-  if (r.statut === "ACCEPTE") return STATUT.ACCEPTE;
-  if (r.statut === "REPROPOSE") return r.dernierAuteur === "SERVICE" ? STATUT.REPROPOSE_SERVICE : STATUT.REPROPOSE_CLIENT;
-  return STATUT.PROPOSE;
+  if (r.statut === "ACCEPTE") return "ACCEPTE";
+  if (r.statut === "REPROPOSE") return r.dernierAuteur === "SERVICE" ? "REPROPOSE_SERVICE" : "REPROPOSE_CLIENT";
+  return "PROPOSE";
 }
 
 function Ligne({ row, canAct }: { row: RdvRow; canAct: boolean }) {
   const { rdv, client, bien } = row;
-  const s = statutDe(rdv);
+  const code = statutDe(rdv);
+  const s = STATUT[code];
   const aRepondre = canAct && rdv.statut !== "ACCEPTE" && rdv.dernierAuteur === "CLIENT";
+  const date = new Date(rdv.dateProposee);
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
-      <div>
-        <p className="font-medium text-navy-900">{formatDateTime(rdv.dateProposee)}</p>
-        <p className="text-xs text-navy-400">
-          {client ? (
-            <Link href={`/dashboard/clients/${client.id}`} className="hover:underline">
-              {client.prenom} {client.nom}
-            </Link>
-          ) : (
-            "—"
-          )}
-          {client?.telephone1 && ` · ${client.telephone1}`}
-          {bien && (
-            <>
-              {" · "}
-              <Link href={`/dashboard/biens/${bien.id}`} className="hover:underline">
-                {bien.designation}
+    <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="rdv-ligne">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-navy-50 text-navy-900 ring-1 ring-inset ring-navy-100/70">
+          <span className="text-h3 leading-none tabular">{date.getDate()}</span>
+          <span className="mt-0.5 text-[10px] uppercase leading-none tracking-wide text-navy-400">
+            {new Intl.DateTimeFormat("fr-FR", { month: "short" }).format(date).replace(".", "")}
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="font-medium text-navy-900">{formatDateTime(rdv.dateProposee)}</p>
+          <p className="text-caption text-navy-400">
+            {client ? (
+              <Link href={`/dashboard/clients/${client.id}`} className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
+                {client.prenom} {client.nom}
               </Link>
-            </>
-          )}
-        </p>
-        {rdv.notes && <p className="mt-1 text-xs text-navy-400">« {rdv.notes} »</p>}
+            ) : (
+              "—"
+            )}
+            {client?.telephone1 && <span className="tabular"> · {client.telephone1}</span>}
+            {bien && (
+              <>
+                {" · "}
+                <Link href={`/dashboard/biens/${bien.id}`} className="rounded-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
+                  {bien.designation}
+                </Link>
+              </>
+            )}
+          </p>
+          {rdv.notes && <p className="mt-1 text-caption italic text-navy-400">« {rdv.notes} »</p>}
+        </div>
       </div>
       <div className="flex flex-col items-end gap-2">
-        <Badge className={s.cls}>{s.label}</Badge>
+        <StatusBadge statut={code} label={s.label} tone={s.tone} />
         {aRepondre && <RendezVousActions rdvId={rdv.id} />}
       </div>
     </div>
@@ -57,11 +69,12 @@ function Ligne({ row, canAct }: { row: RdvRow; canAct: boolean }) {
 function Bloc({ titre, liste, vide, canAct }: { titre: string; liste: RdvRow[]; vide: string; canAct: boolean }) {
   return (
     <div>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-navy-400">
-        {titre} <span className="ml-1 text-navy-900">{liste.length}</span>
+      <h3 className="mb-2 flex items-center gap-2 text-label uppercase text-navy-400">
+        {titre}
+        <span className="rounded-full bg-navy-50 px-1.5 text-[11px] tabular text-navy-600 ring-1 ring-inset ring-navy-100/70">{liste.length}</span>
       </h3>
       {liste.length === 0 ? (
-        <p className="rounded-md border border-dashed border-navy-100 px-4 py-3 text-xs text-navy-400">{vide}</p>
+        <p className="rounded-md border border-dashed border-navy-100 bg-white/60 px-4 py-3 text-caption text-navy-400">{vide}</p>
       ) : (
         <Card className="divide-y divide-navy-50">
           {liste.map((r) => (
@@ -90,7 +103,7 @@ export async function RendezVousSection({
   const { enAttente, confirmes, passes } = partitionnerRendezVous(rows.map((r) => ({ ...r, statut: r.rdv.statut, dateProposee: r.rdv.dateProposee })));
 
   if (rows.length === 0) {
-    return <EmptyState title="Aucun rendez-vous" description="Les demandes de rendez-vous des clients apparaîtront ici." />;
+    return <EmptyState icon={<CalendarClock />} title="Aucun rendez-vous" description="Les demandes de rendez-vous des clients apparaîtront ici." />;
   }
 
   return (
