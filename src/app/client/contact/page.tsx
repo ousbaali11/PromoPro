@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle, Briefcase, Wrench, FileText, Landmark } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { biens, users, promoteurs } from "@/db/schema";
@@ -7,6 +7,13 @@ import { Card, PageHeader } from "@/components/ui/Primitives";
 import { SERVICES } from "@/lib/creneaux";
 
 type Contact = { nom: string; telephone: string | null; precision?: string };
+
+const ICONES: Record<string, React.ReactNode> = {
+  COMMERCIAL: <Briefcase />,
+  SAV: <Wrench />,
+  ADMINISTRATIF: <FileText />,
+  RECOUVREMENT: <Landmark />,
+};
 
 /** Section 11.6 — numéro de contact de chaque service. */
 export default async function ClientContactPage() {
@@ -49,10 +56,17 @@ export default async function ClientContactPage() {
         {SERVICES.map((s) => {
           const contacts = contactsParService[s.value];
           return (
-            <Card key={s.value} className="p-5">
-              <p className="font-medium text-navy-900">{s.label}</p>
-              <p className="text-xs text-navy-400">{s.description}</p>
-              <div className="mt-3 space-y-2">
+            <Card key={s.value} className="p-5" data-testid="carte-service">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-navy-50 text-navy [&_svg]:h-5 [&_svg]:w-5">
+                  {ICONES[s.value]}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-h3 text-navy-900">{s.label}</p>
+                  <p className="text-caption text-navy-400">{s.description}</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
                 {contacts.length === 0 && (
                   <ContactLigne nom={promoteur?.nom ?? "Standard"} telephone={fallback} precision="standard du promoteur" />
                 )}
@@ -71,28 +85,31 @@ export default async function ClientContactPage() {
 function ContactLigne({ nom, telephone, precision }: Contact) {
   const digits = telephone?.replace(/\D/g, "") ?? "";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-navy-50 px-3 py-2 text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm bg-navy-50 px-3 py-2.5 text-small">
       <div>
-        <p className="text-navy-900">{nom}</p>
-        {precision && <p className="text-xs text-navy-400">{precision}</p>}
+        <p className="font-medium text-navy-900">{nom}</p>
+        {precision && <p className="text-caption text-navy-400">{precision}</p>}
       </div>
       {telephone ? (
         <div className="flex items-center gap-2">
-          <a href={`tel:${digits}`} className="inline-flex items-center gap-1 font-medium text-navy hover:text-gold-600">
+          <a
+            href={`tel:${digits}`}
+            className="inline-flex items-center gap-1.5 rounded-xs font-medium tabular text-navy transition-colors duration-fast hover:text-gold-600 focus-visible:outline-none focus-visible:shadow-focus"
+          >
             <Phone className="h-3.5 w-3.5" /> {telephone}
           </a>
           <a
             href={`https://wa.me/${digits}`}
             target="_blank"
             rel="noreferrer"
-            className="rounded-md bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-success text-white shadow-e1 transition-[box-shadow,filter] duration-fast hover:shadow-e2 hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus"
             aria-label="WhatsApp"
           >
-            <MessageCircle className="h-3.5 w-3.5" />
+            <MessageCircle className="h-4 w-4" />
           </a>
         </div>
       ) : (
-        <span className="text-xs text-navy-400">Numéro non renseigné</span>
+        <span className="text-caption text-navy-400">Numéro non renseigné</span>
       )}
     </div>
   );

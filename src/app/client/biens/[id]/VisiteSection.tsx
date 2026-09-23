@@ -4,7 +4,8 @@ import { useActionState, useMemo, useState, useTransition } from "react";
 import { CalendarCheck, FileDown, DoorOpen } from "lucide-react";
 import { demanderVisite, choisirCreneauVisite } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Badge, Field, Input, Select } from "@/components/ui/Primitives";
+import { Callout, Input, Select } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Visite = {
   id: string;
@@ -24,6 +25,9 @@ function heuresPour(dateStr: string) {
   return out;
 }
 
+const lienAutorisation =
+  "inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus";
+
 /** Section 11.7 côté client : demande → autorisation → choix du créneau. */
 export function VisiteSection({ bienId, visite }: { bienId: string; visite: Visite | null }) {
   const [pending, startTransition] = useTransition();
@@ -33,7 +37,7 @@ export function VisiteSection({ bienId, visite }: { bienId: string; visite: Visi
     <Button
       size="sm"
       variant="secondary"
-      disabled={pending}
+      loading={pending}
       onClick={() =>
         startTransition(async () => {
           const res = await demanderVisite(bienId);
@@ -41,40 +45,39 @@ export function VisiteSection({ bienId, visite }: { bienId: string; visite: Visi
         })
       }
     >
-      <DoorOpen className="h-4 w-4" /> {pending ? "Envoi..." : "Demander une visite"}
+      <DoorOpen className="h-4 w-4" /> Demander une visite
     </Button>
   );
 
   if (!visite || visite.statut === "REFUSEE") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         {visite?.statut === "REFUSEE" && (
-          <p className="rounded-md bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <Callout tone="danger" role="status">
             Votre dernière demande a été refusée{visite.motifRefus ? ` : ${visite.motifRefus}` : "."} Vous pouvez en
             formuler une nouvelle.
-          </p>
+          </Callout>
         )}
         {demander}
-        {error && <p className="text-xs text-rose-700">{error}</p>}
+        {error && <p className="text-caption text-danger-fg">{error}</p>}
       </div>
     );
   }
 
   if (visite.statut === "DEMANDEE") {
-    return <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Demande de visite en attente du SAV</Badge>;
+    return <StatusBadge statut="DEMANDEE" label="Demande de visite en attente du SAV" tone="warning" />;
   }
 
   if (visite.statut === "PLANIFIEE") {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-600/20">
-          <CalendarCheck className="mr-1 h-3.5 w-3.5" />
+      <div className="space-y-3">
+        <Callout tone="success" icon={<CalendarCheck />}>
           Visite le{" "}
           {visite.dateVisite &&
             new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short" }).format(new Date(visite.dateVisite))}
-        </Badge>
+        </Callout>
         {visite.autorisationUrl && (
-          <a href={visite.autorisationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 hover:underline">
+          <a href={visite.autorisationUrl} target="_blank" rel="noreferrer" className={lienAutorisation}>
             <FileDown className="h-3.5 w-3.5" /> Autorisation de visite
           </a>
         )}
@@ -94,37 +97,37 @@ function ChoixCreneau({ visite }: { visite: Visite }) {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-3 rounded-md bg-gold-50 p-4">
+    <div className="space-y-3 rounded-md bg-gold-50 p-4 ring-1 ring-inset ring-gold-200">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-navy-900">Visite acceptée — choisissez votre créneau</p>
+        <p className="text-small font-medium text-navy-900">Visite acceptée — choisissez votre créneau</p>
         {visite.autorisationUrl && (
-          <a href={visite.autorisationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 hover:underline">
+          <a href={visite.autorisationUrl} target="_blank" rel="noreferrer" className={lienAutorisation}>
             <FileDown className="h-3.5 w-3.5" /> Autorisation de visite
           </a>
         )}
       </div>
-      <p className="text-xs text-navy-400">Lundi–vendredi 8h–12h et 14h–18h, samedi 8h–12h.</p>
-      <form action={formAction} className="flex flex-wrap items-end gap-3">
-        <Field label="Date" htmlFor="visite-date">
-          <Input id="visite-date" name="date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} required />
-        </Field>
-        <Field label="Heure" htmlFor="visite-heure">
-          <Select id="visite-heure" name="heure" required disabled={heures.length === 0}>
-            {heures.length === 0 ? (
-              <option value="">{date ? "Pas de visite ce jour" : "Choisissez une date"}</option>
-            ) : (
-              heures.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))
-            )}
-          </Select>
-        </Field>
-        <Button type="submit" size="sm" variant="gold" disabled={pending || heures.length === 0}>
-          {pending ? "..." : "Confirmer le créneau"}
+      <p className="text-caption text-navy-400">Lundi–vendredi 8h–12h et 14h–18h, samedi 8h–12h.</p>
+      <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start">
+        <Input id="visite-date" name="date" type="date" label="Date" min={today} value={date} onChange={(e) => setDate(e.target.value)} clearable={false} required />
+        <Select id="visite-heure" name="heure" label="Heure" required disabled={heures.length === 0}>
+          {heures.length === 0 ? (
+            <option value="">{date ? "Pas de visite ce jour" : "Choisissez une date"}</option>
+          ) : (
+            heures.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))
+          )}
+        </Select>
+        <Button type="submit" variant="gold" loading={pending} disabled={heures.length === 0} className="h-12">
+          Confirmer le créneau
         </Button>
-        {state?.error && <p className="w-full text-xs text-rose-700">{state.error}</p>}
+        {state?.error && (
+          <Callout tone="danger" className="sm:col-span-3">
+            {state.error}
+          </Callout>
+        )}
       </form>
     </div>
   );

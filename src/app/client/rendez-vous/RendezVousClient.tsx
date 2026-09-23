@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, CalendarClock } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, CalendarClock, Send } from "lucide-react";
 import { proposerRendezVous, accepterPropositionService, reproposerClient } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select, Textarea } from "@/components/ui/Primitives";
+import { Callout, Input, Select, Textarea } from "@/components/ui/Primitives";
 
 const SERVICES = [
   { value: "COMMERCIAL", label: "Service commercial (votre commercial)" },
@@ -17,41 +18,37 @@ export function NouveauRendezVousForm({ biens }: { biens: { id: string; designat
   const [state, formAction, pending] = useActionState(proposerRendezVous, undefined);
 
   if (state?.success) {
-    return <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.success}</p>;
+    return (
+      <Callout tone="success" testId="rdv-succes">
+        {state.success}
+      </Callout>
+    );
   }
 
   return (
-    <form action={formAction} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Service" htmlFor="service">
-          <Select id="service" name="service" defaultValue="COMMERCIAL">
-            {SERVICES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Bien concerné" htmlFor="bienId">
-          <Select id="bienId" name="bienId" defaultValue={biens[0]?.id ?? ""}>
-            {biens.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.designation}
-              </option>
-            ))}
-            {biens.length === 0 && <option value="">—</option>}
-          </Select>
-        </Field>
-        <Field label="Date et heure souhaitées" htmlFor="date">
-          <Input id="date" name="date" type="datetime-local" required />
-        </Field>
-        <Field label="Objet (facultatif)" htmlFor="notes">
-          <Textarea id="notes" name="notes" rows={1} placeholder="ex. Signature des copies du contrat" />
-        </Field>
+    <form action={formAction} className="space-y-4" data-testid="form-rendez-vous">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Select id="service" name="service" label="Service" defaultValue="COMMERCIAL">
+          {SERVICES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+        <Select id="bienId" name="bienId" label="Bien concerné" defaultValue={biens[0]?.id ?? ""}>
+          {biens.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.designation}
+            </option>
+          ))}
+          {biens.length === 0 && <option value="">—</option>}
+        </Select>
+        <Input id="date" name="date" type="datetime-local" label="Date et heure souhaitées" clearable={false} required />
+        <Textarea id="notes" name="notes" rows={1} label="Objet (facultatif)" hint="ex. Signature des copies du contrat" />
       </div>
-      {state?.error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{state.error}</p>}
-      <Button type="submit" variant="gold" disabled={pending}>
-        {pending ? "Envoi..." : "Proposer ce rendez-vous"}
+      {state?.error && <Callout tone="danger">{state.error}</Callout>}
+      <Button type="submit" variant="gold" loading={pending}>
+        <Send className="h-4 w-4" /> Proposer ce rendez-vous
       </Button>
     </form>
   );
@@ -65,11 +62,11 @@ export function ReponseClient({ rdvId }: { rdvId: string }) {
   const [state, formAction, formPending] = useActionState(reproposer, undefined);
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-2 text-left">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button
           size="sm"
-          disabled={pending}
+          loading={pending}
           onClick={() =>
             startTransition(async () => {
               const res = await accepterPropositionService(rdvId);
@@ -79,22 +76,35 @@ export function ReponseClient({ rdvId }: { rdvId: string }) {
         >
           <Check className="h-4 w-4" /> Accepter
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => setOpen((v) => !v)}>
+        <Button size="sm" variant="secondary" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           <CalendarClock className="h-4 w-4" /> Proposer une autre date
         </Button>
       </div>
-      {error && <p className="text-xs text-rose-700">{error}</p>}
-      {open && (
-        <form action={formAction} className="flex flex-wrap items-end gap-3 rounded-md bg-navy-50 p-3">
-          <Field label="Nouvelle date et heure" htmlFor={`date-${rdvId}`}>
-            <Input id={`date-${rdvId}`} name="date" type="datetime-local" required />
-          </Field>
-          <Button type="submit" size="sm" variant="gold" disabled={formPending}>
-            {formPending ? "..." : "Envoyer"}
-          </Button>
-          {state?.error && <p className="w-full text-xs text-rose-700">{state.error}</p>}
-        </form>
-      )}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.form
+            action={formAction}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap items-start gap-2 rounded-md bg-navy-50 p-3">
+              <Input id={`date-${rdvId}`} name="date" type="datetime-local" label="Nouvelle date et heure" containerClassName="w-56" clearable={false} required />
+              <Button type="submit" variant="gold" loading={formPending} className="h-12">
+                <Send className="h-4 w-4" /> Envoyer
+              </Button>
+              {state?.error && (
+                <Callout tone="danger" className="w-full">
+                  {state.error}
+                </Callout>
+              )}
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip } from "lucide-react";
+import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip, ChevronLeft, Receipt, Phone } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { biens, projets, users, contrats, paiements, visites, demandesPhotos, photosAvancement, syndics } from "@/db/schema";
-import { Card, Badge } from "@/components/ui/Primitives";
-import { addMonths, cn, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_COLORS, DELAI_PHOTOS_MOIS } from "@/lib/utils";
+import { Card, Info, PageHeader } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { addMonths, formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
@@ -14,11 +16,7 @@ import { DemandePhotosButton } from "./PhotosSection";
 import { LivraisonCard, SyndicCard } from "./LivraisonSyndic";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
-const ECH_COLOR: Record<string, string> = {
-  EN_ATTENTE: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  PARTIELLE: "bg-sky-50 text-sky-700 ring-sky-600/20",
-  PAYEE: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-};
+const ECH_TONE = { EN_ATTENTE: "warning", PARTIELLE: "info", PAYEE: "success" } as const;
 
 function DocLink({ href, icon: Icon, children }: { href: string; icon: typeof FileDown; children: React.ReactNode }) {
   return (
@@ -26,7 +24,7 @@ function DocLink({ href, icon: Icon, children }: { href: string; icon: typeof Fi
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 rounded-md bg-navy-50 px-3 py-2 text-sm text-navy hover:bg-navy-100"
+      className="inline-flex items-center gap-2 rounded-sm bg-navy-50 px-3 py-2 text-small font-medium text-navy ring-1 ring-inset ring-navy-100/70 transition-[background-color,box-shadow] duration-fast hover:bg-navy-100 focus-visible:outline-none focus-visible:shadow-focus"
     >
       <Icon className="h-4 w-4 text-gold-600" /> {children}
     </a>
@@ -85,56 +83,62 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
 
   const whatsapp = commercial?.telephone ? `https://wa.me/${commercial.telephone.replace(/\D/g, "")}` : null;
   const contratDisponible = contrat && contrat.pdfUrl && !["EN_ATTENTE", "ANNULE"].includes(contrat.statut);
+  const vendu = ["VENDU", "LIVRE"].includes(bien.statut);
 
   return (
-    <div>
-      {mesBiens.length > 1 ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-navy-400">Mes biens :</span>
-          {mesBiens.map((b) => (
-            <Link
-              key={b.id}
-              href={`/client/biens/${b.id}`}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset",
-                b.id === bien.id ? "bg-navy text-white ring-navy" : "bg-white text-navy ring-navy-100 hover:bg-navy-50",
-              )}
-            >
-              {b.designation}
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <Link href="/client" className="mb-4 inline-block text-sm text-navy-400 hover:text-navy-900">
-          ← Mes biens
-        </Link>
-      )}
+    <div className="space-y-8">
+      <div>
+        {mesBiens.length > 1 ? (
+          <div className="mb-4">
+            <SegmentedControl
+              ariaLabel="Mes biens"
+              value={bien.id}
+              items={mesBiens.map((b) => ({ value: b.id, label: b.designation, href: `/client/biens/${b.id}` }))}
+            />
+          </div>
+        ) : (
+          <Link
+            href="/client"
+            className="mb-3 inline-flex items-center gap-1 rounded-xs text-small text-navy-400 transition-colors duration-fast hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
+          >
+            <ChevronLeft className="h-4 w-4" /> Mes biens
+          </Link>
+        )}
 
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-navy-900">{bien.designation}</h1>
-          <p className="mt-1 text-sm text-navy-400">{projet?.nom}</p>
-        </div>
-        <Badge className={STATUT_BIEN_COLORS[bien.statut]}>{STATUT_BIEN_LABELS[bien.statut]}</Badge>
+        <PageHeader
+          eyebrow={projet?.nom}
+          title={bien.designation}
+          description={`${bien.nature} · ${bien.surface} m²`}
+          action={
+            <div className="flex flex-col items-end gap-1.5">
+              <StatusBadge statut={bien.statut} label={STATUT_BIEN_LABELS[bien.statut]} tone={STATUT_BIEN_TONES[bien.statut] ?? "neutral"} />
+              <p className="text-price tabular text-navy-900">{formatMoney(bien.prix)}</p>
+            </div>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <div className="space-y-4 sm:col-span-2">
+        <div className="space-y-6 sm:col-span-2">
           {/* 11.4 — tableau de bord financier */}
-          <Card className="p-5">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="text-navy-400">Avancement des paiements</span>
-              <span className="font-medium text-navy-900">{pourcentagePaye}%</span>
+          <Card className="p-5" data-testid="carte-finances">
+            <div className="mb-2 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-label uppercase text-navy-400">Avancement des paiements</p>
+                <p className="mt-1 text-display tabular text-navy-900">{pourcentagePaye}%</p>
+              </div>
+              <div className="text-right text-caption text-navy-400">
+                <p>
+                  Payé <span className="tabular font-semibold text-navy-900">{formatMoney(totalPaye)}</span>
+                </p>
+                <p>
+                  Reste à payer <span className="tabular font-semibold text-navy-900">{formatMoney(resteAPayer)}</span>
+                </p>
+                {excedent > 0 && <p className="font-medium text-success-fg">Excédent en votre faveur : {formatMoney(excedent)}</p>}
+              </div>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-navy-50">
-              <div className="h-full rounded-full bg-gold" style={{ width: `${pourcentagePaye}%` }} />
-            </div>
-            <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-navy-400">
-              <span>Payé : <span className="font-medium text-navy-900">{formatMoney(totalPaye)}</span></span>
-              <span>Reste à payer : <span className="font-medium text-navy-900">{formatMoney(resteAPayer)}</span></span>
-              {excedent > 0 && (
-                <span className="text-emerald-700">Excédent en votre faveur : {formatMoney(excedent)}</span>
-              )}
+              <div className="h-full rounded-full bg-gold transition-[width] duration-slow ease-out-soft" style={{ width: `${pourcentagePaye}%` }} />
             </div>
 
             <div className="mt-5 space-y-2">
@@ -143,74 +147,79 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
                 return (
                   <div
                     key={e.id}
-                    className="grid grid-cols-2 items-center gap-2 rounded-md bg-navy-50 px-3 py-2 text-sm sm:grid-cols-4"
+                    className="grid grid-cols-2 items-center gap-2 rounded-sm bg-navy-50 px-3 py-2.5 text-small sm:grid-cols-4"
+                    data-testid="client-tranche"
                   >
-                    <span className="text-navy-900">
+                    <span className="font-medium text-navy-900">
                       Tranche {e.numero} · {e.pourcentage}%
                     </span>
-                    <span className="text-navy-400">{formatDate(e.dateEcheance)}</span>
+                    <span className="tabular text-navy-400">{formatDate(e.dateEcheance)}</span>
                     <span className="text-navy-900">
-                      <span className="font-medium">{formatMoney(e.montant)}</span>
-                      {e.statut === "PARTIELLE" && (
-                        <span className="block text-xs text-navy-400">reste {formatMoney(reste)}</span>
-                      )}
+                      <span className="tabular font-semibold">{formatMoney(e.montant)}</span>
+                      {e.statut === "PARTIELLE" && <span className="block text-caption tabular text-navy-400">reste {formatMoney(reste)}</span>}
                     </span>
                     <span className="sm:text-right">
-                      <Badge className={ECH_COLOR[e.statut]}>{ECH_LABEL[e.statut] ?? e.statut}</Badge>
+                      <StatusBadge statut={e.statut} label={ECH_LABEL[e.statut] ?? e.statut} tone={ECH_TONE[e.statut as keyof typeof ECH_TONE] ?? "neutral"} />
                     </span>
                   </div>
                 );
               })}
-              {ech.length === 0 && <p className="text-sm text-navy-400">Échéancier non encore disponible.</p>}
+              {ech.length === 0 && <p className="text-small text-navy-400">Échéancier non encore disponible.</p>}
             </div>
           </Card>
 
           {/* 11.8 / 11.9 — paiements et reçus */}
-          <Card className="p-5">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-navy-900">Mes paiements</p>
-            </div>
+          <Card className="p-5" data-testid="carte-paiements">
+            <h2 className="mb-3 text-h3 text-navy-900">Mes paiements</h2>
             {mesPaiements.length === 0 ? (
-              <p className="text-sm text-navy-400">Aucun paiement enregistré pour l&apos;instant.</p>
+              <p className="flex items-center gap-2 text-small text-navy-400">
+                <Receipt className="h-4 w-4" /> Aucun paiement enregistré pour l&apos;instant.
+              </p>
             ) : (
               <ul className="divide-y divide-navy-50">
                 {mesPaiements.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-small">
                     <div>
                       <p className="font-medium text-navy-900">
-                        {formatMoney(p.montantExact ?? p.montant, p.devise)}
-                        {p.trancheNumero && <span className="ml-2 text-xs font-normal text-navy-400">Tranche {p.trancheNumero}</span>}
+                        <span className="tabular">{formatMoney(p.montantExact ?? p.montant, p.devise)}</span>
+                        {p.trancheNumero && <span className="ml-2 text-caption font-normal text-navy-400">Tranche {p.trancheNumero}</span>}
                       </p>
-                      <p className="text-xs text-navy-400">
+                      <p className="text-caption text-navy-400">
                         {p.natureOperation} · {formatDate(p.dateOperation)}
                         {p.reference && ` · réf. ${p.reference}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       {p.recuPdfUrl ? (
-                        <a href={p.recuPdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-gold-600 hover:underline">
+                        <a
+                          href={p.recuPdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                        >
                           <FileDown className="h-3.5 w-3.5" /> Reçu PDF
                         </a>
                       ) : p.preuveUrl ? (
-                        <a href={p.preuveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-navy-400 hover:underline">
+                        <a
+                          href={p.preuveUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-xs text-caption text-navy-400 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                        >
                           <Paperclip className="h-3.5 w-3.5" /> Preuve
                         </a>
                       ) : null}
-                      <Badge
-                        className={
-                          p.statut === "VALIDE"
-                            ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-                            : "bg-amber-50 text-amber-700 ring-amber-600/20"
-                        }
-                      >
-                        {p.statut === "VALIDE" ? "Validé" : "En vérification"}
-                      </Badge>
+                      <StatusBadge
+                        statut={p.statut}
+                        label={p.statut === "VALIDE" ? "Validé" : "En vérification"}
+                        tone={p.statut === "VALIDE" ? "success" : "warning"}
+                      />
                     </div>
                   </li>
                 ))}
               </ul>
             )}
-            {["VENDU", "LIVRE"].includes(bien.statut) && (
+            {vendu && (
               <div className="mt-4">
                 <AjouterPaiement bienId={bien.id} echeances={ech} />
               </div>
@@ -218,9 +227,9 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
           </Card>
 
           {/* 11.10 — livraison */}
-          {["VENDU", "LIVRE"].includes(bien.statut) && (
-            <Card className="p-5">
-              <p className="mb-3 text-sm font-medium text-navy-900">Livraison du bien</p>
+          {vendu && (
+            <Card className="p-5" data-testid="carte-livraison">
+              <h2 className="mb-3 text-h3 text-navy-900">Livraison du bien</h2>
               <LivraisonCard
                 bienId={bien.id}
                 statut={bien.statut}
@@ -232,9 +241,9 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
           )}
 
           {/* 12.2 — syndic */}
-          {["VENDU", "LIVRE"].includes(bien.statut) && (
-            <Card className="p-5">
-              <p className="mb-3 text-sm font-medium text-navy-900">Syndic</p>
+          {vendu && (
+            <Card className="p-5" data-testid="carte-syndic">
+              <h2 className="mb-3 text-h3 text-navy-900">Syndic</h2>
               <SyndicCard
                 syndic={
                   syndic
@@ -246,15 +255,15 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
           )}
 
           {/* 11.2 — documents */}
-          <Card className="p-5">
-            <p className="mb-3 text-sm font-medium text-navy-900">Mes documents</p>
+          <Card className="p-5" data-testid="carte-documents">
+            <h2 className="mb-3 text-h3 text-navy-900">Mes documents</h2>
             <div className="flex flex-wrap gap-2">
               {contratDisponible ? (
                 <DocLink href={contrat.pdfUrl!} icon={FileDown}>
                   Contrat de vente (PDF)
                 </DocLink>
               ) : (
-                <span className="rounded-md bg-navy-50 px-3 py-2 text-sm text-navy-400">
+                <span className="rounded-sm border border-dashed border-navy-100 px-3 py-2 text-small text-navy-400">
                   {contrat && contrat.statut === "EN_ATTENTE"
                     ? "Contrat en cours de préparation par le Responsable Administratif."
                     : "Pas encore de contrat pour ce bien."}
@@ -272,7 +281,7 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
               )}
             </div>
             {contratDisponible && !contrat.copieSigneeUrl && (
-              <p className="mt-3 text-xs text-navy-400">
+              <p className="mt-3 text-caption text-navy-400">
                 Rappel : le contrat doit être imprimé et légalisé en 4 exemplaires ; 3 vous seront restitués, le 4e
                 signé et cacheté apparaîtra ici une fois numérisé.
               </p>
@@ -280,10 +289,10 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* 11.3 — photos d'avancement */}
-          <Card className="p-5">
-            <p className="mb-3 text-sm font-medium text-navy-900">Avancement des travaux</p>
+          <Card className="p-5" data-testid="carte-photos">
+            <h2 className="mb-3 text-h3 text-navy-900">Avancement des travaux</h2>
             <DemandePhotosButton
               bienId={bien.id}
               prochaineDisponibiliteISO={prochaineDemandePhotos?.toISOString() ?? null}
@@ -299,20 +308,24 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
                     target="_blank"
                     rel="noreferrer"
                     title={`${p.legende ? `${p.legende} · ` : ""}${formatDate(p.createdAt)}`}
-                    className="group relative aspect-square overflow-hidden rounded-md bg-navy-50 ring-1 ring-navy-100"
+                    className="group relative aspect-square overflow-hidden rounded-sm bg-navy-50 ring-1 ring-navy-100 focus-visible:outline-none focus-visible:shadow-focus"
                   >
                     {p.url.toLowerCase().endsWith(".pdf") ? (
-                      <span className="flex h-full items-center justify-center text-[10px] text-navy-400">PDF</span>
+                      <span className="flex h-full items-center justify-center text-[10px] font-medium text-navy-400">PDF</span>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.url} alt={p.legende ?? "Photo d'avancement"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                      <img
+                        src={p.url}
+                        alt={p.legende ?? "Photo d'avancement"}
+                        className="h-full w-full object-cover transition-transform duration-slow ease-out-soft group-hover:scale-105"
+                      />
                     )}
                   </a>
                 ))}
               </div>
             )}
             {photos.length > 0 && (
-              <p className="mt-2 text-[11px] text-navy-400">
+              <p className="mt-2 text-caption text-navy-400">
                 Dernières photos déposées le {formatDate(photos[0].createdAt)}
                 {photos[0].legende && ` · ${photos[0].legende}`}
               </p>
@@ -320,8 +333,8 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
           </Card>
 
           {/* 11.7 — demande de visite */}
-          <Card className="p-5">
-            <p className="mb-3 text-sm font-medium text-navy-900">Visite du bien</p>
+          <Card className="p-5" data-testid="carte-visite">
+            <h2 className="mb-3 text-h3 text-navy-900">Visite du bien</h2>
             <VisiteSection
               bienId={bien.id}
               visite={
@@ -338,28 +351,40 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
             />
           </Card>
 
-          <Card className="p-5">
-            <p className="text-xs text-navy-400">Prix</p>
-            <p className="mt-1 text-lg font-semibold text-navy-900">{formatMoney(bien.prix)}</p>
-            <p className="mt-3 text-xs text-navy-400">Surface</p>
-            <p className="mt-1 text-navy-900">{bien.surface} m²</p>
+          <Card className="space-y-4 p-5" data-testid="carte-bien">
+            <Info label="Prix" value={<span className="text-h2 tabular">{formatMoney(bien.prix)}</span>} />
+            <Info label="Surface" value={<span className="tabular">{bien.surface} m²</span>} />
+            <Info label="Nature" value={bien.nature} />
           </Card>
 
           {commercial && (
-            <Card className="p-5">
-              <p className="text-xs text-navy-400">Votre commercial</p>
-              <p className="mt-1 font-medium text-navy-900">
-                {commercial.prenom} {commercial.nom}
-              </p>
-              {commercial.telephone && <p className="text-xs text-navy-400">{commercial.telephone}</p>}
+            <Card className="p-5" data-testid="carte-commercial">
+              <Info
+                label="Votre commercial"
+                value={
+                  <>
+                    <p className="font-medium">
+                      {commercial.prenom} {commercial.nom}
+                    </p>
+                    {commercial.telephone && (
+                      <a
+                        href={`tel:${commercial.telephone.replace(/\D/g, "")}`}
+                        className="mt-0.5 inline-flex items-center gap-1 rounded-xs text-caption tabular text-navy-400 hover:text-navy-900 focus-visible:outline-none focus-visible:shadow-focus"
+                      >
+                        <Phone className="h-3 w-3" /> {commercial.telephone}
+                      </a>
+                    )}
+                  </>
+                }
+              />
               {whatsapp && (
                 <a
                   href={whatsapp}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                  className="mt-4 inline-flex h-9 items-center gap-2 rounded-sm bg-success px-3 text-small font-medium text-white shadow-e1 transition-[background-color,box-shadow] duration-fast hover:shadow-e2 hover:brightness-110 focus-visible:outline-none focus-visible:shadow-focus"
                 >
-                  <MessageCircle className="h-3.5 w-3.5" /> Contacter sur WhatsApp
+                  <MessageCircle className="h-4 w-4" /> Contacter sur WhatsApp
                 </a>
               )}
             </Card>

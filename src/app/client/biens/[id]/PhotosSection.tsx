@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Camera, Clock } from "lucide-react";
 import { demanderPhotos } from "./actions";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Primitives";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 function compteARebours(cible: number) {
   const diff = Math.max(0, cible - Date.now());
@@ -52,7 +52,8 @@ export function DemandePhotosButton({
         <Button
           size="sm"
           variant="secondary"
-          disabled={bloque || pending}
+          disabled={bloque}
+          loading={pending}
           title={bloque ? "Une demande par période de 6 mois" : undefined}
           onClick={() =>
             startTransition(async () => {
@@ -61,21 +62,19 @@ export function DemandePhotosButton({
             })
           }
         >
-          <Camera className="h-4 w-4" /> {pending ? "Envoi..." : "Demander des photos"}
+          <Camera className="h-4 w-4" /> Demander des photos
         </Button>
-        {demandeEnAttente && (
-          <Badge className="bg-amber-50 text-amber-700 ring-amber-600/20">Demande transmise au SAV</Badge>
-        )}
+        {demandeEnAttente && <StatusBadge statut="EN_ATTENTE" label="Demande transmise au SAV" tone="warning" />}
       </div>
       {bloque && (
-        <p className="inline-flex items-center gap-1.5 text-xs text-navy-400">
+        <p className="inline-flex items-center gap-1.5 text-caption text-navy-400">
           <Clock className="h-3.5 w-3.5" />
           Prochaine demande possible le{" "}
           {new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(cible))}
           {" · "}dans {reste}
         </p>
       )}
-      {error && <p className="text-xs text-rose-700">{error}</p>}
+      {error && <p className="text-caption text-danger-fg">{error}</p>}
     </div>
   );
 }
