@@ -17,7 +17,7 @@ Railway en tient lieu — surveillez les logs de build.
 Résumé du résultat attendu : un service « web » relié au dépôt GitHub, un
 volume monté sur `/app/storage`, trois variables (`DATABASE_URL` injectée,
 `JWT_SECRET`, `UPLOAD_DIR`), la base initialisée une seule fois, et
-`https://<votre-domaine>/api/health` qui répond `{"ok":true}`.
+`https://<votre-domaine>/api/health` qui répond `{"ok":true,"database":"ok",…}`.
 
 ---
 
@@ -121,7 +121,9 @@ pour revenir en SQLite.
 
 ## 5. Vérifier
 
-- `https://<votre-domaine>/api/health` → `{"ok":true}`.
+- `https://<votre-domaine>/api/health` → 200 `{"ok":true,"database":"ok","timestamp":"…"}`
+  (503 `{"ok":false,"database":"unreachable"}` si la base ne répond pas en
+  2,5 s : vérifiez `DATABASE_URL` et l'état du service Postgres).
 - `https://<votre-domaine>/login` → connexion avec `PDG-DEMO` / `demo1234`,
   puis `CL-DEMO` / `demo1234` pour l'espace client.
 - Logs du service : aucune ligne `JWT_SECRET`, `ECONNREFUSED` ou `EACCES`.
@@ -315,6 +317,47 @@ par un envoi vers un stockage objet (S3, Backblaze B2, Cloudflare R2) avec
 une politique de rétention, en gardant `scripts/db-backup.sh` tel quel : seule
 l'étape de publication change. À réévaluer à ce moment-là.
 
+## 10. Surveillance externe (uptime)
+
+`GET /api/health` est la route à brancher sur un service de surveillance
+(UptimeRobot, Better Stack, Checkly, Railway *Healthcheck Path*…). Elle ne
+se contente pas de répondre : elle exécute `SELECT 1` sur la base avec un
+délai de **2,5 secondes** et renvoie
+
+- **200** `{"ok":true,"database":"ok","timestamp":"<ISO 8601>","dureeMs":<n>}`
+  quand l'application et la base répondent ;
+- **503** `{"ok":false,"database":"unreachable","timestamp":"…","raison":"timeout"|"erreur","dureeMs":<n>}`
+  quand la base est en erreur ou muette — le détail (hôte, message) n'est
+  écrit que dans les logs du service (`[health] base injoignable …`).
+
+Réglages recommandés du moniteur :
+
+- **Intervalle** : 1 à 5 minutes ; **délai de la sonde** : 10 secondes au
+  moins (la route peut attendre la base 2,5 s) ; **statut attendu** : 200,
+  ou vérification du corps `"ok":true`.
+- **Alerte après 2 échecs consécutifs**, pas au premier : un pic de latence
+  ou un redéploiement provoque un 503 isolé sans incident réel. Deux échecs
+  à 1–2 minutes d'intervalle signalent une vraie panne (base arrêtée, plan
+  Railway suspendu, mot de passe changé, réseau).
+- Surveillez aussi `/login` en 200 (rendu de l'application) si le moniteur
+  accepte deux sondes.
+
+Sans authentification et sans cache (`Cache-Control: no-store`) : la route
+ne révèle rien d'autre que l'état binaire de la base. Railway l'utilise aussi
+comme *Healthcheck Path* au déploiement : un déploiement lancé pendant une
+panne de base est refusé, ce qui est voulu.
+
+Test local du cas 503 : lancez le serveur avec une base volontairement
+injoignable, par exemple
+
+```bash
+DATABASE_URL=postgresql://x:x@127.0.0.1:5999/x npx next dev --port 3200
+```
+
+puis `curl -i http://localhost:3200/api/health` → 503 immédiat (connexion
+refusée) ; avec un hôte non routable (`10.255.255.1`, en ajoutant
+`ALLOW_REMOTE_DB_IN_DEV=1`), le 503 arrive après le délai de 2,5 s.
+
 ## Dépannage
 
 | Symptôme | Cause probable | Correction |
@@ -323,5 +366,5 @@ l'étape de publication change. À réévaluer à ce moment-là.
 | Logs : `getaddrinfo ENOTFOUND postgres.railway.internal` | app et Postgres dans des projets différents, ou variable non référencée | utiliser `DATABASE_PUBLIC_URL` du service Postgres, ou déplacer le service dans le même projet |
 | `EACCES … /app/storage` | volume appartenant à root | `RAILWAY_RUN_UID=0` puis redéployer |
 | Uploads perdus après déploiement | volume non monté sur `/app/storage` | vérifier le mount path et `UPLOAD_DIR` |
-| Healthcheck en échec | mauvais chemin ou port | `/api/health`, port cible `3000` |
+| Healthcheck en échec | mauvais chemin ou port, ou base injoignable (503) | `/api/health`, port cible `3000` ; logs du service : lignes `[health] base injoignable` |
 | `relation "users" does not exist` | base non initialisée | étape 4 (`npm run db:push`) |

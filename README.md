@@ -459,7 +459,9 @@ de restauration : workflows GitHub Actions `backup-db.yml` et
 
 
 Le projet se construit en image Docker (`Dockerfile`, build Next.js
-`standalone`) avec une sonde de vie `GET /api/health`. Le pas-à-pas Railway
+`standalone`) avec une sonde de vie `GET /api/health` (200 si la base répond
+à `SELECT 1` en 2,5 s, 503 sinon ; à brancher sur une surveillance externe,
+voir DEPLOY.md « Surveillance »). Le pas-à-pas Railway
 (repo GitHub, variables, volume persistant, initialisation de la base) est
 dans **[DEPLOY.md](./DEPLOY.md)**.
 
