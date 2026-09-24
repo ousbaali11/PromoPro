@@ -33,9 +33,13 @@ test("demande → devis → acceptation → travaux, statut et notifications à 
   await page.keyboard.press("Escape");
   await page.goto("/dashboard/sav");
   const sectionSav = page.locator("section", { hasText: "Travaux modificatifs" });
-  const carte = sectionSav.getByTestId("tma-carte").filter({ hasText: DESCRIPTION });
-  await expect(carte).toHaveCount(1);
-  await expect(carte.getByText("Hamid Naciri")).toBeVisible();
+  const carteIndex = sectionSav.getByTestId("tma-carte").filter({ hasText: DESCRIPTION });
+  await expect(carteIndex).toHaveCount(1);
+  await expect(carteIndex.getByText("Hamid Naciri")).toBeVisible();
+  await expect(carteIndex.getByTestId("tma-chiffrer")).toHaveCount(0); // index sans action
+  await carteIndex.getByTestId("lien-fiche-client").click();
+  await expect(page).toHaveURL(/onglet=tma/);
+  const carte = page.getByTestId("onglet-tma").getByTestId("tma-carte").filter({ hasText: DESCRIPTION });
   await carte.getByTestId("tma-chiffrer").click();
   const form = carte.getByTestId("form-chiffrage");
   await form.getByLabel("Montant du devis (MAD)").fill(MONTANT);
@@ -71,10 +75,12 @@ test("demande → devis → acceptation → travaux, statut et notifications à 
   const carteSignee = page.getByTestId("tma-carte").filter({ hasText: DESCRIPTION });
   await expect(carteSignee).toHaveAttribute("data-statut-tma", "SIGNE");
   await expect(carteSignee.getByText(/accepté le/)).toBeVisible();
-  await carteSignee.getByTestId("tma-avancer").click();
-  await expect(carteSignee).toHaveAttribute("data-statut-tma", "EN_COURS");
-  await carteSignee.getByTestId("tma-avancer").click();
-  await expect(carteSignee).toHaveAttribute("data-statut-tma", "TERMINE");
+  await carteSignee.getByTestId("lien-fiche-client").click();
+  const carteFiche = page.getByTestId("onglet-tma").getByTestId("tma-carte").filter({ hasText: DESCRIPTION });
+  await carteFiche.getByTestId("tma-avancer").click();
+  await expect(carteFiche).toHaveAttribute("data-statut-tma", "EN_COURS");
+  await carteFiche.getByTestId("tma-avancer").click();
+  await expect(carteFiche).toHaveAttribute("data-statut-tma", "TERMINE");
 
   await login(page, "CLIENT");
   await page.getByRole("button", { name: "Notifications" }).click();

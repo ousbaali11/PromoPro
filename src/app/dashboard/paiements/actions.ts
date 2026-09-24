@@ -44,6 +44,7 @@ export async function validerSyndic(syndicId: string): Promise<{ error?: string 
 
   revalidatePath("/dashboard/paiements");
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${syndic.bienId}`);
   return undefined;
 }
@@ -91,6 +92,7 @@ export async function completerReference(
 
   revalidatePath("/dashboard/paiements");
   revalidatePath("/dashboard/recouvrement");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath("/dashboard/finance");
   revalidatePath(`/dashboard/biens/${paiement.bienId}`);
   revalidatePath(`/client/biens/${paiement.bienId}`);

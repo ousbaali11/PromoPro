@@ -44,14 +44,22 @@ test("le commercial saisit l'encaissement de la tranche 2 avec preuve", async ({
 test("le Comptable Interne complète la référence et valide : reçu PDF et tranche payée", async ({ page }) => {
   await login(page, "COMPTA");
   await page.goto("/dashboard/paiements");
-  const carte = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 2" });
+  const carteIndex = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 2" });
+  await expect(carteIndex).toHaveCount(1);
+  await expect(carteIndex.getByRole("link", { name: "Preuve de paiement" })).toBeVisible();
+  // L'index ne porte aucune action : la validation se fait sur la fiche du client, onglet Échéancier & Paiements
+  await expect(carteIndex.getByRole("button", { name: "Valider" })).toHaveCount(0);
+  await carteIndex.getByTestId("lien-fiche-client").click();
+  await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+\?bien=[^&]+&onglet=paiements$/);
+  const carte = page.getByTestId("onglet-paiements").locator("[data-card]", { hasText: "Tranche 2" }).filter({ has: page.getByTestId("form-completer") });
   await expect(carte).toHaveCount(1);
-  await expect(carte.getByRole("link", { name: "Preuve de paiement" })).toBeVisible();
-
   await carte.getByLabel("Référence").fill(REFERENCE);
   await carte.getByLabel("Date de réception").fill("2026-09-21");
   await carte.getByRole("button", { name: "Valider" }).click();
+  await expect(page.getByTestId("onglet-paiements").getByText("Aucune opération en attente")).toBeVisible();
+  await expect(page.getByTestId("ligne-paiement").filter({ hasText: REFERENCE })).toHaveCount(1);
 
+  await page.goto("/dashboard/paiements");
   await expect(page.getByText("Aucune opération en attente")).toBeVisible();
   const ligne = page.locator("table tbody tr", { hasText: REFERENCE });
   await expect(ligne).toHaveCount(1);

@@ -164,6 +164,36 @@ l'échéancier. Les règles de saisie communes (montant positif à deux décimal
 au plus, dates, pourcentages d'échéancier à 100 %, délai TMA, longueur des
 textes) vivent dans `src/lib/validation.ts`.
 
+## Fiche client : point d'entrée unique, pages d'index sans action
+
+`/dashboard/clients/[id]?bien=<id>&onglet=<contrat|paiements|tma|documents>`
+est le seul endroit où une action de gestion s'exerce, sur UN client et UN
+bien à la fois (`src/lib/dossier-client.ts` : `biensDuClient` — biens
+détenus puis biens dont le client s'est désisté — et `chargerDossierBien`,
+qui ne charge que le couple client / bien). Sélecteur de bien
+(`SegmentedControl`, comme dans l'espace client) puis quatre onglets :
+
+- **Contrat** : état, PDF, copie signée ; Responsable Administratif :
+  confirmation, dépôt de la copie signée, transmission au notaire (bien
+  livré) ; désistement du client sur ce bien (vérification, remboursement).
+- **Échéancier & Paiements** : tranches, paiements à traiter (Comptable
+  Interne : référence, montant exact, réception, porteur → validation et
+  reçu), paiements validés, syndic (validation comptable), saisie d'un
+  encaissement par le commercial du bien.
+- **Travaux modificatifs** : demandes du client sur ce bien ; SAV :
+  chiffrage / refus / avancement.
+- **Documents** : tout ce qui a été déposé ou généré pour ce couple, en
+  lecture seule.
+
+Les pages **Contrats**, **Paiements**, **Désistements** et **SAV (travaux
+modificatifs)** sont des index : filtres, recherche, export et statistiques,
+mais chaque carte ou ligne renvoie vers l'onglet concerné de la fiche
+(`lienFicheClient`) et ne porte plus aucun bouton d'action. Les cartes
+(`src/components/dossier/cartes.tsx`) sont partagées : `lienFiche` sur un
+index, `actions` sur la fiche. Les visites, photos, livraisons et la
+définition du syndic restent sur la page SAV (pas d'onglet dédié). Les
+Server Actions concernées revalident `/dashboard/clients/[id]`.
+
 ## Livraison et double confirmation
 
 La livraison d'un bien (section 12.1) exige la confirmation du client et

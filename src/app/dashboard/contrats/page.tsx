@@ -9,9 +9,8 @@ import { Card, Badge, EmptyState, PageHeader, Section, Stat, type Tone } from "@
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatDate } from "@/lib/utils";
-import { ConfirmerButton } from "./ConfirmerButton";
-import { CopieSigneeForm } from "./CopieSigneeForm";
-import { NotaireButton } from "./NotaireButton";
+import { LienFiche } from "@/components/dossier/cartes";
+import { lienFicheClient } from "@/lib/dossier-client";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
 const LABELS: Record<string, string> = {
@@ -29,7 +28,11 @@ const TONES: Record<string, Tone> = {
   ANNULE: "neutral",
 };
 
-/** Tableau de bord du Responsable Administratif (section 7.4) : contrats, désistements, biens livrés. */
+/**
+ * Index du Responsable Administratif (section 7.4) : contrats, désistements,
+ * biens livrés. Aucune action ici : confirmation, copie signée et transmission
+ * au notaire se font sur la fiche du client (onglet Contrat), un dossier à la fois.
+ */
 export default async function ContratsPage() {
   const session = await requireRole(["RESPONSABLE_ADMINISTRATIF", "PDG", "DIRECTEUR_COMMERCIAL"]);
   const isRespAdm = session.role === "RESPONSABLE_ADMINISTRATIF";
@@ -60,7 +63,7 @@ export default async function ContratsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Contrats" description="Contrats à vérifier, désistements à traiter et dossiers à transmettre au notaire." />
+      <PageHeader title="Contrats" description="Contrats à vérifier, désistements à traiter et dossiers à transmettre au notaire — chaque dossier se traite depuis la fiche du client." />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="Contrats en attente" value={enAttente} tone={enAttente > 0 ? "warning" : undefined} icon={<FileSignature />} hint="À vérifier puis confirmer" />
@@ -137,8 +140,9 @@ export default async function ContratsPage() {
                     <FileCheck2 className="h-3.5 w-3.5" /> Copie signée
                   </a>
                 )}
-                {contrat.statut === "EN_ATTENTE" && isRespAdm && <ConfirmerButton contratId={contrat.id} />}
-                {["PRET", "ENVOYE"].includes(contrat.statut) && isRespAdm && <CopieSigneeForm contratId={contrat.id} />}
+                {client && contrat.statut !== "ANNULE" && (
+                  <LienFiche href={lienFicheClient(client.id, bien.id, "contrat")} libelle={contrat.statut === "EN_ATTENTE" ? "Vérifier dans la fiche client" : "Fiche client"} />
+                )}
               </span>,
             ],
           }))}
@@ -185,12 +189,13 @@ export default async function ContratsPage() {
                     <Badge tone="success" dot>
                       Transmis au notaire le {formatDate(b.notaireTransmisAt)}
                     </Badge>
-                  ) : isRespAdm ? (
-                    <NotaireButton bienId={b.id} />
                   ) : (
-                    <Badge tone="warning" dot>
-                      À transmettre
-                    </Badge>
+                    <span className="inline-flex flex-wrap items-center gap-3">
+                      <Badge tone="warning" dot>
+                        À transmettre
+                      </Badge>
+                      {client && <LienFiche href={lienFicheClient(client.id, b.id, "contrat")} />}
+                    </span>
                   )}
                 </div>
               );

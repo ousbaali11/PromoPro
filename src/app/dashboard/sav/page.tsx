@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, inArray } from "drizzle-orm";
-import { FileDown, DoorOpen, Camera, PackageCheck, Building, Hammer, Paperclip } from "lucide-react";
+import { FileDown, DoorOpen, Camera, PackageCheck, Building, Hammer } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
 import { syndics, clients, visites, projets, demandesPhotos, demandesTma } from "@/db/schema";
@@ -13,8 +13,8 @@ import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection
 import { VisiteActions } from "./VisiteActions";
 import { DeposerPhotosForm } from "./DeposerPhotosForm";
 import { ConfirmerLivraisonButton, DefinirSyndicForm } from "./LivraisonSyndicActions";
-import { ChiffrageTma, AvancementTma } from "./TmaActions";
-import { TMA_LABELS, TMA_TONES, type StatutTma } from "@/lib/tma";
+import { TmaCarte } from "@/components/dossier/cartes";
+import { lienFicheClient } from "@/lib/dossier-client";
 
 const SYNDIC_STATUT: Record<string, { label: string; tone: Tone }> = {
   A_PAYER: { label: "À payer", tone: "warning" },
@@ -237,7 +237,7 @@ export default async function SavPage() {
         title="Travaux modificatifs acquéreurs"
         count={tmaAChiffrer || undefined}
         countTone="warning"
-        description="Demandes de modification des clients : chiffrage et devis, puis suivi des travaux après acceptation."
+        description="Demandes de modification des clients : chiffrage, devis et suivi des travaux se font depuis la fiche du client (onglet Travaux modificatifs)."
         testId="section-tma"
       >
         {listeTma.length === 0 ? (
@@ -246,57 +246,15 @@ export default async function SavPage() {
           </Card>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {listeTma.map((d) => {
-              const client = clientById.get(d.clientId);
-              const bien = bienById.get(d.bienId);
-              const statut = d.statut as StatutTma;
-              return (
-                <Card key={d.id} className="space-y-3 p-5" data-testid="tma-carte" data-statut-tma={d.statut}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-navy-900">
-                        {bien ? (
-                          <Link href={`/dashboard/biens/${bien.id}`} className="hover:underline">
-                            {bien.designation}
-                          </Link>
-                        ) : (
-                          "Bien inconnu"
-                        )}
-                        <span className="text-navy-400"> · </span>
-                        <span className="text-navy-400">
-                          <NomCompte compte={client} />
-                        </span>
-                      </p>
-                      <p className="mt-1 text-small text-navy-900">{d.description}</p>
-                      <p className="mt-1 text-caption text-navy-400">
-                        Demandée le {formatDate(d.dateDemande)}
-                        {d.dateLimite && ` · dépôt possible jusqu'au ${formatDate(d.dateLimite)}`}
-                        {d.signatureClientAt && ` · devis accepté le ${formatDateTime(d.signatureClientAt)}`}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-3">
-                        {d.croquisUrl && (
-                          <a href={d.croquisUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-caption font-medium text-gold-600 underline-offset-2 hover:underline">
-                            <Paperclip className="h-3.5 w-3.5" /> Pièce jointe du client
-                          </a>
-                        )}
-                        {d.devisUrl && (
-                          <a href={d.devisUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-caption font-medium text-gold-600 underline-offset-2 hover:underline">
-                            <FileDown className="h-3.5 w-3.5" /> Devis
-                          </a>
-                        )}
-                      </div>
-                      {d.motifRefus && <p className="mt-1 text-caption text-danger-fg">Refus : {d.motifRefus}</p>}
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <StatusBadge statut={d.statut} label={TMA_LABELS[statut] ?? d.statut} tone={TMA_TONES[statut] ?? "neutral"} />
-                      {d.montant != null && <span className="text-small font-semibold tabular text-navy-900">{formatMoney(d.montant)}</span>}
-                    </div>
-                  </div>
-                  {isSav && d.statut === "DEMANDE" && <ChiffrageTma demandeId={d.id} />}
-                  {isSav && (d.statut === "SIGNE" || d.statut === "EN_COURS") && <AvancementTma demandeId={d.id} statut={d.statut} />}
-                </Card>
-              );
-            })}
+            {listeTma.map((d) => (
+              <TmaCarte
+                key={d.id}
+                demande={d}
+                bien={bienById.get(d.bienId)}
+                client={clientById.get(d.clientId)}
+                lienFiche={clientById.has(d.clientId) ? lienFicheClient(d.clientId, d.bienId, "tma") : undefined}
+              />
+            ))}
           </div>
         )}
       </Section>

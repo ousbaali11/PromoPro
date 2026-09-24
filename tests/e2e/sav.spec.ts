@@ -38,7 +38,13 @@ test("le Responsable Administratif transmet le dossier du bien livré au notaire
   await page.goto("/dashboard/contrats");
   const ligne = page.locator("section", { hasText: "Biens livrés" }).locator("div.divide-y > div", { hasText: "Appartement A01" });
   await expect(ligne.getByText(/livré le/)).toBeVisible();
-  await ligne.getByRole("button", { name: "Dossier transmis au notaire" }).click();
+  await expect(ligne.getByRole("button", { name: "Dossier transmis au notaire" })).toHaveCount(0); // index sans action
+  await ligne.getByTestId("lien-fiche-client").click();
+  await expect(page).toHaveURL(/onglet=contrat/);
+  const carteNotaire = page.getByTestId("carte-notaire");
+  await carteNotaire.getByRole("button", { name: "Dossier transmis au notaire" }).click();
+  await expect(carteNotaire.getByText(/Transmis au notaire le/)).toBeVisible();
+  await page.goto("/dashboard/contrats");
   await expect(ligne.getByText(/Transmis au notaire le/)).toBeVisible();
 });
 
@@ -74,7 +80,13 @@ test("syndic : défini par le SAV → payé par le client → validé par le com
   await page.goto("/dashboard/paiements");
   const section = page.locator("section", { hasText: "Syndic en attente de validation" });
   await expect(section.getByText(/12.000 MAD/)).toBeVisible();
-  await section.getByRole("button", { name: "Valider le syndic" }).click();
+  await expect(section.getByRole("button", { name: "Valider le syndic" })).toHaveCount(0); // index sans action
+  await section.getByTestId("lien-fiche-client").click();
+  await expect(page).toHaveURL(/onglet=paiements/);
+  const ligneSyndic = page.getByTestId("section-syndic").getByTestId("syndic-ligne").filter({ hasText: /12.000 MAD/ });
+  await ligneSyndic.getByRole("button", { name: "Valider le syndic" }).click();
+  await expect(ligneSyndic).toHaveAttribute("data-statut", "PAYE");
+  await page.goto("/dashboard/paiements");
   await expect(section.getByText("Aucun paiement de syndic à valider")).toBeVisible();
 
   await login(page, "SAV");

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { NomCompte } from "@/components/ui/EtatCompte";
 import { desc, eq } from "drizzle-orm";
 import { FileDown, Paperclip, Receipt, Building, Wallet, HandCoins } from "lucide-react";
@@ -8,15 +7,15 @@ import { paiements, projets, clients, users, propositions, syndics } from "@/db/
 import { Card, Badge, EmptyState, PageHeader, Section, Stat } from "@/components/ui/Primitives";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { CompleterForm } from "./CompleterForm";
-import { ValiderSyndicButton } from "./ValiderSyndicButton";
+import { LienFiche, PaiementAttenteCarte } from "@/components/dossier/cartes";
+import { lienFicheClient } from "@/lib/dossier-client";
 
 const lien =
   "inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus";
 
 export default async function PaiementsPage() {
+  // Index : référence et validation se saisissent sur la fiche du client (onglet Échéancier & Paiements), un paiement à la fois
   const session = await requireRole(["COMPTABLE_INTERNE", "DIRECTEUR_FINANCIER", "PDG"]);
-  const isComptable = session.role === "COMPTABLE_INTERNE";
 
   const allProjets = await db.query.projets.findMany({ where: eq(projets.promoteurId, session.promoteurId!) });
   const projetIds = new Set(allProjets.map((p) => p.id));
@@ -54,7 +53,7 @@ export default async function PaiementsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Paiements"
-        description="Opérations saisies par les commerciaux, les clients et le recouvrement — à référencer puis valider."
+        description="Opérations saisies par les commerciaux, les clients et le recouvrement — à référencer puis valider depuis la fiche du client."
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -73,62 +72,16 @@ export default async function PaiementsPage() {
           <EmptyState icon={<Wallet />} title="Aucune opération en attente" description="Les paiements saisis apparaîtront ici." />
         ) : (
           <div className="space-y-4">
-            {enAttente.map((p) => {
-              const bien = bienById.get(p.bienId);
-              const client = clientById.get(p.clientId);
-              return (
-                <Card key={p.id} accent="warning" className="p-5" data-testid="paiement-attente">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-h3 text-navy-900">
-                        {bien ? (
-                          <Link href={`/dashboard/biens/${bien.id}`} className="rounded-xs underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus">
-                            {bien.designation}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                        {p.trancheNumero && (
-                          <Badge tone="neutral" className="ml-2 align-middle">
-                            Tranche {p.trancheNumero}
-                          </Badge>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-small text-navy-400">
-                        <NomCompte compte={client} /> · saisi par {auteur(p)} le {formatDate(p.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-price tabular text-navy-900">{formatMoney(p.montant, p.devise)}</p>
-                      <p className="text-caption text-navy-400">
-                        {p.natureOperation} · {p.banque} · {formatDate(p.dateOperation)}
-                        {p.natureOperation === "cheque" && ` · encaissement ${formatDate(p.dateEncaissementCheque)}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-4 text-caption">
-                    <span className="text-navy-400">
-                      Porteur déclaré : <span className="font-medium text-navy-900">{p.porteur ?? "—"}</span>
-                    </span>
-                    {p.preuveUrl && (
-                      <a href={p.preuveUrl} target="_blank" rel="noreferrer" className={lien}>
-                        <Paperclip className="h-3.5 w-3.5" /> Preuve de paiement
-                      </a>
-                    )}
-                    {p.porteurPieceUrl && (
-                      <a href={p.porteurPieceUrl} target="_blank" rel="noreferrer" className={lien}>
-                        <Paperclip className="h-3.5 w-3.5" /> Pièce du porteur
-                      </a>
-                    )}
-                  </div>
-                  {isComptable && (
-                    <div className="mt-4">
-                      <CompleterForm paiementId={p.id} montant={p.montant} porteur={p.porteur} />
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
+            {enAttente.map((p) => (
+              <PaiementAttenteCarte
+                key={p.id}
+                paiement={p}
+                bien={bienById.get(p.bienId)}
+                client={clientById.get(p.clientId)}
+                auteur={auteur(p)}
+                lienFiche={clientById.has(p.clientId) ? lienFicheClient(p.clientId, p.bienId, "paiements") : undefined}
+              />
+            ))}
           </div>
         )}
       </Section>
@@ -236,9 +189,9 @@ export default async function PaiementsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-price tabular text-navy-900">{formatMoney(s.montant)}</p>
-                    {isComptable && (
+                    {clientById.has(s.clientId) && (
                       <div className="mt-2">
-                        <ValiderSyndicButton syndicId={s.id} />
+                        <LienFiche href={lienFicheClient(s.clientId, s.bienId, "paiements")} />
                       </div>
                     )}
                   </div>

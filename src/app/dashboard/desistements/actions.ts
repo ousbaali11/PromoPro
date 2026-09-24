@@ -38,6 +38,7 @@ export async function verifierDesistement(desistementId: string): Promise<{ erro
 
   revalidatePath("/dashboard/desistements");
   return undefined;
+  revalidatePath("/dashboard/clients/[id]", "page");
 }
 
 /** Le remboursement a été effectué ; on note si une décharge a été fournie. */
@@ -60,5 +61,6 @@ export async function marquerRembourse(
 
   revalidatePath("/dashboard/desistements");
   revalidatePath("/dashboard/desistes");
+  revalidatePath("/dashboard/clients/[id]", "page");
   return undefined;
 }

@@ -295,7 +295,8 @@ test("actions forgées : blocage, épingle, relance, réinitialisation de mot de
 
   await login(page, "SAV");
   await page.goto("/dashboard/sav");
-  const carteTemoin = page.getByTestId("tma-carte").filter({ hasText: A.temoinTma });
+  await page.getByTestId("tma-carte").filter({ hasText: A.temoinTma }).getByTestId("lien-fiche-client").click();
+  const carteTemoin = page.getByTestId("onglet-tma").getByTestId("tma-carte").filter({ hasText: A.temoinTma });
   await carteTemoin.getByTestId("tma-chiffrer").click();
   const formChiffrage = carteTemoin.getByTestId("form-chiffrage");
   await formChiffrage.getByLabel("Montant du devis (MAD)").fill("9999");
@@ -311,7 +312,8 @@ test("actions forgées : blocage, épingle, relance, réinitialisation de mot de
   // Nettoyage : la demande témoin de A est refusée par le SAV
   await login(page, "SAV");
   await page.goto("/dashboard/sav");
-  const carteTemoin2 = page.getByTestId("tma-carte").filter({ hasText: A.temoinTma });
+  await page.getByTestId("tma-carte").filter({ hasText: A.temoinTma }).getByTestId("lien-fiche-client").click();
+  const carteTemoin2 = page.getByTestId("onglet-tma").getByTestId("tma-carte").filter({ hasText: A.temoinTma });
   await carteTemoin2.getByRole("button", { name: "Refuser" }).click();
   await carteTemoin2.getByLabel("Motif du refus (transmis au client)").fill("Demande témoin du test d'isolation");
   await carteTemoin2.getByRole("button", { name: "Confirmer le refus" }).click();

@@ -164,6 +164,19 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   livraison, syndic ; rendez-vous
   avec chaque service ; contact des services ; rappel J-7 avant échéance
 
+## Fiche client : point d'entrée unique de gestion
+
+La fiche d'un client (`/dashboard/clients/<id>`) regroupe, bien par bien
+(sélecteur en haut si le client en a plusieurs ou s'est désisté de l'un
+d'eux), quatre onglets : **Contrat**, **Échéancier & Paiements**, **Travaux
+modificatifs**, **Documents**. C'est là que se font la confirmation d'un
+contrat, le dépôt de la copie signée, la transmission au notaire, la
+vérification et le remboursement d'un désistement, la validation comptable
+d'un paiement ou d'un syndic, le chiffrage et le suivi des travaux
+modificatifs. Les pages Contrats, Paiements, Désistements et SAV listent les
+dossiers en attente ou récents et renvoient vers la fiche : aucune action ne
+s'exerce depuis une liste.
+
 ## Structure du projet
 
 ```

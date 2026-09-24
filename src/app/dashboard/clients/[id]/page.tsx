@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import { FileText, Home, Pencil } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
-import { clients, users, biens } from "@/db/schema";
+import { clients, users } from "@/db/schema";
 import { Card, Info, PageHeader, Section, EmptyState, Breadcrumb, Callout } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
 import { ResetPasswordButton } from "../ResetPasswordButton";
@@ -14,9 +15,29 @@ import { EtatCompte, NomCompte } from "@/components/ui/EtatCompte";
 import { ActionsCompte } from "@/components/comptes/ActionsCompte";
 import { etatCompte, peutGererClient, peutModifierClient } from "@/lib/comptes";
 import { clientAUneVenteEnCours } from "@/lib/comptes-service";
+import { biensDuClient, chargerDossierBien, lireOnglet, ONGLETS, ONGLET_LABELS } from "@/lib/dossier-client";
+import { OngletContrat } from "./OngletContrat";
+import { OngletPaiements } from "./OngletPaiements";
+import { OngletTma } from "./OngletTma";
+import { OngletDocuments } from "./OngletDocuments";
 
-export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+/**
+ * Fiche client : point d'entrée unique de gestion d'un client. Un sélecteur
+ * de bien (s'il en a plusieurs, ou s'il s'est désisté de l'un d'eux), puis
+ * quatre onglets pour le bien sélectionné — Contrat, Échéancier & Paiements,
+ * Travaux modificatifs, Documents. Les pages Contrats, Paiements,
+ * Désistements et SAV ne sont que des index : toute action se fait ici, sur
+ * UN client et UN bien à la fois.
+ */
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ bien?: string; onglet?: string }>;
+}) {
   const { id } = await params;
+  const { bien: bienParam, onglet: ongletParam } = await searchParams;
   const session = await requireStaffSession();
 
   const client = await db.query.clients.findFirst({ where: eq(clients.id, id) });
@@ -30,19 +51,20 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const commercial = client.commercialId
     ? await db.query.users.findFirst({ where: eq(users.id, client.commercialId) })
     : null;
-  const mesBiens = await db.query.biens.findMany({ where: eq(biens.clientId, client.id) });
-  const projetIds = [...new Set(mesBiens.map((b) => b.projetId))];
-  const projetsList = projetIds.length ? await db.query.projets.findMany() : [];
-  const projetById = new Map(projetsList.map((p) => [p.id, p]));
+  const mesBiens = await biensDuClient(client);
+  const selection = mesBiens.find((b) => b.bien.id === bienParam) ?? mesBiens[0];
+  const onglet = lireOnglet(ongletParam);
+  const dossier = selection ? await chargerDossierBien(client, selection.bien) : null;
 
   const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && etatCompte(client) === "actif";
   const peutGerer = peutGererClient(session, client);
   const peutModifier = peutModifierClient(session, client) && etatCompte(client) === "actif";
   const venteEnCours = peutGerer ? await clientAUneVenteEnCours(client.id) : false;
   const initiales = `${client.prenom[0] ?? ""}${client.nom[0] ?? ""}`.toUpperCase();
+  const lienOnglet = (bienId: string, o: string) => `/dashboard/clients/${client.id}?bien=${bienId}&onglet=${o}`;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <div>
         <Breadcrumb items={[{ label: "Clients", href: "/dashboard/clients" }, { label: `${client.prenom} ${client.nom}` }]} />
         <div className="flex items-start gap-4">
@@ -120,32 +142,68 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <Info label="Commercial" value={commercial ? <NomCompte compte={commercial} /> : undefined} />
       </Card>
 
-      <Section title="Biens du client" count={mesBiens.length > 0 ? mesBiens.length : undefined}>
-        {mesBiens.length === 0 ? (
+      <Section
+        title="Dossier par bien"
+        count={mesBiens.length > 0 ? mesBiens.length : undefined}
+        description={mesBiens.length > 1 ? "Sélectionnez un bien : chaque onglet ne montre que ce qui le concerne." : undefined}
+        testId="section-dossier"
+      >
+        {!selection || !dossier ? (
           <EmptyState icon={<Home />} title="Aucun bien affecté" description="Les biens vendus à ce client apparaîtront ici." className="py-10" />
         ) : (
-          <Card className="divide-y divide-navy-50">
-            {mesBiens.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-small" data-testid="client-bien">
-                <div className="min-w-0">
-                  <Link
-                    href={`/dashboard/biens/${b.id}`}
-                    className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
-                  >
-                    {b.designation}
-                  </Link>
-                  <p className="text-caption text-navy-400">{projetById.get(b.projetId)?.nom}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="tabular text-navy-400">{formatMoney(b.prix)}</span>
-                  <StatusBadge statut={b.statut} label={STATUT_BIEN_LABELS[b.statut]} tone={STATUT_BIEN_TONES[b.statut] ?? "neutral"} />
-                  <LinkButton href={`/dashboard/biens/${b.id}`} variant="ghost" size="sm">
-                    Ouvrir
-                  </LinkButton>
-                </div>
+          <div className="space-y-4">
+            {mesBiens.length > 1 && (
+              <SegmentedControl
+                ariaLabel="Biens du client"
+                testId="selecteur-biens-client"
+                value={selection.bien.id}
+                items={mesBiens.map((b) => ({
+                  value: b.bien.id,
+                  label: b.desiste ? `${b.bien.designation} (désisté)` : b.bien.designation,
+                  href: lienOnglet(b.bien.id, onglet),
+                }))}
+              />
+            )}
+
+            <Card className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-small" data-testid="client-bien" data-bien-id={selection.bien.id}>
+              <div className="min-w-0">
+                <Link
+                  href={`/dashboard/biens/${selection.bien.id}`}
+                  className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                  data-testid="bien-selectionne"
+                >
+                  {selection.bien.designation}
+                </Link>
+                <p className="text-caption text-navy-400">
+                  {selection.projet?.nom}
+                  {selection.desiste && " · client désisté de ce bien"}
+                </p>
               </div>
-            ))}
-          </Card>
+              <div className="flex items-center gap-3">
+                <span className="tabular text-navy-400">{formatMoney(selection.bien.prix)}</span>
+                <StatusBadge
+                  statut={selection.bien.statut}
+                  label={STATUT_BIEN_LABELS[selection.bien.statut]}
+                  tone={STATUT_BIEN_TONES[selection.bien.statut] ?? "neutral"}
+                />
+              </div>
+            </Card>
+
+            <SegmentedControl
+              ariaLabel="Onglets du dossier"
+              testId="onglets-dossier"
+              size="sm"
+              value={onglet}
+              items={ONGLETS.map((o) => ({ value: o, label: ONGLET_LABELS[o], href: lienOnglet(selection.bien.id, o) }))}
+            />
+
+            <div data-testid={`onglet-${onglet}`}>
+              {onglet === "contrat" && <OngletContrat session={session} client={client} selection={selection} dossier={dossier} />}
+              {onglet === "paiements" && <OngletPaiements session={session} client={client} selection={selection} dossier={dossier} />}
+              {onglet === "tma" && <OngletTma session={session} client={client} selection={selection} dossier={dossier} />}
+              {onglet === "documents" && <OngletDocuments client={client} selection={selection} dossier={dossier} />}
+            </div>
+          </div>
         )}
       </Section>
     </div>

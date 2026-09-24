@@ -52,6 +52,7 @@ export async function deposerPhotos(
   });
 
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${demande.bienId}`);
   return undefined;
 }
@@ -84,6 +85,7 @@ export async function confirmerLivraisonSav(bienId: string): Promise<{ error?: s
   }
 
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath("/dashboard/contrats");
   revalidatePath(`/client/biens/${bien.id}`);
   revalidatePath(`/dashboard/biens/${bien.id}`);
@@ -123,6 +125,7 @@ export async function definirSyndic(_prev: { error?: string } | undefined, formD
   });
 
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${bien.id}`);
   return { error: undefined };
 }
@@ -173,6 +176,7 @@ export async function accepterVisite(visiteId: string): Promise<{ error?: string
   });
 
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${bien.id}`);
   return undefined;
 }
@@ -201,6 +205,7 @@ export async function refuserVisite(
   });
 
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${bien.id}`);
   return undefined;
 }
@@ -242,6 +247,7 @@ export async function chiffrerTma(_prev: TmaSavState, formData: FormData): Promi
     details: `Chiffrée : ${formatMoney(montant)}, devis envoyé au client`,
   });
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${r.bien.id}`);
   return { success: "Devis envoyé au client." };
 }
@@ -275,6 +281,7 @@ export async function refuserTma(_prev: TmaSavState, formData: FormData): Promis
     details: `Refusée : ${motif}`,
   });
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${r.bien.id}`);
   return { success: "Demande refusée, client informé." };
 }
@@ -304,6 +311,7 @@ export async function avancerTma(demandeId: string): Promise<{ error?: string } 
     details: `Statut : ${TMA_LABELS[r.demande.statut as keyof typeof TMA_LABELS] ?? r.demande.statut} → ${TMA_LABELS[suivant]}`,
   });
   revalidatePath("/dashboard/sav");
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${r.bien.id}`);
   return undefined;
 }

@@ -21,6 +21,7 @@ export async function marquerTransmisNotaire(bienId: string): Promise<{ error?: 
 
   await db.update(biens).set({ notaireTransmisAt: new Date() }).where(eq(biens.id, bienId));
   revalidatePath("/dashboard/contrats");
+  revalidatePath("/dashboard/clients/[id]", "page");
   return undefined;
 }
 
@@ -42,6 +43,7 @@ export async function deposerCopieSignee(_prev: { error?: string } | undefined, 
   if (["EN_ATTENTE", "ANNULE"].includes(contrat.statut)) return { error: "Le contrat doit d'abord être confirmé." };
 
   await db.update(contrats).set({ copieSigneeUrl, statut: "SIGNE" }).where(eq(contrats.id, contratId));
+  revalidatePath("/dashboard/clients/[id]", "page");
 
   if (bien.clientId) {
     await notifyClient({
@@ -116,4 +118,5 @@ export async function confirmerContrat(contratId: string): Promise<{ error?: str
   revalidatePath("/dashboard/contrats");
   revalidatePath(`/client/biens/${bien.id}`);
   return undefined;
+  revalidatePath("/dashboard/clients/[id]", "page");
 }

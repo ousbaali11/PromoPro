@@ -113,10 +113,14 @@ test("décision du PDG en double (onglet obsolète) puis désistement : messages
   const desistement = page.locator("[data-card]", { hasText: "Parking P01" });
   await expect(desistement).toHaveCount(1);
   // Le désistement est traité jusqu'au bout pour ne rien laisser en attente aux specs suivantes
-  await desistement.getByRole("button", { name: "Papiers vérifiés" }).click();
-  await expect(desistement.getByText("Vérifié — remboursement en cours")).toBeVisible();
-  await desistement.getByLabel("Décharge").fill("Test de concurrence : aucun paiement validé, rien à rembourser");
-  await desistement.getByRole("button", { name: "Marquer remboursé" }).click();
+  await desistement.getByTestId("lien-fiche-client").click(); // traité depuis la fiche du client
+  const dossier = page.getByTestId("section-desistement").getByTestId("desistement-carte");
+  await dossier.getByRole("button", { name: "Papiers vérifiés" }).click();
+  await expect(dossier.getByText("Vérifié — remboursement en cours")).toBeVisible();
+  await dossier.getByLabel("Décharge").fill("Test de concurrence : aucun paiement validé, rien à rembourser");
+  await dossier.getByRole("button", { name: "Marquer remboursé" }).click();
+  await expect(dossier.getByText("Remboursé", { exact: true })).toBeVisible();
+  await page.goto("/dashboard/desistements");
   await expect(page.locator("section", { hasText: "Historique" }).locator("[data-card]", { hasText: "Parking P01" }).getByText("Remboursé", { exact: true })).toBeVisible();
   await ctx2.close();
 });

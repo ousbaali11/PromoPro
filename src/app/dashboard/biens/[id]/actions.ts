@@ -33,6 +33,7 @@ export async function blockBien(_prev: { error?: string } | undefined, formData:
 
   await db.update(biens).set({ statut: "BLOQUE_PDG", pdgCommentaire: commentaire || null }).where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
+  revalidatePath("/dashboard/clients/[id]", "page");
   return { error: undefined };
 }
 
@@ -68,6 +69,7 @@ export async function setPlanBien(_prev: { error?: string } | undefined, formDat
     })
     .where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${bienId}`);
   return { error: undefined };
 }
@@ -100,6 +102,7 @@ export async function saisirPaiementCommercial(
   await notifierComptable(session.promoteurId!, bien, `${session.prenom} ${session.nom}`);
 
   revalidatePath(`/dashboard/biens/${bien.id}`);
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath("/dashboard/paiements");
   return { success: "Paiement enregistré : il est transmis au Comptable Interne pour référencement et validation." };
 }
@@ -166,6 +169,7 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
   });
 
   revalidatePath(`/dashboard/biens/${bien.id}`);
+  revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/dashboard/projets/${bien.projetId}`);
   revalidatePath("/dashboard/desistes");
   revalidatePath("/dashboard/desistements");
@@ -179,4 +183,5 @@ export async function unblockBien(bienId: string) {
   if (!bien || bien.statut !== "BLOQUE_PDG") return;
   await db.update(biens).set({ statut: "DISPONIBLE", pdgCommentaire: null }).where(eq(biens.id, bienId));
   revalidatePath(`/dashboard/biens/${bienId}`);
+  revalidatePath("/dashboard/clients/[id]", "page");
 }

@@ -99,12 +99,16 @@ test("paiement déclaré par le client avec trop-perçu : validé par le comptab
 
   await login(page, "COMPTA");
   await page.goto("/dashboard/paiements");
-  const carte = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 3" });
-  await expect(carte).toHaveCount(1);
-  await expect(carte.getByText("saisi par Client")).toBeVisible();
+  const carteIndex = page.locator("[data-card]", { hasText: "Appartement A01" }).filter({ hasText: "Tranche 3" });
+  await expect(carteIndex).toHaveCount(1);
+  await expect(carteIndex.getByText("saisi par Client")).toBeVisible();
+  await carteIndex.getByTestId("lien-fiche-client").click(); // validation sur la fiche du client, un paiement à la fois
+  const carte = page.getByTestId("onglet-paiements").locator("[data-card]", { hasText: "Tranche 3" }).filter({ has: page.getByTestId("form-completer") });
   await carte.getByLabel("Référence").fill("VIR-E2E-T3-0002");
   await carte.getByLabel("Date de réception").fill(ymd(new Date()));
   await carte.getByRole("button", { name: "Valider" }).click();
+  await expect(page.getByTestId("ligne-paiement").filter({ hasText: "VIR-E2E-T3-0002" })).toHaveCount(1);
+  await page.goto("/dashboard/paiements");
   await expect(page.locator("table tbody tr", { hasText: "VIR-E2E-T3-0002" })).toHaveCount(1);
 
   await login(page, "CLIENT");

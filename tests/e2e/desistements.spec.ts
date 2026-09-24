@@ -55,12 +55,20 @@ test("le Responsable Administratif vérifie les papiers puis marque le rembourse
   await expect(carte.getByRole("link", { name: "Document de désistement légalisé" })).toBeVisible();
   await expect(carte.getByText(/À rembourser/)).toBeVisible();
 
-  await carte.getByRole("button", { name: "Papiers vérifiés" }).click();
-  await expect(carte.getByText("Vérifié — remboursement en cours")).toBeVisible();
+  // L'index ne porte aucune action : le dossier se traite sur la fiche du client (onglet Contrat), avec le bien désisté sélectionné
+  await expect(carte.getByRole("button", { name: "Papiers vérifiés" })).toHaveCount(0);
+  await carte.getByTestId("lien-fiche-client").click();
+  await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+\?bien=[^&]+&onglet=contrat$/);
+  await expect(page.getByTestId("bien-selectionne")).toHaveText("Appartement A02");
+  const dossier = page.getByTestId("section-desistement").getByTestId("desistement-carte");
+  await dossier.getByRole("button", { name: "Papiers vérifiés" }).click();
+  await expect(dossier.getByText("Vérifié — remboursement en cours")).toBeVisible();
 
-  await carte.getByLabel("Décharge").fill("Payeur identique au client, pas de décharge nécessaire");
-  await carte.getByRole("button", { name: "Marquer remboursé" }).click();
+  await dossier.getByLabel("Décharge").fill("Payeur identique au client, pas de décharge nécessaire");
+  await dossier.getByRole("button", { name: "Marquer remboursé" }).click();
+  await expect(dossier.getByText("Remboursé", { exact: true })).toBeVisible();
 
+  await page.goto("/dashboard/desistements");
   await expect(page.getByText("Aucun désistement en attente")).toBeVisible();
   const historique = page.locator("section", { hasText: "Historique" }).locator("[data-card]", { hasText: "Appartement A02" });
   await expect(historique.getByText("Remboursé", { exact: true })).toBeVisible();
