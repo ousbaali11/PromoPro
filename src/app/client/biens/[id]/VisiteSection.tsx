@@ -7,6 +7,7 @@ import { demanderVisite, choisirCreneauVisite } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Callout, Input, Select } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 type Visite = {
   id: string;
@@ -109,7 +110,7 @@ function ChoixCreneau({ visite }: { visite: Visite }) {
         )}
       </div>
       <p className="text-caption text-navy-400">Lundi–vendredi 8h–12h et 14h–18h, samedi 8h–12h.</p>
-      <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start" data-testid="form-creneau" data-hydrated={hydrate ? "true" : undefined}>
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-start" data-testid="form-creneau" data-hydrated={hydrate ? "true" : undefined}>
         <Input id="visite-date" name="date" type="date" label="Date" min={today} value={date} onChange={(e) => setDate(e.target.value)} clearable={false} required />
         <Select id="visite-heure" name="heure" label="Heure" required disabled={heures.length === 0}>
           {heures.length === 0 ? (

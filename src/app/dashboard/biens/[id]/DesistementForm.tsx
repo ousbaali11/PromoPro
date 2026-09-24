@@ -7,6 +7,7 @@ import { enregistrerDesistement } from "./actions";
 import { Card, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Section 6.5 — le commercial enregistre le désistement légalisé du client. */
 export function DesistementForm({ bienId, clientNom }: { bienId: string; clientNom: string }) {
@@ -35,7 +36,7 @@ export function DesistementForm({ bienId, clientNom }: { bienId: string; clientN
                 Le bien sera remis à zéro et redeviendra disponible ; la vente sera conservée dans la page « Biens
                 désistés » et le Responsable Administratif sera notifié pour organiser le remboursement.
               </p>
-              <form action={formAction} className="space-y-4">
+              <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4">
                 <input type="hidden" name="bienId" value={bienId} />
                 <FileUpload name="documentUrl" type="desistements" label="Document de désistement légalisé" required />
                 {state?.error && <Callout tone="danger">{state.error}</Callout>}

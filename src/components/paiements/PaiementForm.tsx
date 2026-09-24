@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export type PaiementFormState = { error?: string; success?: string } | undefined;
 
@@ -85,7 +86,7 @@ export function PaiementForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4" data-testid="form-paiement">
+    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-paiement">
       <input type="hidden" name="bienId" value={bienId} />
       {intro && <p className="text-caption text-navy-400">{intro}</p>}
 

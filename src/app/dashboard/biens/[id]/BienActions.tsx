@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useTransition, useRef, useEffect } from "react";
 import { Lock, LockOpen } from "lucide-react";
 import { blockBien, unblockBien, setPlanBien } from "./actions";
 import { Card, Textarea, Input, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function BlockBienForm({ bienId }: { bienId: string }) {
   const [state, formAction, pending] = useActionState(blockBien, undefined);
@@ -16,7 +17,7 @@ export function BlockBienForm({ bienId }: { bienId: string }) {
       <p className="mb-4 mt-1 text-caption text-navy-400">
         Le bien sera retiré de la vente pour tous les commerciaux. Votre commentaire reste privé.
       </p>
-      <form action={formAction} className="space-y-3">
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-3">
         <input type="hidden" name="bienId" value={bienId} />
         <Textarea
           id="commentaire"
@@ -42,8 +43,12 @@ export function PlanUploadForm({
   plans: { plan2dUrl: string | null; plan3dUrl: string | null; visiteVirtuelleUrl: string | null };
 }) {
   const [state, formAction, pending] = useActionState(setPlanBien, undefined);
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state && !state.error) formRef.current?.reset(); // succès : on repart d'un formulaire vide (comme avant)
+  }, [state]);
   return (
-    <form action={formAction} className="space-y-3" data-testid="form-plans">
+    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-3" data-testid="form-plans">
       <input type="hidden" name="bienId" value={bienId} />
       <FileUpload name="plan2dUrl" type="plans" label={plans.plan2dUrl ? "Remplacer le plan 2D" : "Plan 2D (image ou PDF)"} />
       <FileUpload

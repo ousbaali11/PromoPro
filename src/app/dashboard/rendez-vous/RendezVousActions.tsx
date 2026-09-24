@@ -6,6 +6,7 @@ import { Check, CalendarClock, Send } from "lucide-react";
 import { accepterRendezVous, reproposerRendezVous } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function RendezVousActions({ rdvId }: { rdvId: string }) {
   const [pending, startTransition] = useTransition();
@@ -37,7 +38,7 @@ export function RendezVousActions({ rdvId }: { rdvId: string }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

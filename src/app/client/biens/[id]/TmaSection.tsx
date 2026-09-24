@@ -9,6 +9,7 @@ import { Callout, Textarea } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { TMA_LABELS, TMA_TONES, type StatutTma } from "@/lib/tma";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export type DemandeTmaVue = {
   id: string;
@@ -69,7 +70,7 @@ export function TmaSection({
               <AnimatePresence initial={false}>
                 {formOuvert && (
                   <motion.form
-                    action={formAction}
+                    action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
@@ -155,7 +156,7 @@ function DemandeTma({ demande }: { demande: DemandeTmaVue }) {
       {statut === "REFUSE" && demande.motifRefus && <Callout tone="danger">{demande.motifRefus}</Callout>}
 
       {statut === "CHIFFRE" && (
-        <form action={formAction} className="space-y-2 rounded-md bg-gold-50 p-3 ring-1 ring-inset ring-gold-200" data-testid="form-acceptation-devis">
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-2 rounded-md bg-gold-50 p-3 ring-1 ring-inset ring-gold-200" data-testid="form-acceptation-devis">
           <input type="hidden" name="demandeId" value={demande.id} />
           <label className="flex cursor-pointer items-start gap-2 text-small text-navy-900">
             <input type="checkbox" name="acceptation" className="mt-0.5 h-4 w-4 accent-gold" required />

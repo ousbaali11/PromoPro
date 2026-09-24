@@ -145,10 +145,16 @@ montant dépasse le restant dû, l'excédent est reporté sur la tranche suivant
 (et ainsi de suite), ce qui réduit automatiquement son restant dû. Les
 versements complémentaires d'une tranche fractionnée sont saisis comme des
 paiements distincts (chacun avec sa preuve) sur la même tranche, et le cumul se
-met à jour à chaque validation. Un excédent restant après la dernière tranche
-est conservé sur celle-ci (`montantPaye > montant`) et affiché au client
-comme « excédent en votre faveur ». Les montants sont modifiés uniquement à la
-validation comptable : un paiement « en attente » n'affecte pas l'échéancier.
+met à jour à chaque validation. Un paiement ne peut pas dépasser le **restant
+dû total du bien** (contrôle à la saisie et à la validation comptable, message
+explicite) : le trop-perçu se reporte de tranche en tranche, jamais au-delà du
+prix. La répartition est une fonction pure (`src/lib/imputation.ts`,
+`repartirImputation`) : aucune tranche n'est jamais négative et la somme des
+imputations vaut exactement le montant. Les montants sont modifiés uniquement
+à la validation comptable : un paiement « en attente » n'affecte pas
+l'échéancier. Les règles de saisie communes (montant positif à deux décimales
+au plus, dates, pourcentages d'échéancier à 100 %, délai TMA, longueur des
+textes) vivent dans `src/lib/validation.ts`.
 
 ## Tâches planifiées
 
@@ -188,6 +194,12 @@ export async function maAction(_prev: { error?: string } | undefined, formData: 
   return { error: undefined };
 }
 ```
+
+Sur un formulaire, ajoute `onSubmit={soumettreSansReinitialiser(formAction)}`
+(`src/components/ui/soumission.ts`) : React 19 vide un formulaire non contrôlé
+dès que l'action se termine, même sur une erreur de validation — ce helper
+dispatche l'action lui-même pour que la saisie reste en place. Un formulaire
+qui doit se vider après un succès le fait explicitement (`form.reset()`).
 
 Pour une action déclenchée par un simple bouton (pas un formulaire), utilise
 `useTransition` + un appel direct à une fonction serveur qui prend des

@@ -7,6 +7,7 @@ import { deposerPhotos } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Field, Input, Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Dépôt multiple de photos d'avancement en réponse à une demande client (12.4). */
 export function DeposerPhotosForm({ demandeId }: { demandeId: string }) {
@@ -24,7 +25,7 @@ export function DeposerPhotosForm({ demandeId }: { demandeId: string }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

@@ -5,6 +5,7 @@ import { BadgeCheck, HandCoins } from "lucide-react";
 import { verifierDesistement, marquerRembourse } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function VerifierButton({ desistementId }: { desistementId: string }) {
   const [pending, startTransition] = useTransition();
@@ -32,7 +33,7 @@ export function RembourserForm({ desistementId }: { desistementId: string }) {
   const action = marquerRembourse.bind(null, desistementId);
   const [state, formAction, pending] = useActionState(action, undefined);
   return (
-    <form action={formAction} className="flex flex-wrap items-start gap-3 rounded-md bg-navy-50 p-3" data-testid="form-rembourser">
+    <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="flex flex-wrap items-start gap-3 rounded-md bg-navy-50 p-3" data-testid="form-rembourser">
       <Input
         id={`decharge-${desistementId}`}
         name="dechargeNote"

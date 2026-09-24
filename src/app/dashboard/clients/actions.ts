@@ -9,6 +9,7 @@ import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/a
 import { parsePublicPath } from "@/lib/storage";
 import { enregistrerActivite, decrireChangements } from "@/lib/journal";
 import { peutModifierClient, peutGererClient, etatCompte } from "@/lib/comptes";
+import { verifierDateNaissance, verifierTexte, LONGUEURS } from "@/lib/validation";
 import { redirect } from "next/navigation";
 
 export type CreateClientState = { error?: string; success?: { identifiant: string; password: string } } | undefined;
@@ -24,6 +25,12 @@ export async function createClient(_prev: CreateClientState, formData: FormData)
   if (!nom || !prenom || !telephone1 || !email) {
     return { error: "Nom, prénom, téléphone et e-mail sont obligatoires." };
   }
+  const invalide =
+    verifierTexte(nom, { libelle: "Le nom", max: LONGUEURS.nom }) ??
+    verifierTexte(prenom, { libelle: "Le prénom", max: LONGUEURS.nom }) ??
+    verifierTexte(String(formData.get("adresse") ?? ""), { libelle: "L'adresse", max: LONGUEURS.moyenne }) ??
+    verifierDateNaissance(String(formData.get("dateNaissance") ?? ""));
+  if (invalide) return { error: invalide };
 
   // Chemin retourné par POST /api/upload (composant FileUpload) — on ne garde
   // que les chemins bien formés, jamais une valeur arbitraire.
@@ -140,6 +147,12 @@ export async function modifierClient(_prev: ModifClientState, formData: FormData
   if (!apres.nom || !apres.prenom || !apres.telephone1 || !apres.email) {
     return { error: "Nom, prénom, téléphone et e-mail sont obligatoires." };
   }
+  const invalide =
+    verifierTexte(apres.nom, { libelle: "Le nom", max: LONGUEURS.nom }) ??
+    verifierTexte(apres.prenom, { libelle: "Le prénom", max: LONGUEURS.nom }) ??
+    verifierTexte(apres.adresse ?? "", { libelle: "L'adresse", max: LONGUEURS.moyenne }) ??
+    verifierDateNaissance(apres.dateNaissance);
+  if (invalide) return { error: invalide };
   const details = decrireChangements(client, apres, LIBELLES_CLIENT);
   if (!details) return { error: "Aucune modification à enregistrer." };
 

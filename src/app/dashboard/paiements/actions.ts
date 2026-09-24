@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { paiements, biens, projets, syndics, clients } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { validerPaiement } from "@/lib/paiements";
+import { lireNombre, verifierMontant } from "@/lib/validation";
 import { notifyClient, notifyRole } from "@/lib/notifications";
 
 export type CompleterState = { error?: string } | undefined;
@@ -65,12 +66,13 @@ export async function completerReference(
   if (!projet || projet.promoteurId !== session.promoteurId) return { error: "Accès refusé." };
 
   const reference = String(formData.get("reference") ?? "").trim();
-  const montantExact = Number(formData.get("montantExact"));
+  const montantExact = lireNombre(formData.get("montantExact"));
   const dateReceptionStr = String(formData.get("dateReception") ?? "");
   const porteur = String(formData.get("porteur") ?? "").trim();
 
   if (!reference) return { error: "Merci d'indiquer la référence de l'opération." };
-  if (!montantExact || montantExact <= 0) return { error: "Merci d'indiquer le montant exact reçu." };
+  const erreurMontant = verifierMontant(montantExact, { libelle: "Le montant exact reçu" });
+  if (erreurMontant) return { error: erreurMontant };
   if (!dateReceptionStr) return { error: "Merci d'indiquer la date de réception effective." };
   if (!porteur) return { error: "Merci d'indiquer le porteur de l'opération." };
 

@@ -6,6 +6,7 @@ import { modifierClient } from "../../actions";
 import { Card, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 type ClientForm = {
   id: string;
@@ -26,7 +27,7 @@ export function ModifierClientForm({ client }: { client: ClientForm }) {
   const [state, formAction, pending] = useActionState(modifierClient, undefined);
   return (
     <Card className="p-6">
-      <form action={formAction} className="space-y-6" data-testid="form-modifier-client">
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-6" data-testid="form-modifier-client">
         <input type="hidden" name="clientId" value={client.id} />
         <fieldset className="space-y-3">
           <legend className="mb-3 text-h3 text-navy-900">Identité</legend>

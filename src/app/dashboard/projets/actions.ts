@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { projets, biens, epingles } from "@/db/schema";
 import { requireRole, requireStaffSession } from "@/lib/session";
 import { enregistrerActivite, decrireChangements } from "@/lib/journal";
+import { lireNombre, verifierMontant, verifierDelaiTma, verifierTexte, LONGUEURS } from "@/lib/validation";
 
 export async function createProjet(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
@@ -18,6 +19,11 @@ export async function createProjet(_prev: { error?: string } | undefined, formDa
   if (!nom || !nomCompte || !iban) {
     return { error: "Merci de renseigner le nom du projet, le nom du compte et l'IBAN." };
   }
+  const tropLong =
+    verifierTexte(nom, { libelle: "Le nom du projet", max: LONGUEURS.courte }) ??
+    verifierTexte(nomCompte, { libelle: "Le nom du compte", max: LONGUEURS.courte }) ??
+    verifierTexte(iban, { libelle: "L'IBAN", max: LONGUEURS.courte });
+  if (tropLong) return { error: tropLong };
 
   const [projet] = await db
     .insert(projets)
@@ -49,12 +55,17 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
   const projetId = String(formData.get("projetId") ?? "");
   const designation = String(formData.get("designation") ?? "").trim();
   const nature = String(formData.get("nature") ?? "Appartement");
-  const prix = Number(formData.get("prix"));
-  const surface = Number(formData.get("surface"));
+  const prix = lireNombre(formData.get("prix"));
+  const surface = lireNombre(formData.get("surface"));
 
-  if (!projetId || !designation || !prix || !surface) {
+  if (!projetId || !designation) {
     return { error: "Merci de compléter tous les champs du bien (désignation, prix, surface)." };
   }
+  const invalide =
+    verifierTexte(designation, { libelle: "La désignation", max: LONGUEURS.designation }) ??
+    verifierMontant(prix, { libelle: "Le prix" }) ??
+    verifierMontant(surface, { libelle: "La surface" });
+  if (invalide) return { error: invalide };
   if (!(await projetDuPromoteur(projetId, session.promoteurId))) return { error: "Projet introuvable." };
 
   const [bien] = await db.insert(biens).values({ projetId, designation, nature, prix, surface }).returning();
@@ -123,16 +134,23 @@ export async function modifierProjet(_prev: ModifState, formData: FormData): Pro
   const projet = await projetDuPromoteur(projetId, session.promoteurId);
   if (!projet) return { error: "Projet introuvable." };
 
-  const delaiTmaJours = Number(formData.get("delaiTmaJours"));
+  const delaiTmaJours = lireNombre(formData.get("delaiTmaJours"));
+  const erreurDelai = verifierDelaiTma(delaiTmaJours);
+  if (erreurDelai) return { error: erreurDelai };
   const apres = {
     nom: String(formData.get("nom") ?? "").trim(),
     nomCompte: String(formData.get("nomCompte") ?? "").trim(),
     iban: String(formData.get("iban") ?? "").trim(),
-    delaiTmaJours: Number.isInteger(delaiTmaJours) && delaiTmaJours >= 0 ? delaiTmaJours : projet.delaiTmaJours,
+    delaiTmaJours,
   };
   if (!apres.nom || !apres.nomCompte || !apres.iban) {
     return { error: "Merci de renseigner le nom du projet, le nom du compte et l'IBAN." };
   }
+  const tropLong =
+    verifierTexte(apres.nom, { libelle: "Le nom du projet", max: LONGUEURS.courte }) ??
+    verifierTexte(apres.nomCompte, { libelle: "Le nom du compte", max: LONGUEURS.courte }) ??
+    verifierTexte(apres.iban, { libelle: "L'IBAN", max: LONGUEURS.courte });
+  if (tropLong) return { error: tropLong };
   const details = decrireChangements(projet, apres, { nom: "Nom", nomCompte: "Nom du compte", iban: "IBAN", delaiTmaJours: "Délai TMA (jours)" });
   if (!details) return { error: "Aucune modification à enregistrer." };
 
@@ -158,12 +176,17 @@ export async function modifierBien(_prev: ModifState, formData: FormData): Promi
   const apres = {
     designation: String(formData.get("designation") ?? "").trim(),
     nature: String(formData.get("nature") ?? "").trim(),
-    prix: Number(formData.get("prix")),
-    surface: Number(formData.get("surface")),
+    prix: lireNombre(formData.get("prix")),
+    surface: lireNombre(formData.get("surface")),
   };
-  if (!apres.designation || !apres.nature || !(apres.prix > 0) || !(apres.surface > 0)) {
+  if (!apres.designation || !apres.nature) {
     return { error: "Merci de compléter la désignation, la nature, le prix et la surface." };
   }
+  const invalide =
+    verifierTexte(apres.designation, { libelle: "La désignation", max: LONGUEURS.designation }) ??
+    verifierMontant(apres.prix, { libelle: "Le prix" }) ??
+    verifierMontant(apres.surface, { libelle: "La surface" });
+  if (invalide) return { error: invalide };
   const details = decrireChangements(bien, apres, { designation: "Désignation", nature: "Nature", prix: "Prix", surface: "Surface" });
   if (!details) return { error: "Aucune modification à enregistrer." };
 

@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect } from "react";
 import { addBien } from "../actions";
 import { Card, Field, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export type ModeleBien = { source: string; nature: string; prix: number; surface: number };
 
@@ -31,7 +32,7 @@ export function AddBienForm({ projetId, modele }: { projetId: string; modele?: M
       <form
         key={modele ? `dup-${modele.source}` : "vierge"}
         ref={formRef}
-        action={formAction}
+        action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
         data-testid="form-ajout-bien"
         data-duplication={modele ? "true" : undefined}
         className="grid grid-cols-1 gap-4 sm:grid-cols-4"

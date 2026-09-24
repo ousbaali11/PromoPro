@@ -6,6 +6,7 @@ import { Check, X, MessageSquareText } from "lucide-react";
 import { acceptProposition, refuseProposition, negotiateProposition } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function PropositionActions({ propositionId }: { propositionId: string }) {
   const [pending, startTransition] = useTransition();
@@ -35,7 +36,7 @@ export function PropositionActions({ propositionId }: { propositionId: string })
       <AnimatePresence initial={false}>
         {negoOpen && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

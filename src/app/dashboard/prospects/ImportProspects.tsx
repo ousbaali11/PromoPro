@@ -7,6 +7,7 @@ import { FileSpreadsheet, Upload, CheckCircle2, X } from "lucide-react";
 import { analyserImportProspects, confirmerImportProspects, type RepartitionApercu } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Callout, Card, Badge } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /**
  * Import Excel des prospects (Assistant Administratif) : choix du fichier →
@@ -75,7 +76,7 @@ export function ImportProspects() {
                 </div>
               ) : (
                 <>
-                  <form action={analyserAction} className="flex flex-wrap items-end gap-3" data-testid="form-import">
+                  <form action={analyserAction} onSubmit={soumettreSansReinitialiser(analyserAction)} className="flex flex-wrap items-end gap-3" data-testid="form-import">
                     <div className="min-w-0 flex-1">
                       <label htmlFor={idFichier} className="mb-1 block text-caption font-medium text-navy-900">
                         Fichier Excel
@@ -121,7 +122,7 @@ export function ImportProspects() {
                         </ul>
                       )}
                       <Repartition repartition={apercu.repartition} ecart={apercu.ecart} testId="apercu-commercial" />
-                      <form action={confirmerAction} className="space-y-2">
+                      <form action={confirmerAction} onSubmit={soumettreSansReinitialiser(confirmerAction)} className="space-y-2">
                         <input type="hidden" name="nomFichier" value={apercu.nomFichier} />
                         <input type="hidden" name="lignes" value={JSON.stringify(apercu.valides)} />
                         <input type="hidden" name="ignorees" value={apercu.ignorees.length} />

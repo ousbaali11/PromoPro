@@ -6,6 +6,7 @@ import { createClient } from "../actions";
 import { Card, Input, Select, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export default function NouveauClientPage() {
   const [state, formAction, pending] = useActionState(createClient, undefined);
@@ -45,7 +46,7 @@ export default function NouveauClientPage() {
       <Breadcrumb items={[{ label: "Clients", href: "/dashboard/clients" }, { label: "Nouveau client" }]} />
       <PageHeader eyebrow="Clients" title="Nouveau client" description="Création du dossier et du compte d'accès du client." />
       <Card className="p-6">
-        <form action={formAction} className="space-y-6" data-testid="form-nouveau-client">
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-6" data-testid="form-nouveau-client">
           <fieldset className="space-y-3">
             <legend className="mb-3 text-h3 text-navy-900">Identité</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

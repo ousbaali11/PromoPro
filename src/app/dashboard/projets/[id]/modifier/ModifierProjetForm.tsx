@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import { modifierProjet } from "../../actions";
 import { Card, Input, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function ModifierProjetForm({
   projet,
@@ -14,7 +15,7 @@ export function ModifierProjetForm({
   const [state, formAction, pending] = useActionState(modifierProjet, undefined);
   return (
     <Card className="p-6">
-      <form action={formAction} className="space-y-4" data-testid="form-modifier-projet">
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-modifier-projet">
         <input type="hidden" name="projetId" value={projet.id} />
         <Input id="nom" name="nom" label="Nom du projet" defaultValue={projet.nom} required />
         <Input id="nomCompte" name="nomCompte" label="Nom du compte / société" defaultValue={projet.nomCompte} required />

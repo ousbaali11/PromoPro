@@ -5,6 +5,7 @@ import { PackageCheck, BellPlus } from "lucide-react";
 import { confirmerLivraisonSav, definirSyndic } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function ConfirmerLivraisonButton({ bienId }: { bienId: string }) {
   const [pending, startTransition] = useTransition();
@@ -36,7 +37,7 @@ export function DefinirSyndicForm({ biens }: { biens: { id: string; label: strin
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="form-syndic">
+    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="form-syndic">
       <Select id="syndic-bien" name="bienId" label="Bien / client" required>
         {biens.map((b) => (
           <option key={b.id} value={b.id}>

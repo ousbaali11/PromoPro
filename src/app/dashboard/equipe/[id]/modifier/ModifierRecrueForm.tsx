@@ -5,12 +5,13 @@ import { Save } from "lucide-react";
 import { modifierRecrue } from "../../actions";
 import { Card, Input, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function ModifierRecrueForm({ recrue }: { recrue: { id: string; nom: string; prenom: string; email: string | null } }) {
   const [state, formAction, pending] = useActionState(modifierRecrue, undefined);
   return (
     <Card className="p-6">
-      <form action={formAction} className="space-y-3" data-testid="form-modifier-recrue">
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-3" data-testid="form-modifier-recrue">
         <input type="hidden" name="userId" value={recrue.id} />
         <Input id="nom" name="nom" label="Nom" defaultValue={recrue.nom} required />
         <Input id="prenom" name="prenom" label="Prénom" defaultValue={recrue.prenom} required />

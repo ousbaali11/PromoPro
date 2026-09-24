@@ -6,6 +6,7 @@ import { createPromoteur, type Acces } from "../actions";
 import { Card, Input, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 const DIRECTIONS = [
   { champ: "pdg", libelle: "PDG", aide: "Décide des propositions de vente et bloque des biens." },
@@ -74,7 +75,7 @@ export default function NouveauPromoteurPage() {
         description="Création du promoteur et de ses trois directions : PDG, Directeur Commercial, Directeur Financier."
       />
       <Card className="p-6">
-        <form action={formAction} className="space-y-6" data-testid="form-nouveau-promoteur">
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-6" data-testid="form-nouveau-promoteur">
           <div className="space-y-3">
             <Input
               id="nom"

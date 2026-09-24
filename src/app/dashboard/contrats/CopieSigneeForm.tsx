@@ -7,6 +7,7 @@ import { deposerCopieSignee } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Primitives";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Dépôt de la 4e copie signée et cachetée (section 7.3). */
 export function CopieSigneeForm({ contratId }: { contratId: string }) {
@@ -23,7 +24,7 @@ export function CopieSigneeForm({ contratId }: { contratId: string }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

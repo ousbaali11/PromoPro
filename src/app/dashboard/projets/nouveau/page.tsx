@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { createProjet } from "../actions";
 import { Card, Input, PageHeader, Callout, Breadcrumb } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export default function NouveauProjetPage() {
   const [state, formAction, pending] = useActionState(createProjet, undefined);
@@ -14,7 +15,7 @@ export default function NouveauProjetPage() {
       <Breadcrumb items={[{ label: "Projets", href: "/dashboard/projets" }, { label: "Nouveau projet" }]} />
       <PageHeader eyebrow="Projets & biens" title="Nouveau projet" description="Saisie du projet et de ses informations bancaires." />
       <Card className="p-6">
-        <form action={formAction} className="space-y-4" data-testid="form-nouveau-projet">
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-nouveau-projet">
           <Input id="nom" name="nom" label="Nom du projet" hint="ex. Résidence Al Manar" required />
           <Input id="nomCompte" name="nomCompte" label="Nom du compte / société" hint="ex. SCI Al Manar" required />
           <Input

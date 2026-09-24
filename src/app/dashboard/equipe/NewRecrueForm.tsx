@@ -6,6 +6,7 @@ import { createRecrue } from "./actions";
 import { Card, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { useHydrated } from "@/components/ui/useHydrated";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Formulaire de recrutement : les statuts proposés sont ceux du pôle du directeur connecté. */
 export function NewRecrueForm({ roles }: { roles: { value: string; label: string }[] }) {
@@ -44,7 +45,7 @@ export function NewRecrueForm({ roles }: { roles: { value: string; label: string
           </Card>
         </div>
       ) : (
-        <form action={formAction} className="space-y-3" data-hydrated={hydrated ? "true" : undefined}>
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-3" data-hydrated={hydrated ? "true" : undefined}>
           <Input id="nom" name="nom" label="Nom" required />
           <Input id="prenom" name="prenom" label="Prénom" required />
           <Input id="email" name="email" type="email" label="E-mail" />

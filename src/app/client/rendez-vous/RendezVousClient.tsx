@@ -6,6 +6,7 @@ import { Check, CalendarClock, Send } from "lucide-react";
 import { proposerRendezVous, accepterPropositionService, reproposerClient } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Callout, Input, Select, Textarea } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 const SERVICES = [
   { value: "COMMERCIAL", label: "Service commercial (votre commercial)" },
@@ -26,7 +27,7 @@ export function NouveauRendezVousForm({ biens }: { biens: { id: string; designat
   }
 
   return (
-    <form action={formAction} className="space-y-4" data-testid="form-rendez-vous">
+    <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-rendez-vous">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select id="service" name="service" label="Service" defaultValue="COMMERCIAL">
           {SERVICES.map((s) => (
@@ -84,7 +85,7 @@ export function ReponseClient({ rdvId }: { rdvId: string }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

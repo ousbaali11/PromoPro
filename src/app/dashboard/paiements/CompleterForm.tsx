@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { completerReference } from "./actions";
 import { Input, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Formulaire inline du Comptable Interne sur une ligne "En attente". */
 export function CompleterForm({
@@ -20,7 +21,7 @@ export function CompleterForm({
   const [state, formAction, pending] = useActionState(action, undefined);
 
   return (
-    <form action={formAction} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-5" data-testid="form-completer">
+    <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-5" data-testid="form-completer">
       <Input id={`ref-${paiementId}`} name="reference" label="Référence" hint="ex. VIR-2026-00123" className="font-mono" required />
       <Input id={`montant-${paiementId}`} name="montantExact" type="number" label="Montant exact reçu" min={1} step={1} defaultValue={montant} clearable={false} required />
       <Input id={`date-${paiementId}`} name="dateReception" type="date" label="Date de réception" clearable={false} required />

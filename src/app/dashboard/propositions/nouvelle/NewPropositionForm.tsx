@@ -8,6 +8,7 @@ import { Card, Input, Select, Badge, Callout } from "@/components/ui/Primitives"
 import { Button } from "@/components/ui/Button";
 import { formatMoney } from "@/lib/utils";
 import { useHydrated } from "@/components/ui/useHydrated";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 type ClientRow = { id: string; nom: string; prenom: string; telephone1: string | null };
 
@@ -31,7 +32,7 @@ export function NewPropositionForm({
   const total = pct.reduce((s, p) => s + (Number.isFinite(p) ? p : 0), 0);
 
   return (
-    <form action={formAction} className="space-y-6" data-testid="form-nouvelle-proposition" data-hydrated={hydrated ? "true" : undefined}>
+    <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-6" data-testid="form-nouvelle-proposition" data-hydrated={hydrated ? "true" : undefined}>
       <input type="hidden" name="bienId" value={bienId} />
 
       <Card className="p-5">

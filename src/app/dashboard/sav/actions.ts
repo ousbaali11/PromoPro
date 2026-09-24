@@ -13,6 +13,7 @@ import { enregistrerActivite } from "@/lib/journal";
 import { demandeTmaAvecBien } from "@/lib/tma-data";
 import { prochainStatutTma, TMA_LABELS } from "@/lib/tma";
 import { formatMoney } from "@/lib/utils";
+import { lireNombre, verifierMontant, verifierTexte, LONGUEURS } from "@/lib/validation";
 
 /** Section 12.4 — le SAV dépose les photos d'avancement demandées ; elles deviennent visibles côté client. */
 export async function deposerPhotos(
@@ -91,9 +92,10 @@ export async function confirmerLivraisonSav(bienId: string): Promise<{ error?: s
 export async function definirSyndic(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["SERVICE_APRES_VENTE"]);
   const bienId = String(formData.get("bienId") ?? "");
-  const montant = Number(formData.get("montant"));
+  const montant = lireNombre(formData.get("montant"));
   const periode = String(formData.get("periode") ?? "2 ans");
-  if (!montant || montant <= 0) return { error: "Merci d'indiquer un montant valide." };
+  const erreurMontant = verifierMontant(montant, { libelle: "Le montant du syndic" });
+  if (erreurMontant) return { error: erreurMontant };
 
   const bien = await bienDuPromoteur(bienId, session.promoteurId!);
   if (!bien || !bien.clientId || !["VENDU", "LIVRE"].includes(bien.statut)) {
@@ -207,12 +209,13 @@ async function demandeDuPromoteur(demandeId: string, promoteurId: string | null)
 export async function chiffrerTma(_prev: TmaSavState, formData: FormData): Promise<TmaSavState> {
   const session = await requireRole(["SERVICE_APRES_VENTE"]);
   const demandeId = String(formData.get("demandeId") ?? "");
-  const montant = Number(formData.get("montant"));
+  const montant = lireNombre(formData.get("montant"));
   const devisUrl = String(formData.get("devisUrl") ?? "");
   const r = await demandeDuPromoteur(demandeId, session.promoteurId);
   if (!r) return { error: "Demande introuvable." };
   if (r.demande.statut !== "DEMANDE") return { error: "Cette demande a déjà été traitée." };
-  if (!(montant > 0)) return { error: "Indiquez le montant du devis (MAD)." };
+  const erreurMontant = verifierMontant(montant, { libelle: "Le montant du devis" });
+  if (erreurMontant) return { error: erreurMontant };
   if (parsePublicPath(devisUrl)?.type !== "tma-devis") return { error: "Joignez le devis (PDF)." };
 
   await db.update(demandesTma).set({ statut: "CHIFFRE", montant, devisUrl, chiffreParId: session.userId }).where(eq(demandesTma.id, demandeId));
@@ -245,6 +248,8 @@ export async function refuserTma(_prev: TmaSavState, formData: FormData): Promis
   if (!r) return { error: "Demande introuvable." };
   if (!["DEMANDE", "CHIFFRE"].includes(r.demande.statut)) return { error: "Cette demande ne peut plus être refusée." };
   if (!motif) return { error: "Indiquez le motif du refus, il sera transmis au client." };
+  const tropLong = verifierTexte(motif, { libelle: "Le motif", max: LONGUEURS.moyenne });
+  if (tropLong) return { error: tropLong };
 
   await db.update(demandesTma).set({ statut: "REFUSE", motifRefus: motif }).where(eq(demandesTma.id, demandeId));
   await notifyClient({

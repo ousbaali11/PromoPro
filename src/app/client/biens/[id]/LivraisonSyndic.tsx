@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge, Callout, Input, Select } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** 11.10 — bouton « Confirmer tout » côté client + état des deux confirmations. */
 export function LivraisonCard({
@@ -127,7 +128,7 @@ export function SyndicCard({
       <AnimatePresence initial={false}>
         {syndic.statut === "A_PAYER" && open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

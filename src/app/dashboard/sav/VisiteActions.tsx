@@ -6,6 +6,7 @@ import { Check, X } from "lucide-react";
 import { accepterVisite, refuserVisite } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 export function VisiteActions({ visiteId }: { visiteId: string }) {
   const [pending, startTransition] = useTransition();
@@ -37,7 +38,7 @@ export function VisiteActions({ visiteId }: { visiteId: string }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

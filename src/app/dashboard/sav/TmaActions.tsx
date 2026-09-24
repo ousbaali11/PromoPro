@@ -7,6 +7,7 @@ import { chiffrerTma, refuserTma, avancerTma } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Callout, Input } from "@/components/ui/Primitives";
 import { FileUpload } from "@/components/ui/FileUpload";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 /** Chiffrage d'une demande (montant + devis PDF) et refus motivé, côté SAV. */
 export function ChiffrageTma({ demandeId }: { demandeId: string }) {
@@ -31,7 +32,7 @@ export function ChiffrageTma({ demandeId }: { demandeId: string }) {
       <AnimatePresence initial={false}>
         {mode === "chiffrer" && (
           <motion.form
-            action={formAction}
+            action={formAction} onSubmit={soumettreSansReinitialiser(formAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -52,7 +53,7 @@ export function ChiffrageTma({ demandeId }: { demandeId: string }) {
         )}
         {mode === "refuser" && (
           <motion.form
-            action={refusAction}
+            action={refusAction} onSubmit={soumettreSansReinitialiser(refusAction)}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

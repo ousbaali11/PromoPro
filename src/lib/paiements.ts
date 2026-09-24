@@ -5,6 +5,8 @@ import { parsePublicPath } from "@/lib/storage";
 import { genererEtStockerRecu } from "@/lib/pdf/recu";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
 import { notifyClient, notifyRole } from "@/lib/notifications";
+import { verifierMontant, lireNombre } from "@/lib/validation";
+import { repartirImputation, restantDuTotal } from "@/lib/imputation";
 
 /**
  * Logique métier partagée des paiements (sections 6.8, 9, 11.8, 11.9, 13.3).
@@ -50,7 +52,7 @@ export function lirePaiementForm(formData: FormData): { data: PaiementInput } | 
   const banque = String(formData.get("banque") ?? "").trim();
   const dateOperation = parseDate(formData.get("dateOperation"));
   const dateEncaissementCheque = parseDate(formData.get("dateEncaissementCheque"));
-  const montant = Number(formData.get("montant"));
+  const montant = lireNombre(formData.get("montant"));
   const devise = String(formData.get("devise") ?? "MAD");
   const porteur = String(formData.get("porteur") ?? "").trim();
   const preuveUrl = String(formData.get("preuveUrl") ?? "") || null;
@@ -63,7 +65,8 @@ export function lirePaiementForm(formData: FormData): { data: PaiementInput } | 
   if (natureOperation === "cheque" && !dateEncaissementCheque) {
     return { error: "Pour un chèque, merci d'indiquer la date d'encaissement prévue." };
   }
-  if (!montant || montant <= 0) return { error: "Merci d'indiquer un montant valide." };
+  const erreurMontant = verifierMontant(montant, { libelle: "Le montant" });
+  if (erreurMontant) return { error: erreurMontant };
   if (!(DEVISES as readonly string[]).includes(devise)) return { error: "Devise invalide." };
   if (!porteur) return { error: "Merci d'indiquer le porteur de l'opération." };
   if (preuveUrl && !parsePublicPath(preuveUrl)) return { error: "La preuve de paiement importée est invalide." };
@@ -111,6 +114,11 @@ export async function creerPaiement(
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, input.bienId) });
   if (!bien || !bien.clientId) return { error: "Ce bien n'a pas de client associé." };
   if (!["VENDU", "LIVRE"].includes(bien.statut)) return { error: "Un paiement ne peut être saisi que sur un bien vendu." };
+
+  // Un paiement ne peut pas dépasser ce qui reste dû sur le bien (le trop-perçu d'une tranche se reporte, pas au-delà du prix)
+  const plafond = restantDuTotal(await echeancierDuBien(bien.id));
+  const depassement = verifierMontant(input.montant, { max: plafond, maxLibelle: `le restant dû du bien (${Math.round(plafond).toLocaleString("fr-FR")} ${input.devise})` });
+  if (depassement) return { error: depassement };
 
   let trancheNumero: number | null = null;
   if (input.echeanceId) {
@@ -172,27 +180,9 @@ export async function notifierComptable(promoteurId: string, bien: typeof biens.
  */
 export async function imputerSurEcheancier(bienId: string, echeanceId: string | null, montant: number) {
   const liste = await echeancierDuBien(bienId);
-  if (liste.length === 0) return { imputations: [] as { echeanceId: string; numero: number; montant: number }[] };
-
-  let startIdx = echeanceId ? liste.findIndex((e) => e.id === echeanceId) : -1;
-  if (startIdx < 0) startIdx = Math.max(0, liste.findIndex((e) => e.statut !== "PAYEE"));
-
-  let restant = montant;
-  const imputations: { echeanceId: string; numero: number; montant: number }[] = [];
-
-  for (let i = startIdx; i < liste.length && restant > 0; i++) {
-    const e = liste[i];
-    const du = Math.max(0, e.montant - e.montantPaye);
-    const isLast = i === liste.length - 1;
-    const part = isLast ? restant : Math.min(du, restant);
-    if (part <= 0) continue;
-    const nouveauPaye = e.montantPaye + part;
-    await db
-      .update(echeances)
-      .set({ montantPaye: nouveauPaye, statut: nouveauPaye >= e.montant ? "PAYEE" : "PARTIELLE" })
-      .where(eq(echeances.id, e.id));
-    imputations.push({ echeanceId: e.id, numero: e.numero, montant: part });
-    restant -= part;
+  const { imputations, etats } = repartirImputation(liste, echeanceId, montant); // logique pure, testée (src/lib/imputation.ts)
+  for (const etat of etats) {
+    await db.update(echeances).set({ montantPaye: etat.montantPaye, statut: etat.statut }).where(eq(echeances.id, etat.id));
   }
   return { imputations };
 }
@@ -244,6 +234,13 @@ export async function validerPaiement(
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, paiement.bienId) });
   const client = await db.query.clients.findFirst({ where: eq(clients.id, paiement.clientId) });
   if (!bien || !client) return { error: "Bien ou client introuvable." };
+  const plafond = restantDuTotal(await echeancierDuBien(bien.id));
+  const erreurMontant = verifierMontant(complement.montantExact, {
+    libelle: "Le montant exact reçu",
+    max: plafond,
+    maxLibelle: `le restant dû du bien (${Math.round(plafond).toLocaleString("fr-FR")} ${paiement.devise})`,
+  });
+  if (erreurMontant) return { error: erreurMontant };
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   const promoteur = projet
     ? await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, projet.promoteurId) })

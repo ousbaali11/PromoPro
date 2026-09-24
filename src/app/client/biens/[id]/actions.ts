@@ -12,6 +12,7 @@ import { fenetreTma, demandeTmaAvecBien } from "@/lib/tma-data";
 import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { parsePublicPath } from "@/lib/storage";
 import { consommer, LIMITES, messageLimite } from "@/lib/rate-limit";
+import { verifierTexte, LONGUEURS } from "@/lib/validation";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
 import { addMonths, formatDate, formatDateTime, formatMoney, DELAI_PHOTOS_MOIS } from "@/lib/utils";
@@ -229,6 +230,8 @@ export async function demanderTma(_prev: TmaState, formData: FormData): Promise<
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
   if (!bien || bien.clientId !== session.clientId) return { error: "Bien introuvable." };
   if (description.length < 10) return { error: "Décrivez la modification souhaitée (quelques mots au minimum)." };
+  const tropLong = verifierTexte(description, { libelle: "La description", max: LONGUEURS.longue });
+  if (tropLong) return { error: tropLong };
   const limite = consommer(`tma:${session.clientId}`, LIMITES.demandeTma.max, LIMITES.demandeTma.fenetreMs);
   if (!limite.autorise) return { error: messageLimite(limite.reessaiDansSec) };
   if (croquisUrl && parsePublicPath(croquisUrl)?.type !== "tma-croquis") return { error: "La pièce jointe est invalide, merci de la réimporter." };

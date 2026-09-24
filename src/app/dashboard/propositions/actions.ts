@@ -8,6 +8,7 @@ import { biens, clients, propositions, echeances, users, contrats, projets } fro
 import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { notify, notifyMany } from "@/lib/notifications";
+import { lireNombre, verifierPourcentages, verifierDateEcheance, verifierTexte, LONGUEURS } from "@/lib/validation";
 
 export async function createProposition(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["COMMERCIAL", "RESPONSABLE_COMMERCIAL"]);
@@ -19,6 +20,20 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   }
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   if (!projet || projet.promoteurId !== session.promoteurId) return { error: "Bien introuvable." };
+
+  // --- Échéancier : lu et vérifié AVANT toute écriture (total 100 %, dates non passées) ---
+  const tranches = [1, 2, 3, 4].map((i) => ({
+    numero: i,
+    pourcentage: lireNombre(formData.get(`tranche${i}Pourcentage`)),
+    date: String(formData.get(`tranche${i}Date`) ?? ""),
+  }));
+  const erreurPourcentages = verifierPourcentages(tranches.map((t) => t.pourcentage));
+  if (erreurPourcentages) return { error: erreurPourcentages };
+  for (const t of tranches) {
+    if (!Number.isFinite(t.pourcentage)) continue;
+    const erreurDate = verifierDateEcheance(t.date, new Date(), `La date de la tranche ${t.numero}`);
+    if (erreurDate) return { error: erreurDate };
+  }
 
   // --- Client : sélection d'un client existant, ou création d'un nouveau ---
   let clientId = String(formData.get("clientId") ?? "");
@@ -36,6 +51,13 @@ export async function createProposition(_prev: { error?: string } | undefined, f
     if (!nom || !prenom || !telephone1 || !email) {
       return { error: "Merci de compléter les informations du nouveau client (nom, prénom, téléphone, e-mail)." };
     }
+    const tropLong =
+      verifierTexte(nom, { libelle: "Le nom", max: LONGUEURS.nom }) ??
+      verifierTexte(prenom, { libelle: "Le prénom", max: LONGUEURS.nom }) ??
+      verifierTexte(telephone1, { libelle: "Le téléphone", max: LONGUEURS.courte }) ??
+      verifierTexte(email, { libelle: "L'e-mail", max: LONGUEURS.courte }) ??
+      verifierTexte(pieceNumero, { libelle: "Le numéro de pièce", max: LONGUEURS.courte });
+    if (tropLong) return { error: tropLong };
 
     const identifiant = generateIdentifiant("CL");
     const tempPassword = generateTempPassword();
@@ -64,17 +86,15 @@ export async function createProposition(_prev: { error?: string } | undefined, f
     .values({ bienId, commercialId: session.userId, clientId, statut: "ENVOYEE" })
     .returning();
 
-  for (let i = 1; i <= 4; i++) {
-    const pourcentage = Number(formData.get(`tranche${i}Pourcentage`));
-    const dateStr = String(formData.get(`tranche${i}Date`) ?? "");
-    if (!pourcentage || !dateStr) continue;
+  for (const t of tranches) {
+    if (!Number.isFinite(t.pourcentage)) continue;
     await db.insert(echeances).values({
       propositionId: proposition.id,
       bienId,
-      numero: i,
-      pourcentage,
-      montant: Math.round((pourcentage / 100) * bien.prix),
-      dateEcheance: new Date(dateStr),
+      numero: t.numero,
+      pourcentage: t.pourcentage,
+      montant: Math.round((t.pourcentage / 100) * bien.prix),
+      dateEcheance: new Date(t.date),
     });
   }
 

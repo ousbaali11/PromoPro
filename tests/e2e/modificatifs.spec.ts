@@ -98,15 +98,30 @@ async function reglerDelaiTma(page: import("@playwright/test").Page, valeur: str
   return avant;
 }
 
-test("fenêtre de dépôt : la date limite suit le délai configuré par projet", async ({ page }) => {
+test("fenêtre de dépôt : la date limite suit le délai configuré par projet ; 0 ou négatif refusés", async ({ page }) => {
   // Le bien A01 est bloqué le jour du seed (aujourd'hui) : limite = aujourd'hui + délai, fin de journée.
   const aujourdhui = new Date();
-  const initial = await reglerDelaiTma(page, "0");
+
+  // Un délai nul ou négatif est refusé avec un message clair (le projet garde sa valeur)
+  await login(page, "DIRCOM");
+  await page.goto("/dashboard/projets");
+  await page.getByRole("link", { name: /Résidence Al Manar/ }).first().click();
+  await page.getByTestId("modifier-projet").click();
+  await expect(page).toHaveURL(/\/modifier$/);
+  for (const valeur of ["0", "-5"]) {
+    await page.getByLabel("Délai des travaux modificatifs (jours après blocage)").fill(valeur);
+    await page.getByRole("button", { name: "Enregistrer les modifications" }).click();
+    await expect(page.getByText("Le délai des travaux modificatifs doit être d'au moins 1 jour.")).toBeVisible();
+  }
+
+  const initial = await reglerDelaiTma(page, "1");
   expect(Number(initial)).toBeGreaterThan(0);
 
   await login(page, "CLIENT");
   await ouvrirBienClient(page, "Appartement A01");
-  await expect(page.getByTestId("tma-limite")).toHaveText(formatDate(aujourdhui));
+  const demain = new Date(aujourdhui);
+  demain.setDate(demain.getDate() + 1);
+  await expect(page.getByTestId("tma-limite")).toHaveText(formatDate(demain));
   await expect(page.getByRole("button", { name: "Demander une modification" })).toBeVisible();
 
   await reglerDelaiTma(page, initial);

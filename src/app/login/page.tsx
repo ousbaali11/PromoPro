@@ -7,6 +7,7 @@ import { login } from "./actions";
 import { Input } from "@/components/ui/Fields";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Primitives";
+import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
 const DEMO = [
   ["Super Admin", "SUPERADMIN / admin1234"],
@@ -44,7 +45,7 @@ export default function LoginPage() {
           <p className="mt-1 text-small text-navy-100/70">Plateforme de gestion promoteur</p>
         </div>
 
-        <form action={formAction} className="rounded-xl bg-white p-6 shadow-e5 ring-1 ring-white/10">
+        <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="rounded-xl bg-white p-6 shadow-e5 ring-1 ring-white/10">
           <div className="space-y-3">
             <Input id="identifiant" name="identifiant" label="Identifiant" autoComplete="username" required autoFocus />
             <Input id="motDePasse" name="motDePasse" label="Mot de passe" type="password" autoComplete="current-password" required />
