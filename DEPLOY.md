@@ -228,6 +228,26 @@ table `journal_activite`, colonnes `biens.plan_3d_url`, `biens.visite_virtuelle_
 promoteur, la liste `/admin` et l'espace client échouent — appliquez
 `npm run db:push` avant de déployer cette version).
 
+### Migration ponctuelle : éditeur de contrat par sections (seconde version)
+
+La première version de l'éditeur stockait des jetons `{{cle}}` en texte brut
+dans `contrat_sections` et `contrat_modeles`. Après `npm run db:push` et le
+déploiement de la version qui sépare l'édition d'un contrat (texte simple) de
+la gestion du modèle (champs structurés), lancez **une fois** :
+
+```bash
+railway ssh
+npm run migrer:contrats-segments
+exit
+```
+
+Le script convertit chaque modèle hérité en segments (texte + champs) et
+remplace les jetons des contrats existants par les données de leur dossier ;
+il affiche le bilan (modèles convertis, sections résolues, contrats ignorés
+faute de dossier chargeable — leurs jetons restants sont de toute façon
+résolus à la génération du PDF). Il est idempotent : le relancer ne change
+rien. En local : `npm run migrer:contrats-segments` sur la base SQLite.
+
 ## 9. Sauvegardes
 
 Deux workflows GitHub Actions, sans rien installer sur Railway :

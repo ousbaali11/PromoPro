@@ -177,6 +177,22 @@ modificatifs. Les pages Contrats, Paiements, Désistements et SAV listent les
 dossiers en attente ou récents et renvoient vers la fiche : aucune action ne
 s'exerce depuis une liste.
 
+## Contrat par sections
+
+Sur la fiche client (onglet Contrat), le Responsable Administratif édite le
+contrat d'un dossier comme un document : des sections de texte simple, déjà
+remplies avec les données du dossier à la création, à modifier, réordonner,
+supprimer ou compléter librement, puis « Générer le PDF » (la première
+génération confirme le contrat, les suivantes archivent la version
+précédente, consultable). Le modèle dont partent les nouveaux contrats se
+gère sur un écran séparé (« Gérer le modèle par défaut ») : le texte se tape
+librement et les champs dynamiques (nom du client, prix du bien…) s'insèrent
+par un bouton sous forme d'étiquettes, jamais en syntaxe spéciale. Un
+contrat, même confirmé, reste modifiable ; sa suppression est douce
+(historique conservé, annulable 8 s) et un nouveau contrat peut être créé
+aussitôt pour le même bien et le même client. Migration des données de la
+première version : `npm run migrer:contrats-segments` (voir DEPLOY.md).
+
 ## Échéancier flexible
 
 À la proposition, le commercial compose librement l'échéancier (ajout ou

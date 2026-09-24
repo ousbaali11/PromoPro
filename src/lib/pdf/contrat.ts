@@ -2,7 +2,7 @@ import type { biens, clients, echeances, paiements, projets, promoteurs } from "
 import { PdfWriter, fmtDate, fmtMoney, COLORS } from "./common";
 import { enteteDuPromoteur } from "./entete";
 import { saveUpload } from "@/lib/storage";
-import { SECTIONS_PAR_DEFAUT, rendreSections, type SectionTexte } from "@/lib/contrats-sections";
+import { SECTIONS_PAR_DEFAUT, resoudreModele, type SectionTexte } from "@/lib/contrats-sections";
 import { valeursDepuisDonnees } from "@/lib/contrats-valeurs";
 
 type Bien = typeof biens.$inferSelect;
@@ -20,9 +20,9 @@ export type ContratContext = {
   paiements?: Paiement[];
   reference?: string;
   /**
-   * Sections du contrat déjà fusionnées (titre + texte), dans l'ordre. Sans
-   * cette liste, le jeu de sections par défaut est rendu avec les données du
-   * dossier (seed, tests).
+   * Sections du contrat (titre + texte simple), dans l'ordre. Sans cette
+   * liste, le jeu de sections intégré est résolu avec les données du dossier
+   * (seed, tests).
    */
   sections?: SectionTexte[];
 };
@@ -43,7 +43,7 @@ export async function genererContratPdf(
   const ref = ctx.reference ?? bien.id.slice(0, 8).toUpperCase();
   const sections =
     ctx.sections ??
-    rendreSections(
+    resoudreModele(
       SECTIONS_PAR_DEFAUT,
       valeursDepuisDonnees({ bien, client, projet: ctx.projet ?? null, promoteur: ctx.promoteur, echeancier, reference: ref }),
     );

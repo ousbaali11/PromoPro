@@ -12,6 +12,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:pg-schema": "node scripts/gen-pg-schema.mjs",
     "create-admin": "tsx scripts/create-super-admin.ts",
+    "migrer:contrats-segments": "tsx scripts/migrer-contrats-segments.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e:setup": "node scripts/e2e-setup.mjs",

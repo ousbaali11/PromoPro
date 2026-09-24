@@ -7,9 +7,13 @@ import { valeursDepuisDonnees } from "@/lib/contrats-valeurs";
 import {
   SECTIONS_PAR_DEFAUT,
   archiverPdf,
+  contientJetons,
   lireHistoriquePdf,
-  rendreSections,
+  lireModeleStocke,
+  rendreTexte,
+  resoudreModele,
   type SectionContrat,
+  type SectionModele,
   type SectionTexte,
   type ValeursContrat,
 } from "@/lib/contrats-sections";
@@ -63,24 +67,29 @@ export function valeursContrat(ctx: ContexteContrat): ValeursContrat {
   return valeursDepuisDonnees({ bien: ctx.bien, client: ctx.client, projet: ctx.projet, promoteur: ctx.promoteur, echeancier: ctx.echeancier, reference: ctx.reference });
 }
 
-/** Modèle par défaut du promoteur (jeu de sections avec jetons), s'il en a enregistré un. */
-export async function modeleDuPromoteur(promoteurId: string) {
+/** Modèle par défaut du promoteur (sections en segments : texte + champs), s'il en a enregistré un ; format hérité lu et converti à la volée. */
+export async function modeleDuPromoteur(promoteurId: string): Promise<(typeof contratModeles.$inferSelect & { sectionsListe: SectionModele[] }) | null> {
   const modele = await db.query.contratModeles.findFirst({ where: eq(contratModeles.promoteurId, promoteurId), orderBy: [desc(contratModeles.updatedAt)] });
   if (!modele) return null;
-  try {
-    const sections = JSON.parse(modele.sections) as SectionTexte[];
-    return Array.isArray(sections) && sections.length ? { ...modele, sectionsListe: sections } : null;
-  } catch {
-    return null;
-  }
+  const sections = lireModeleStocke(modele.sections);
+  return sections ? { ...modele, sectionsListe: sections } : null;
 }
 
-/** Sections du contrat, créées au premier accès (modèle du promoteur sinon jeu intégré). */
-export async function sectionsDuContrat(contrat: Contrat, promoteurId: string): Promise<SectionContrat[]> {
+/** Sections de départ d'un contrat : le modèle du promoteur (sinon le jeu intégré) résolu avec les données du dossier — du texte simple. */
+export async function sectionsInitiales(ctx: ContexteContrat): Promise<SectionTexte[]> {
+  const modele = await modeleDuPromoteur(ctx.projet.promoteurId);
+  return resoudreModele(modele?.sectionsListe ?? SECTIONS_PAR_DEFAUT, valeursContrat(ctx));
+}
+
+/**
+ * Sections du contrat, créées au premier accès : chaque champ du modèle est
+ * remplacé par la donnée du dossier, et ce texte devient le contenu propre à
+ * CE contrat (plus aucun jeton, aucune retransformation ensuite).
+ */
+export async function sectionsDuContrat(contrat: Contrat, ctx?: ContexteContrat): Promise<SectionContrat[]> {
   const existantes = await db.query.contratSections.findMany({ where: eq(contratSections.contratId, contrat.id), orderBy: [asc(contratSections.ordre)] });
   if (existantes.length) return existantes.map((s) => ({ id: s.id, titre: s.titre, contenu: s.contenu }));
-  const modele = await modeleDuPromoteur(promoteurId);
-  return remplacerSections(contrat.id, modele?.sectionsListe ?? SECTIONS_PAR_DEFAUT);
+  return remplacerSections(contrat.id, await sectionsInitiales(ctx ?? (await contexteContrat(contrat))));
 }
 
 /** Remplace toutes les sections d'un contrat par la liste donnée (ordre = position). */
@@ -123,13 +132,15 @@ export async function appliquerSections(contratId: string, liste: (SectionTexte 
  */
 export async function genererPdfContrat(contrat: Contrat): Promise<{ pdfUrl: string; version: number; premiere: boolean }> {
   const ctx = await contexteContrat(contrat);
-  const sections = await sectionsDuContrat(contrat, ctx.projet.promoteurId);
+  const sections = await sectionsDuContrat(contrat, ctx);
+  // Garde-fou : un jeton « {{cle}} » encore présent (données antérieures non migrées) est résolu ici, jamais écrit brut dans le PDF
+  const valeurs = valeursContrat(ctx);
   const pdfUrl = await genererEtStockerContrat(ctx.bien, ctx.client, ctx.echeancier, {
     projet: ctx.projet,
     promoteur: ctx.promoteur,
     paiements: ctx.paiements,
     reference: ctx.reference,
-    sections: rendreSections(sections, valeursContrat(ctx)),
+    sections: sections.map((s) => ({ titre: s.titre, contenu: contientJetons(s.contenu) ? rendreTexte(s.contenu, valeurs) : s.contenu })),
   });
   const historique = archiverPdf(lireHistoriquePdf(contrat.historiquePdf), contrat.pdfUrl, contrat.pdfGenereAt ?? contrat.confirmedAt);
   const premiere = contrat.statut === "EN_ATTENTE";

@@ -26,4 +26,8 @@ function run(cmd) {
 
 run("npx drizzle-kit push --force");
 run("npx tsx src/db/seed.ts");
+// Données de la première version de l'éditeur de contrat (jetons en texte), puis la migration ponctuelle :
+// la suite e2e vérifie ainsi que les contrats et le modèle hérités sont bien convertis
+run("npx tsx scripts/e2e-donnees-heritees.ts");
+run("npx tsx scripts/migrer-contrats-segments.ts");
 console.log(`\nBase de test prête : ${E2E_SQLITE_PATH}`);

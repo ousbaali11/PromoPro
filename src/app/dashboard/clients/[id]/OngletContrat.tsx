@@ -12,7 +12,9 @@ import { CopieSigneeForm } from "@/app/dashboard/contrats/CopieSigneeForm";
 import { NotaireButton } from "@/app/dashboard/contrats/NotaireButton";
 import { VerifierButton, RembourserForm } from "@/app/dashboard/desistements/DesistementActions";
 import { lireHistoriquePdf } from "@/lib/contrats-sections";
-import { contexteContrat, modeleDuPromoteur, sectionsDuContrat, valeursContrat } from "@/lib/contrats";
+import { contexteContrat, sectionsDuContrat } from "@/lib/contrats";
+import { LinkButton } from "@/components/ui/Button";
+import { Settings2 } from "lucide-react";
 import { CreerContratButton, EditeurContrat, RestaurerContratButton } from "./EditeurContrat";
 import { creerContrat } from "./contrat-actions";
 
@@ -55,15 +57,10 @@ export async function OngletContrat({
     ? await db.query.users.findFirst({ where: eq(users.id, dossier.desistement.commercialId) })
     : null;
 
-  // Éditeur : sections créées au premier accès, valeurs de fusion pour l'aperçu
-  let editeur: { sections: Awaited<ReturnType<typeof sectionsDuContrat>>; valeurs: Record<string, string>; modele: boolean } | null = null;
+  // Éditeur : sections créées au premier accès, déjà remplies avec les données du dossier (texte simple)
+  let sectionsEditeur: Awaited<ReturnType<typeof sectionsDuContrat>> | null = null;
   if (contrat && isRespAdm && contrat.statut !== "ANNULE") {
-    const ctx = await contexteContrat(contrat);
-    editeur = {
-      sections: await sectionsDuContrat(contrat, ctx.projet.promoteurId),
-      valeurs: valeursContrat(ctx),
-      modele: !!(await modeleDuPromoteur(ctx.projet.promoteurId)),
-    };
+    sectionsEditeur = await sectionsDuContrat(contrat, await contexteContrat(contrat));
   }
   const historique = contrat ? lireHistoriquePdf(contrat.historiquePdf) : [];
 
@@ -140,15 +137,20 @@ export async function OngletContrat({
         )}
       </Section>
 
-      {contrat && editeur && (
+      {contrat && sectionsEditeur && (
         <Section
           title="Sections du contrat"
-          count={editeur.sections.length}
-          description="Modifiez, réordonnez, supprimez ou ajoutez des sections, puis générez le PDF. Un contrat déjà confirmé reste modifiable : chaque génération archive la version précédente."
+          count={sectionsEditeur.length}
+          description="Texte déjà rempli avec les données du dossier : modifiez-le librement, réordonnez, supprimez ou ajoutez des sections, puis générez le PDF. Un contrat déjà confirmé reste modifiable : chaque génération archive la version précédente."
+          action={
+            <LinkButton href="/dashboard/contrats/modele" variant="ghost" size="sm" data-testid="lien-modele-defaut">
+              <Settings2 className="h-4 w-4" /> Gérer le modèle par défaut
+            </LinkButton>
+          }
           testId="section-editeur-contrat"
         >
           <Card className="p-5">
-            <EditeurContrat contratId={contrat.id} sections={editeur.sections} valeurs={editeur.valeurs} modeleDisponible={editeur.modele} statut={contrat.statut} />
+            <EditeurContrat contratId={contrat.id} sections={sectionsEditeur} statut={contrat.statut} />
           </Card>
         </Section>
       )}

@@ -3,13 +3,13 @@
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, contratModeles, contrats, projets } from "@/db/schema";
+import { biens, contrats, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { enregistrerActivite } from "@/lib/journal";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { notify } from "@/lib/notifications";
-import { SECTIONS_PAR_DEFAUT, decrireChangementsSections, lireSectionsFormulaire } from "@/lib/contrats-sections";
-import { appliquerSections, genererPdfContrat, modeleDuPromoteur, remplacerSections, sectionsDuContrat, type Contrat } from "@/lib/contrats";
+import { decrireChangementsSections, lireSectionsFormulaire } from "@/lib/contrats-sections";
+import { appliquerSections, contexteContrat, genererPdfContrat, modeleDuPromoteur, remplacerSections, sectionsDuContrat, sectionsInitiales, type Contrat } from "@/lib/contrats";
 
 /*
  * Éditeur de contrat (fiche client, onglet Contrat) — Responsable
@@ -56,7 +56,7 @@ export async function enregistrerSectionsContrat(contratId: string, _prev: EtatC
   const lu = lireFormulaire(formData);
   if ("error" in lu) return { error: lu.error };
 
-  const avant = await sectionsDuContrat(r.contrat, session.promoteurId!);
+  const avant = await sectionsDuContrat(r.contrat);
   const changements = decrireChangementsSections(avant, lu.sections);
   if (!changements) return { success: "Aucune modification à enregistrer." };
   await appliquerSections(contratId, lu.sections);
@@ -81,7 +81,7 @@ export async function enregistrerEtGenererContrat(contratId: string, _prev: Etat
   const lu = lireFormulaire(formData);
   if ("error" in lu) return { error: lu.error };
 
-  const avant = await sectionsDuContrat(r.contrat, session.promoteurId!);
+  const avant = await sectionsDuContrat(r.contrat);
   const changements = decrireChangementsSections(avant, lu.sections);
   if (changements) await appliquerSections(contratId, lu.sections);
 
@@ -110,38 +110,14 @@ export async function enregistrerEtGenererContrat(contratId: string, _prev: Etat
   return { success: premiere ? "Contrat confirmé : PDF généré (version 1)." : `PDF régénéré (version ${version}) ; la version précédente reste consultable.` };
 }
 
-/** Enregistre les sections courantes (avec leurs jetons) comme modèle par défaut du promoteur. */
-export async function enregistrerModeleContrat(contratId: string): Promise<EtatContrat> {
-  const session = await requireRole(["RESPONSABLE_ADMINISTRATIF"]);
-  const r = await contratDuPromoteur(contratId, session);
-  if ("error" in r) return { error: r.error };
-  const sections = (await sectionsDuContrat(r.contrat, session.promoteurId!)).map((s) => ({ titre: s.titre, contenu: s.contenu }));
-  const existant = await db.query.contratModeles.findFirst({ where: eq(contratModeles.promoteurId, session.promoteurId!) });
-  if (existant) {
-    await db.update(contratModeles).set({ sections: JSON.stringify(sections), updatedAt: new Date() }).where(eq(contratModeles.id, existant.id));
-  } else {
-    await db.insert(contratModeles).values({ promoteurId: session.promoteurId!, nom: "Modèle par défaut", sections: JSON.stringify(sections) });
-  }
-  await enregistrerActivite({
-    acteur: session,
-    action: existant ? "MODIFICATION" : "CREATION",
-    cibleType: "contrat",
-    cibleId: existant?.id ?? null,
-    cibleNom: "Modèle de contrat par défaut",
-    details: `${sections.length} section(s) : ${sections.map((s) => s.titre).join(", ")}`,
-  });
-  revalider(r.bien.id);
-  return { success: "Modèle par défaut enregistré : les prochains contrats partiront de ces sections." };
-}
-
-/** Remplace les sections du contrat par le modèle du promoteur (ou le jeu intégré). Destructif : confirmation côté interface. */
+/** Remplace les sections du contrat par le modèle du promoteur (ou le jeu intégré) résolu avec les données du dossier. Destructif : confirmation côté interface. */
 export async function repartirDuModele(contratId: string): Promise<EtatContrat> {
   const session = await requireRole(["RESPONSABLE_ADMINISTRATIF"]);
   const r = await contratDuPromoteur(contratId, session);
   if ("error" in r) return { error: r.error };
   if (r.contrat.deletedAt) return { error: "Ce contrat est supprimé." };
   const modele = await modeleDuPromoteur(session.promoteurId!);
-  await remplacerSections(contratId, modele?.sectionsListe ?? SECTIONS_PAR_DEFAUT);
+  await remplacerSections(contratId, await sectionsInitiales(await contexteContrat(r.contrat)));
   await enregistrerActivite({
     acteur: session,
     action: "MODIFICATION",

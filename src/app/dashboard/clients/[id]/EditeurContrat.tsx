@@ -2,43 +2,25 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, BookmarkPlus, FileDown, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, FileDown, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Button, ConfirmButton } from "@/components/ui/Button";
 import { Callout, Card, Input, Textarea } from "@/components/ui/Primitives";
 import { useToast } from "@/components/ui/Toast";
-import { JETONS, rendreTexte, type SectionContrat, type ValeursContrat } from "@/lib/contrats-sections";
-import {
-  enregistrerEtGenererContrat,
-  enregistrerModeleContrat,
-  enregistrerSectionsContrat,
-  repartirDuModele,
-  restaurerContrat,
-  supprimerContrat,
-  type EtatContrat,
-} from "./contrat-actions";
+import type { SectionContrat } from "@/lib/contrats-sections";
+import { enregistrerEtGenererContrat, enregistrerSectionsContrat, repartirDuModele, restaurerContrat, supprimerContrat, type EtatContrat } from "./contrat-actions";
 
 /**
- * Éditeur de contrat par sections (Responsable Administratif) : titre + texte
- * par section, réordonnancement, ajout, suppression (deux temps), aperçu des
- * jetons fusionnés. « Enregistrer » sauvegarde sans confirmation ;
- * « Enregistrer et générer le PDF » archive la version précédente. Le
- * formulaire est contrôlé : rien n'est perdu après une erreur serveur.
+ * Éditeur du contrat d'un dossier précis (Responsable Administratif) : du
+ * texte simple, déjà rempli avec les données du dossier à la création,
+ * modifiable comme dans un traitement de texte — aucun jeton, aucune syntaxe
+ * spéciale. Titre + texte par section, réordonnancement, ajout, suppression
+ * (deux temps). « Enregistrer » sauvegarde sans confirmation ; « Générer le
+ * PDF » archive la version précédente. Formulaire contrôlé : rien n'est perdu
+ * après une erreur serveur. Le modèle par défaut se gère sur un écran séparé.
  */
 type Ligne = SectionContrat & { cle: number };
 
-export function EditeurContrat({
-  contratId,
-  sections,
-  valeurs,
-  modeleDisponible,
-  statut,
-}: {
-  contratId: string;
-  sections: SectionContrat[];
-  valeurs: ValeursContrat;
-  modeleDisponible: boolean;
-  statut: string;
-}) {
+export function EditeurContrat({ contratId, sections, statut }: { contratId: string; sections: SectionContrat[]; statut: string }) {
   const [lignes, setLignes] = useState<Ligne[]>(() => sections.map((s, i) => ({ ...s, cle: i + 1 })));
   const [prochaineCle, setProchaineCle] = useState(sections.length + 1);
   const [etatSauvegarde, sauvegarder, pendingSauvegarde] = useActionState<EtatContrat, FormData>(enregistrerSectionsContrat.bind(null, contratId), undefined);
@@ -97,15 +79,6 @@ export function EditeurContrat({
 
   return (
     <form action={sauvegarder} className="space-y-4" data-testid="editeur-contrat">
-      <Callout tone="neutral" className="text-caption">
-        Les jetons entre doubles accolades sont remplacés à la génération par les données du dossier :{" "}
-        {JETONS.map((j) => (
-          <code key={j.cle} className="mr-1 rounded-xs bg-navy-50 px-1" title={j.libelle}>
-            {`{{${j.cle}}}`}
-          </code>
-        ))}
-      </Callout>
-
       <ol className="space-y-3">
         {lignes.map((s, index) => (
           <li key={s.cle}>
@@ -137,20 +110,7 @@ export function EditeurContrat({
                   </ConfirmButton>
                 </div>
               </div>
-              <Textarea
-                id={`section-contenu-${s.cle}`}
-                name="contenu"
-                label="Texte"
-                rows={4}
-                value={s.contenu}
-                onChange={(e) => modifier(s.cle, "contenu", e.target.value)}
-              />
-              <details className="text-caption text-navy-400">
-                <summary className="cursor-pointer">Aperçu avec les données du dossier</summary>
-                <p className="mt-1 whitespace-pre-line text-navy-900" data-testid="apercu-section">
-                  {rendreTexte(s.contenu, valeurs)}
-                </p>
-              </details>
+              <Textarea id={`section-contenu-${s.cle}`} name="contenu" label="Texte" rows={4} value={s.contenu} onChange={(e) => modifier(s.cle, "contenu", e.target.value)} />
             </Card>
           </li>
         ))}
@@ -161,11 +121,8 @@ export function EditeurContrat({
           <Plus className="h-4 w-4" /> Ajouter une section
         </Button>
         <ConfirmButton size="sm" variant="ghost" confirmLabel="Remplacer toutes les sections ?" onConfirm={() => lancer(() => repartirDuModele(contratId))} disabled={pending} data-testid="repartir-modele">
-          <RotateCcw className="h-4 w-4" /> {modeleDisponible ? "Repartir du modèle par défaut" : "Repartir du jeu de sections intégré"}
+          <RotateCcw className="h-4 w-4" /> Repartir du modèle par défaut
         </ConfirmButton>
-        <Button type="button" size="sm" variant="ghost" onClick={() => lancer(() => enregistrerModeleContrat(contratId))} disabled={pending} data-testid="enregistrer-modele">
-          <BookmarkPlus className="h-4 w-4" /> Enregistrer comme modèle par défaut
-        </Button>
       </div>
 
       {etat?.error && <Callout tone="danger">{etat.error}</Callout>}

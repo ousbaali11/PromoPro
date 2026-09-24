@@ -3,12 +3,15 @@ import { confirmer, login, ouvrirBienClient } from "./helpers";
 import { texteDuPdf } from "../pdf-texte";
 
 /*
- * Éditeur de contrat par sections (phase 2). Sur la vente A01 du seed, le
- * Responsable Administratif : trouve les sections pré-remplies au premier
- * accès, en modifie, réordonne, supprime et ajoute, enregistre, régénère le
- * PDF (l'ancienne version reste consultable), enregistre ses sections comme
- * modèle, supprime le contrat (suppression douce, annulable) puis en crée un
- * nouveau pour le même bien et le même client, pré-rempli depuis le modèle.
+ * Éditeur du contrat d'un dossier précis (Responsable Administratif) : du
+ * texte simple, déjà rempli avec les vraies données du dossier, sans aucune
+ * syntaxe « {{…}} ». Sur la vente A01 du seed — dont les sections ont été
+ * insérées au format HÉRITÉ (jetons) par scripts/e2e-donnees-heritees.ts puis
+ * converties par la migration ponctuelle — le Responsable Administratif :
+ * vérifie le texte résolu, modifie, réordonne, supprime et ajoute, enregistre,
+ * régénère le PDF (ancienne version consultable), supprime le contrat
+ * (suppression douce, annulable) puis en crée un nouveau pour le même bien et
+ * le même client, lui aussi pré-rempli sans jeton.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -16,9 +19,10 @@ const GARANTIE = "Garantie décennale";
 const GARANTIE_PDF = GARANTIE.toUpperCase(); // les titres de section sont dessinés en majuscules dans le PDF
 let hrefFiche = "";
 
-test("sections pré-remplies, modification, ajout, réordonnancement et enregistrement journalisé", async ({ page }) => {
+test("sections migrées puis résolues : texte simple avec les données du dossier, aucun jeton ; modification, ajout, réordonnancement, journal", async ({ page }) => {
   await login(page, "RESPADM");
   await page.goto("/dashboard/contrats");
+  await expect(page.getByTestId("lien-modele-defaut")).toBeVisible(); // le modèle se gère sur un écran séparé
   await page.getByTestId("contrat-ligne").filter({ hasText: "Appartement A01" }).getByTestId("lien-fiche-client").click();
   await expect(page).toHaveURL(/onglet=contrat/);
   hrefFiche = page.url();
@@ -28,16 +32,22 @@ test("sections pré-remplies, modification, ajout, réordonnancement et enregist
   const sections = editeur.getByTestId("section-contrat");
   await expect(sections).toHaveCount(6);
   await expect(sections.first().getByLabel("Titre de la section")).toHaveValue("Identité des parties");
-  await expect(sections.nth(3).getByTestId("apercu-section")).toContainText("Tranche 1 · 40 %"); // jetons fusionnés dans l'aperçu
+  // Migration : les jetons hérités ont été remplacés par les données du dossier
+  await expect(sections.first().getByLabel("Texte")).toHaveValue(/Le vendeur : Résidences Atlas/);
+  await expect(sections.first().getByLabel("Texte")).toHaveValue(/NACIRI Hamid/);
+  await expect(sections.nth(1).getByLabel("Texte")).toHaveValue(/Appartement A01/);
+  await expect(sections.nth(3).getByLabel("Texte")).toHaveValue(/Tranche 1 · 40 %/);
+  for (let i = 0; i < 6; i++) expect(await sections.nth(i).getByLabel("Texte").inputValue(), `section ${i + 1}`).not.toMatch(/\{\{|\}\}/);
+  await expect(editeur).not.toContainText("{{");
 
-  // Modification, suppression (deux temps) et ajout d'une section libre
+  // Modification, suppression (deux temps) et ajout d'une section libre : du texte, rien d'autre
   await sections.first().getByLabel("Titre de la section").fill("Identité des parties (vérifiée)");
   await confirmer(page, "supprimer-section", sections.nth(4)); // « Conditions générales »
   await expect(sections).toHaveCount(5);
   await editeur.getByTestId("ajouter-section").click();
   await expect(sections).toHaveCount(6);
   await sections.last().getByLabel("Titre de la section").fill(GARANTIE);
-  await sections.last().getByLabel("Texte").fill("Le vendeur garantit {{bien}} pendant dix ans à compter de la livraison.");
+  await sections.last().getByLabel("Texte").fill("Le vendeur garantit l'Appartement A01 pendant dix ans à compter de la livraison.");
   await sections.last().getByRole("button", { name: "Monter la section" }).click();
   await expect(sections.nth(4).getByLabel("Titre de la section")).toHaveValue(GARANTIE);
 
@@ -47,13 +57,12 @@ test("sections pré-remplies, modification, ajout, réordonnancement et enregist
   const rechargees = page.getByTestId("editeur-contrat").getByTestId("section-contrat");
   await expect(rechargees).toHaveCount(6);
   await expect(rechargees.first().getByLabel("Titre de la section")).toHaveValue("Identité des parties (vérifiée)");
-  await expect(rechargees.nth(4).getByLabel("Titre de la section")).toHaveValue(GARANTIE);
+  await expect(rechargees.nth(4).getByLabel("Texte")).toHaveValue("Le vendeur garantit l'Appartement A01 pendant dix ans à compter de la livraison."); // enregistré tel quel
   await expect(rechargees.nth(5).getByLabel("Titre de la section")).toHaveValue("Clause de désistement");
 
   await login(page, "PDG"); // le journal se lit avec un rôle de direction
   await page.goto("/dashboard/journal");
-  const ligne = page.getByText(/Contrat Appartement A01/).first();
-  await expect(ligne).toBeVisible();
+  await expect(page.getByText(/Contrat Appartement A01/).first()).toBeVisible();
   await expect(page.getByText(new RegExp(`section « ${GARANTIE} » ajoutée`)).first()).toBeVisible();
   await expect(page.getByText(/section « Conditions générales » supprimée/).first()).toBeVisible();
 });
@@ -83,18 +92,17 @@ test("régénération du PDF d'un contrat déjà confirmé : nouvelle version, a
   }
   const texte = await texteDuPdf(await (await page.request.get(nouvelle!)).body());
   expect(texte).toContain(GARANTIE_PDF);
-  expect(texte).toContain("Le vendeur garantit Appartement A01 pendant dix ans"); // jeton {{bien}} fusionné dans le texte de la section
+  expect(texte).toContain("Le vendeur garantit l'Appartement A01 pendant dix ans");
+  expect(texte).toContain("NACIRI Hamid");
   expect(texte).toContain("VIR-2026-00458"); // annexe automatique : référence du paiement validé du seed
   expect(texte).not.toContain("CONDITIONS GÉNÉRALES");
-  expect(await texteDuPdf(await (await page.request.get(ancienne!)).body())).not.toContain(GARANTIE_PDF);
+  expect(texte).not.toMatch(/\{\{|\}\}/);
 });
 
-test("modèle par défaut, suppression douce annulable, nouveau contrat pré-rempli depuis le modèle", async ({ page }) => {
+test("suppression douce annulable, puis nouveau contrat pour le même bien et le même client, pré-rempli sans jeton", async ({ page }) => {
   await login(page, "RESPADM");
   await page.goto(hrefFiche);
   const editeur = page.getByTestId("editeur-contrat");
-  await editeur.getByTestId("enregistrer-modele").click();
-  await expect(page.getByTestId("contrat-message")).toContainText("Modèle par défaut enregistré");
 
   // Suppression douce puis annulation depuis le toast
   await confirmer(page, "supprimer-contrat", editeur);
@@ -105,7 +113,7 @@ test("modèle par défaut, suppression douce annulable, nouveau contrat pré-rem
   await expect(page.getByTestId("carte-contrat")).toHaveAttribute("data-statut", "PRET");
   await expect(page.getByTestId("section-contrats-supprimes")).toHaveCount(0);
 
-  // Suppression définitive (douce) et création d'un nouveau contrat pour le même bien et le même client
+  // Suppression définitive (douce) et création d'un nouveau contrat
   await confirmer(page, "supprimer-contrat", page.getByTestId("editeur-contrat"));
   await expect(page.getByTestId("carte-sans-contrat")).toBeVisible();
   const supprime = page.getByTestId("section-contrats-supprimes").getByTestId("contrat-supprime");
@@ -115,8 +123,9 @@ test("modèle par défaut, suppression douce annulable, nouveau contrat pré-rem
   await page.getByTestId("creer-contrat").click();
   await expect(page.getByTestId("carte-contrat")).toHaveAttribute("data-statut", "EN_ATTENTE");
   const sections = page.getByTestId("editeur-contrat").getByTestId("section-contrat");
-  await expect(sections).toHaveCount(6); // sections du modèle enregistré, pas le jeu intégré
-  await expect(sections.nth(4).getByLabel("Titre de la section")).toHaveValue(GARANTIE);
+  await expect(sections).toHaveCount(6); // modèle du promoteur (hérité, converti par la migration), résolu pour ce dossier
+  await expect(sections.first().getByLabel("Texte")).toHaveValue(/NACIRI Hamid/);
+  await expect(page.getByTestId("editeur-contrat")).not.toContainText("{{");
   await expect(page.getByTestId("section-contrats-supprimes").getByTestId("contrat-supprime")).toHaveCount(1);
 
   // Première génération = confirmation ; l'index et l'espace client suivent
@@ -132,5 +141,7 @@ test("modèle par défaut, suppression douce annulable, nouveau contrat pré-rem
   await expect(lien).toBeVisible();
   const r = await page.request.get((await lien.getAttribute("href"))!);
   expect(r.status()).toBe(200);
-  expect(await texteDuPdf(await r.body())).toContain(GARANTIE_PDF);
+  const texte = await texteDuPdf(await r.body());
+  expect(texte).toContain("NACIRI Hamid");
+  expect(texte).not.toMatch(/\{\{|\}\}/);
 });

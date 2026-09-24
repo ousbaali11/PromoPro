@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "promopro-e2e-db",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set DATABASE_URL=&& set SQLITE_PATH=data/test.db&& set JWT_SECRET=secret-de-test-e2e-promopro-0123456789&& npx next dev --port 3100"],
+      "port": 3100
     }
   ]
 }

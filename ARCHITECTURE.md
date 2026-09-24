@@ -194,6 +194,60 @@ index, `actions` sur la fiche. Les visites, photos, livraisons et la
 définition du syndic restent sur la page SAV (pas d'onglet dédié). Les
 Server Actions concernées revalident `/dashboard/clients/[id]`.
 
+## Contrat par sections, versions du PDF, suppression douce
+
+Deux écrans nettement séparés (`src/lib/contrats-sections.ts`, module pur
+testé) :
+
+- **Le contrat d'un dossier précis** (fiche client, onglet Contrat,
+  Responsable Administratif) : ses sections (`contrat_sections` : ordre,
+  titre, contenu) sont du **texte simple**. À la création du contrat
+  (premier accès à l'onglet, `sectionsDuContrat`), le modèle par défaut du
+  promoteur — ou le jeu intégré `SECTIONS_PAR_DEFAUT` — est résolu avec les
+  vraies données du dossier (`resoudreModele` + `valeursContrat`) et ce texte
+  devient le contenu propre à CE contrat. Ensuite `EditeurContrat` est un
+  traitement de texte : titre + texte par section, réordonner, supprimer
+  (deux temps), ajouter ; ce qui est enregistré est exactement ce qui a été
+  tapé, aucune retransformation. Aucun jeton, aucune syntaxe.
+- **Le modèle par défaut** (`/dashboard/contrats/modele`, lien « Gérer le
+  modèle par défaut » depuis l'index Contrats et l'onglet Contrat) :
+  `contrat_modeles.sections` est un JSON de sections faites de **segments**
+  ordonnés — `{ type: "texte", valeur }` ou `{ type: "champ", cle }`. Les
+  champs disponibles (`CHAMPS` : « Nom du client », « Prix du bien »,
+  « Adresse du client »…) apparaissent dans `EditeurSegments` comme des
+  étiquettes encadrées non éditables avec une croix de suppression, insérées à
+  la position du curseur par le bouton « Insérer un champ » (menu déroulant
+  des libellés humains) ; le texte se tape librement autour. Jamais de texte
+  brut à accolades.
+
+« Générer le PDF » (`genererPdfContrat`, `src/lib/contrats.ts`) rend les
+sections courantes puis une annexe automatique des paiements validés
+(références comptables, section 9.1) et les cadres de signature ; la première
+génération confirme le contrat (EN_ATTENTE → PRET, commercial notifié), les
+suivantes gardent le statut. Chaque génération archive l'URL précédente dans
+`contrats.historique_pdf` (JSON, plus récent en premier), consultable sur la
+fiche et servie par `/api/files`. **Garde-fou** : une section qui
+contiendrait encore un jeton `{{cle}}` (données antérieures non migrées) est
+résolue à la génération (`rendreTexte`), jamais écrite brute dans le PDF ; un
+jeton inconnu reste visible tel quel. La régénération après validation d'un
+paiement passe par le même moteur. Toute modification est journalisée.
+
+**Migration ponctuelle** (`npm run migrer:contrats-segments`,
+`src/lib/migration-contrats-segments.ts`) : les modèles au format hérité
+`{ titre, contenu }` deviennent des segments (`segmentsDepuisTexte`), les
+sections de contrat contenant des jetons sont résolues avec les données de
+leur dossier. Idempotente ; la préparation e2e insère des données héritées
+puis lance la migration, que les specs vérifient.
+
+**Suppression douce** : `contrats.deleted_at`. Le contrat supprimé reste
+consultable (PDF courant, versions archivées, copie signée, journal) dans
+« Contrats supprimés » de la fiche, mais disparaît de l'index, de l'espace
+client et des régénérations ; un nouveau contrat peut être créé aussitôt
+pour le même bien et le même client (`creerContrat`), pré-rempli depuis le
+modèle. La suppression est annulable pendant 8 s depuis le toast
+(`restaurerContrat`), ou depuis l'historique tant qu'aucun autre contrat
+actif n'existe.
+
 ## Échéancier flexible
 
 La proposition de vente porte une liste **dynamique** de tranches

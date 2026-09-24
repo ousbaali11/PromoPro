@@ -10,6 +10,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { formatDate } from "@/lib/utils";
 import { LienFiche } from "@/components/dossier/cartes";
+import { LinkButton } from "@/components/ui/Button";
+import { Settings2 } from "lucide-react";
 import { lienFicheClient } from "@/lib/dossier-client";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
@@ -64,7 +66,17 @@ export default async function ContratsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Contrats" description="Contrats à vérifier, désistements à traiter et dossiers à transmettre au notaire — chaque dossier se traite depuis la fiche du client." />
+      <PageHeader
+        title="Contrats"
+        description="Contrats à vérifier, désistements à traiter et dossiers à transmettre au notaire — chaque dossier se traite depuis la fiche du client."
+        action={
+          isRespAdm ? (
+            <LinkButton href="/dashboard/contrats/modele" variant="secondary" size="sm" data-testid="lien-modele-defaut">
+              <Settings2 className="h-4 w-4" /> Gérer le modèle par défaut
+            </LinkButton>
+          ) : undefined
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="Contrats en attente" value={enAttente} tone={enAttente > 0 ? "warning" : undefined} icon={<FileSignature />} hint="À vérifier puis confirmer" />
