@@ -9,6 +9,9 @@ import { ROLE_LABELS } from "@/lib/roles";
 import { chargerPromoteur } from "@/lib/promoteurs";
 import { STATUT_BIEN_LABELS } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
+import { Suspense } from "react";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { decoderPlage } from "@/lib/plage-dates";
 
 async function countBiensByStatut(promoteurId: string, statut: string) {
   const rows = await db
@@ -19,9 +22,12 @@ async function countBiensByStatut(promoteurId: string, statut: string) {
   return rows[0]?.n ?? 0;
 }
 
-export default async function DashboardHome() {
+export default async function DashboardHome({ searchParams }: { searchParams: Promise<{ plage?: string }> }) {
   const session = await requireStaffSession();
   const promoteurId = session.promoteurId!;
+  // Plage de dates partagée par les graphiques du tableau de bord (URL ?plage=, dernier choix rappelé côté navigateur)
+  const { plage: codePlage } = await searchParams;
+  const plage = decoderPlage(codePlage);
   const promoteur = await chargerPromoteur(promoteurId);
 
   const [disponibles, vendus, enProposition] = await Promise.all([
@@ -68,7 +74,12 @@ export default async function DashboardHome() {
     <div>
       <PageHeader
         title={`Bonjour ${session.prenom}`}
-        description={`Espace ${ROLE_LABELS[session.role as never]} — vue d'ensemble de ${promoteur.nom}.`}
+        description={`Espace ${ROLE_LABELS[session.role as never]} — vue d'ensemble de ${promoteur.nom} · ${plage.libelle}.`}
+        action={
+          <Suspense fallback={null}>
+            <DateRangePicker code={codePlage} userId={session.userId} />
+          </Suspense>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

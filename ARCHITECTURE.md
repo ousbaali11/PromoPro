@@ -217,6 +217,23 @@ Chaque modification est journalisée avec l'échéancier avant → après (cible
 « Échéancier »), le contrat confirmé est régénéré (version archivée) et le
 client notifié.
 
+## Plage de dates des tableaux de bord
+
+Le tableau de bord interne (`/dashboard`, tous les rôles sauf le client)
+porte en haut à droite un sélecteur de plage (`DateRangePicker`,
+`src/components/ui/`) : bouton fermé résumant la plage active, panneau à
+trois onglets — **Rapide** (Aujourd'hui, Cette semaine, 7 / 30 derniers
+jours, Ce mois-ci, Cette année, La semaine dernière, un clic applique),
+**Relatif** (nombre + unité, derniers / prochains), **Personnalisé** (début
+et fin avec l'heure, fin après le début). Le choix est un code court porté
+par l'URL (`?plage=annee`, `rel:-3:mois`, `perso:<iso>_<iso>`) que le
+serveur résout en [début ; fin] à chaque requête (`src/lib/plage-dates.ts`,
+module pur testé : préréglages, libellés accordés, granularité jour /
+semaine / mois pour les graphiques). Le dernier choix est mémorisé par
+utilisateur dans localStorage et rappelé quand l'URL n'en porte pas. Pas
+d'auto-rafraîchissement : les données ne changent pas assez vite pour le
+justifier.
+
 ## Livraison et double confirmation
 
 La livraison d'un bien (section 12.1) exige la confirmation du client et
