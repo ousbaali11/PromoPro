@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq, desc } from "drizzle-orm";
 import { Plus, ChevronRight, Building2, LayoutGrid, KeyRound } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { db } from "@/db/client";
 import { projets, biens } from "@/db/schema";
 import { Card, PageHeader, EmptyState, Badge, Stat } from "@/components/ui/Primitives";
@@ -9,6 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 
 export default async function ProjetsPage() {
   const session = await requireStaffSession();
+  const promoteur = await chargerPromoteur(session.promoteurId!);
   const isDircom = session.role === "DIRECTEUR_COMMERCIAL";
 
   const rows = await db.query.projets.findMany({
@@ -36,7 +38,7 @@ export default async function ProjetsPage() {
     <div>
       <PageHeader
         title="Projets & biens"
-        description="Liste des programmes immobiliers de PromoPro."
+        description={`Liste des programmes immobiliers de ${promoteur.nom}.`}
         action={
           isDircom ? (
             <LinkButton href="/dashboard/projets/nouveau" size="sm">

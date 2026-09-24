@@ -6,6 +6,7 @@ import { biens, projets, propositions, prospects, users, epingles as epinglesTab
 import { PageHeader, Section, Stat } from "@/components/ui/Primitives";
 import { LinkButton } from "@/components/ui/Button";
 import { ROLE_LABELS } from "@/lib/roles";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { STATUT_BIEN_LABELS } from "@/lib/utils";
 import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection";
 
@@ -21,6 +22,7 @@ async function countBiensByStatut(promoteurId: string, statut: string) {
 export default async function DashboardHome() {
   const session = await requireStaffSession();
   const promoteurId = session.promoteurId!;
+  const promoteur = await chargerPromoteur(promoteurId);
 
   const [disponibles, vendus, enProposition] = await Promise.all([
     countBiensByStatut(promoteurId, "DISPONIBLE"),
@@ -66,7 +68,7 @@ export default async function DashboardHome() {
     <div>
       <PageHeader
         title={`Bonjour ${session.prenom}`}
-        description={`Espace ${ROLE_LABELS[session.role as never]} — vue d'ensemble de PromoPro.`}
+        description={`Espace ${ROLE_LABELS[session.role as never]} — vue d'ensemble de ${promoteur.nom}.`}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
