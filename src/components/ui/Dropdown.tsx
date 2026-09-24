@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, ty
 import { AnimatePresence, motion } from "motion/react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRecalageDansFenetre } from "@/components/ui/recalage";
 
 export type MenuItem = {
   label: string;
@@ -41,6 +42,7 @@ export function Dropdown({
   const [open, setOpen] = useState(false);
   const [actif, setActif] = useState(0);
   const racine = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const actifs = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
 
@@ -60,6 +62,9 @@ export function Dropdown({
     const el = racine.current?.querySelector<HTMLElement>(`[data-index="${actif}"]`);
     el?.focus();
   }, [open, actif]);
+
+  // Le menu reste dans la fenêtre même quand le déclencheur touche un bord (mobile)
+  useRecalageDansFenetre(open, racine, menu, align);
 
   const ouvrir = () => {
     setActif(actifs[0] ?? 0);
@@ -133,6 +138,7 @@ export function Dropdown({
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={menu}
             id={menuId}
             role="menu"
             aria-label={label}

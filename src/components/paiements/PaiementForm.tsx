@@ -6,6 +6,7 @@ import { Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { useHydrated } from "@/components/ui/useHydrated";
 
 export type PaiementFormState = { error?: string; success?: string } | undefined;
 
@@ -69,6 +70,7 @@ export function PaiementForm({
   const [nature, setNature] = useState("virement local");
   const [porteurDifferent, setPorteurDifferent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const hydrated = useHydrated();
 
   useEffect(() => {
     if (state?.success) formRef.current?.reset();
@@ -86,7 +88,7 @@ export function PaiementForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-paiement">
+    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-4" data-testid="form-paiement" data-hydrated={hydrated ? "true" : undefined}>
       <input type="hidden" name="bienId" value={bienId} />
       {intro && <p className="text-caption text-navy-400">{intro}</p>}
 

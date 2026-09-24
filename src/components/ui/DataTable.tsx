@@ -158,7 +158,9 @@ export function DataTable({
           <ExportCsv nom={exportation.nom} entetes={exportation.entetes} lignes={triees.filter((r) => r.export).map((r) => r.export!)} />
         </div>
       )}
-      <div className="overflow-x-auto">
+      {/* « relative » : les éléments absolus (sr-only) restent confinés au conteneur
+          de défilement au lieu d'élargir la page de toute la largeur minimale. */}
+      <div className="relative overflow-x-auto">
         <table className="w-full text-body" style={{ minWidth }}>
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>

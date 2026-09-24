@@ -385,6 +385,42 @@ CSS-first via `@theme`).
 navigation de la sidebar par rôle (`NAV_BY_ROLE`) — ajoute une entrée ici
 quand un nouveau module a sa propre page de menu.
 
+### Petits écrans (320 / 375 / 768 px)
+
+Règles issues de l'audit mobile, vérifiées par `tests/e2e/mobile.spec.ts`
+(chaque page aux trois largeurs, avec interaction réelle : menus, panneaux,
+formulaires soumis, listes dynamiques, éditeurs) :
+
+- **Aucun débordement horizontal de la page** : le test compare
+  `document.documentElement.scrollWidth` à la largeur de la fenêtre et nomme
+  les premiers éléments qui dépassent. Deux pièges rencontrés : un élément
+  `sr-only` (position absolue) placé dans un conteneur de défilement non
+  positionné s'en échappe et élargit la page de toute la largeur minimale de
+  la table — le conteneur `overflow-x-auto` du `DataTable` est donc
+  `relative` ; et une `<table>` ignore la largeur de 1 px de `sr-only` —
+  une table réservée aux lecteurs d'écran s'enveloppe dans un `<div
+  className="sr-only">` (projection de trésorerie).
+- **Panneaux flottants recalés dans la fenêtre** : `useRecalageDansFenetre`
+  (`src/components/ui/recalage.ts`) mesure le déclencheur et la largeur
+  réelle du panneau puis pose `style.right` / `style.left` sur le nœud, sans
+  état ni rendu supplémentaire. Utilisé par `Dropdown`, `DateRangePicker` et
+  le panneau d'import des prospects ; à reprendre pour tout nouveau menu
+  positionné en absolu contre son bouton.
+- **Zone d'actions du `PageHeader`** : bornée à la largeur disponible
+  (`max-w-full flex-wrap`) et alignée à droite quand elle se replie sous le
+  titre (`ml-auto`), pour que ses panneaux s'ouvrent dans la zone de contenu
+  et non sous la barre latérale (z-index supérieur) sur tablette.
+- **Aucune action masquée par une colonne cachée** : `hideBelow` sert à
+  alléger, jamais à cacher un bouton (le bouton du logo d'un promoteur est
+  dans une colonne toujours visible ; la table défile horizontalement).
+- **En-têtes repliables** : l'en-tête de l'administration passe en
+  `flex-wrap` sous 375 px.
+- **Formulaires manipulés par script dans les tests** : les formulaires
+  portent `data-hydrated` (`useHydrated`) ; un test qui désactive la
+  validation HTML5 (`noValidate`) pour provoquer un message serveur doit
+  attendre ce marqueur — posé avant l'hydratation, l'attribut déclenche un
+  avertissement React et le badge de Next.js recouvre le bouton de soumission.
+
 ## Fichiers uploadés
 
 `src/lib/storage.ts` centralise le stockage local (`storage/uploads/<type>/`,

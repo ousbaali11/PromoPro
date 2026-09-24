@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Primitives";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useRecalageDansFenetre } from "@/components/ui/recalage";
 import { useHydrated } from "@/components/ui/useHydrated";
 import {
   PREREGLAGES,
@@ -49,6 +50,7 @@ export function DateRangePicker({ code, userId, className }: { code?: string; us
   const searchParams = useSearchParams();
   const hydrated = useHydrated();
   const racine = useRef<HTMLDivElement>(null);
+  const panneau = useRef<HTMLDivElement>(null);
   const panneauId = useId();
   const [open, setOpen] = useState(false);
   const [onglet, setOnglet] = useState<Onglet>("rapide");
@@ -112,6 +114,9 @@ export function DateRangePicker({ code, userId, className }: { code?: string; us
     };
   }, [open]);
 
+  // Le panneau reste dans la fenêtre même quand le bouton est replié à gauche (mobile)
+  useRecalageDansFenetre(open, racine, panneau, "right");
+
   const appliquerPerso = () => {
     const d = new Date(debut);
     const f = new Date(fin);
@@ -143,6 +148,7 @@ export function DateRangePicker({ code, userId, className }: { code?: string; us
       <AnimatePresence>
         {open && hydrated && (
           <motion.div
+            ref={panneau}
             id={panneauId}
             role="dialog"
             aria-label="Choisir une plage de dates"

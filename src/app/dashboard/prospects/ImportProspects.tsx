@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { FileSpreadsheet, Upload, CheckCircle2, X } from "lucide-react";
@@ -8,6 +8,7 @@ import { analyserImportProspects, confirmerImportProspects, type RepartitionAper
 import { Button } from "@/components/ui/Button";
 import { Callout, Card, Badge } from "@/components/ui/Primitives";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { useRecalageDansFenetre } from "@/components/ui/recalage";
 
 /**
  * Import Excel des prospects (Assistant Administratif) : choix du fichier →
@@ -21,6 +22,10 @@ export function ImportProspects() {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const idFichier = useId();
+  const racine = useRef<HTMLDivElement>(null);
+  const panneau = useRef<HTMLDivElement>(null);
+  // Le panneau reste dans la fenêtre même quand le bouton est replié à gauche (mobile)
+  useRecalageDansFenetre(ouvert, racine, panneau, "right");
 
   // Une fois l'import écrit, rafraîchir les cartes et le tableau de la page
   useEffect(() => {
@@ -31,13 +36,14 @@ export function ImportProspects() {
   const resultat = confirmation?.resultat;
 
   return (
-    <div className="relative" data-testid="import-prospects">
+    <div ref={racine} className="relative" data-testid="import-prospects">
       <Button variant="gold" size="sm" onClick={() => setOuvert((v) => !v)} aria-expanded={ouvert} data-testid="bouton-import">
         <FileSpreadsheet className="h-4 w-4" /> Importer un fichier Excel
       </Button>
       <AnimatePresence initial={false}>
         {ouvert && (
           <motion.div
+            ref={panneau}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}

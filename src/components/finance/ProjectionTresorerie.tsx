@@ -112,7 +112,8 @@ export function ProjectionTresorerie({ projection }: { projection: Projection })
         )}
 
         {/* Version tableau pour les lecteurs d'écran et les tests */}
-        <table className="sr-only" data-testid="projection-tableau">
+        <div className="sr-only">
+        <table data-testid="projection-tableau">
           <caption>Montants attendus par fenêtre de 30 jours</caption>
           <thead>
             <tr>
@@ -135,6 +136,7 @@ export function ProjectionTresorerie({ projection }: { projection: Projection })
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

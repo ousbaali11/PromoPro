@@ -470,7 +470,18 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   navigation clavier des menus et segments, `aria-sort` des tableaux,
   région `aria-live` des toasts, étiquettes flottantes associées, actions
   révélées au focus, et respect de `prefers-reduced-motion` (contexte
-  Playwright émulé).
+  Playwright émulé) ;
+  audit mobile (`mobile.spec.ts`) : chaque page — connexion, tableaux de
+  bord des onze rôles internes, administration, projets (grille et liste),
+  fiche bien, fiche client et ses quatre onglets, éditeurs de contrat et de
+  modèle, propositions, équipe, prospects (assistant et commercial), SAV,
+  recouvrement, finance, journal, espace client — visitée à 320, 375 et
+  768 px avec interaction réelle (tiroir de navigation, menus déroulants,
+  modale, panneaux du sélecteur de plage et de l'import, formulaires remplis
+  et soumis à 375 px avec message d'erreur affiché, liste dynamique de
+  tranches et éditeur de contrat par sections) ; à chaque étape : aucun
+  débordement horizontal (`scrollWidth` ≤ largeur de la fenêtre) et boutons,
+  champs et panneaux entièrement dans la fenêtre.
   Les contrastes de la palette se vérifient à part, sans navigateur :
   `npm run check:contrast` lit les tokens de `src/app/globals.css` et
   calcule le ratio WCAG de chaque paire d'usage (texte 4,5:1, graphique

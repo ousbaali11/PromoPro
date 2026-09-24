@@ -99,7 +99,7 @@ export function Modal({
             aria-describedby={description ? descId : undefined}
             tabIndex={-1}
             className={cn(
-              "relative w-full rounded-xl bg-white shadow-e5 ring-1 ring-navy-100/70 focus:outline-none",
+              "relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-xl bg-white shadow-e5 ring-1 ring-navy-100/70 focus:outline-none",
               { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" }[size],
             )}
             initial={{ opacity: 0, scale: 0.96, y: 12 }}

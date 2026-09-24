@@ -59,7 +59,7 @@ export default async function AdminPage() {
         caption="Liste des promoteurs"
         columns={[
           { header: "Promoteur", sortable: true },
-          { header: "Logo", hideBelow: "sm" },
+          { header: "Logo" },
           { header: "Abonnement", hideBelow: "sm" },
           { header: "Échéance", sortable: true, hideBelow: "md" },
           { header: "Statut", sortable: true },

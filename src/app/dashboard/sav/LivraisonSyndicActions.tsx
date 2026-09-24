@@ -6,6 +6,7 @@ import { confirmerLivraisonSav, definirSyndic } from "./actions";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Callout } from "@/components/ui/Primitives";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { useHydrated } from "@/components/ui/useHydrated";
 
 export function ConfirmerLivraisonButton({ bienId }: { bienId: string }) {
   const [pending, startTransition] = useTransition();
@@ -32,12 +33,13 @@ export function ConfirmerLivraisonButton({ bienId }: { bienId: string }) {
 export function DefinirSyndicForm({ biens }: { biens: { id: string; label: string }[] }) {
   const [state, formAction, pending] = useActionState(definirSyndic, undefined);
   const formRef = useRef<HTMLFormElement>(null);
+  const hydrated = useHydrated();
   useEffect(() => {
     if (state && !state.error) formRef.current?.reset();
   }, [state]);
 
   return (
-    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="form-syndic">
+    <form ref={formRef} action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 rounded-md bg-navy-50 p-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="form-syndic" data-hydrated={hydrated ? "true" : undefined}>
       <Select id="syndic-bien" name="bienId" label="Bien / client" required>
         {biens.map((b) => (
           <option key={b.id} value={b.id}>

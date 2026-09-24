@@ -125,7 +125,7 @@ export function PageHeader({
         <h1 className="text-h1 text-navy-900">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-small text-navy-400">{description}</p>}
       </div>
-      {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+      {action && <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">{action}</div>}
     </div>
   );
 }
@@ -203,7 +203,7 @@ export function Section({
           </h2>
           {description && <p className="mt-0.5 text-small text-navy-400">{description}</p>}
         </div>
-        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+        {action && <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">{action}</div>}
       </div>
       {children}
     </section>
