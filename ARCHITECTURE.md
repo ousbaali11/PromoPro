@@ -31,7 +31,7 @@ Qui peut créer qui (implémenté dans `src/lib/roles.ts` par
 | Super Admin | Promoteur **+** PDG **+** Directeur Commercial **+** Directeur Financier, en un seul geste | `/admin/nouveau` |
 | Directeur Commercial | Commercial, Responsable Commercial, Responsable Administratif, Assistant Administratif, Service Après-Vente | `/dashboard/equipe` |
 | Directeur Financier | Comptable Interne, Recouvrement | `/dashboard/equipe` |
-| Commercial / Responsable Commercial | Clients (compte de l'espace client) | `/dashboard/clients/nouveau` |
+| Commercial / Responsable Commercial / Directeur Commercial | Clients (compte de l'espace client) | `/dashboard/clients/nouveau` |
 
 Le PDG ne crée aucun compte. La page Équipe n'affiche à un directeur que les
 membres de son pôle et ne propose que les statuts de ce pôle ; le rôle
@@ -57,6 +57,14 @@ helpers de `src/lib/session.ts` :
 - `requireRole(["PDG", "DIRECTEUR_COMMERCIAL"])` — restreint à une liste de
   rôles, redirige vers `/dashboard?erreur=acces-refuse` sinon
 - `requireClientSession()` — session client
+
+Les trois helpers vérifient à **chaque requête protégée** que le compte est
+encore utilisable — ni suspendu, ni supprimé, et promoteur au statut ACTIF
+(`src/lib/etat-compte.ts`, cache mémoire de 5 s invalidé par les actions de
+suspension / suppression / restauration et par tout changement de statut d'un
+promoteur). Un compte révoqué pendant sa session est renvoyé vers
+`/api/session/fermer` (cookie supprimé) puis `/login?motif=compte-inactif` ;
+les routes API répondent 401 (`getSessionActive`).
 
 **Chaque Server Action qui modifie des données doit commencer par un appel à
 `requireRole` (ou `requireStaffSession`/`requireClientSession`)** — ne fais
@@ -156,6 +164,15 @@ l'échéancier. Les règles de saisie communes (montant positif à deux décimal
 au plus, dates, pourcentages d'échéancier à 100 %, délai TMA, longueur des
 textes) vivent dans `src/lib/validation.ts`.
 
+## Livraison et double confirmation
+
+La livraison d'un bien (section 12.1) exige la confirmation du client et
+celle du SAV, **dans n'importe quel ordre** (`finaliserLivraisonSiComplete`,
+`src/lib/livraison.ts`) : chaque confirmation notifie l'autre partie si elle
+manque encore, et le bien passe à LIVRE quand les deux sont posées. Le
+prompt 8 de la feuille de route décrivait un enchaînement SAV puis client ;
+l'implémentation symétrique est le choix retenu (testé dans sav.spec).
+
 ## Tâches planifiées
 
 `src/app/api/cron/rappels-echeance/route.ts` envoie le rappel J-7 aux clients
@@ -209,9 +226,13 @@ arguments simples plutôt que `FormData` (voir `acceptProposition(id)` dans
 
 ## UI
 
-Primitives dans `src/components/ui/` : `Button`/`LinkButton`, `Card`,
-`Badge`, `Field`/`Input`/`Select`/`Textarea`, `PageHeader`, `EmptyState`. Pas
-de librairie de composants externe. Palette dans `src/app/globals.css`
+Primitives dans `src/components/ui/` : `Button`/`LinkButton`/`ConfirmButton`
+(confirmation à deux temps), `Card`, `Badge`/`StatusBadge`,
+`Field`/`Input`/`Select`/`Textarea` (étiquettes flottantes), `PageHeader`,
+`Breadcrumb`, `Section`, `Stat`, `Callout`, `EmptyState`, `DataTable` (tri,
+pagination, export CSV via `ExportCsv`), `SegmentedControl`, `Dropdown`,
+`Modal` (piège de focus), `Toast` (`useToast`, action « Annuler »),
+`FileUpload`, `Skeleton`. Pas de librairie de composants externe. Palette dans `src/app/globals.css`
 (`--color-navy-*`, `--color-gold-*`, `--color-cream`), utilisée via les
 classes Tailwind `bg-navy`, `text-gold-600`, etc. (Tailwind v4, configuration
 CSS-first via `@theme`).
@@ -243,8 +264,10 @@ fonction plutôt que de recalculer les pourcentages ailleurs.
 
 - Pas de librairie de gestion d'état global (tout passe par des Server
   Components + revalidation) — inutile vu la taille du projet
-- Pas de tests automatisés : chaque phase a été vérifiée manuellement dans le
-  navigateur (flux complets par rôle) et par de petits scripts `tsx` pour les
-  règles pures (créneaux de visite, périodes, totaux de trésorerie, PDF). Les
-  fonctions candidates à des tests unitaires sont isolées dans `src/lib/`
-  (`creneaux.ts`, `periodes.ts`, `tresorerie.ts`, `paiements.ts`).
+- Les règles pures sont isolées dans `src/lib/` (`creneaux.ts`, `periodes.ts`,
+  `tresorerie.ts`, `projection.ts`, `imputation.ts`, `validation.ts`,
+  `prospects.ts`, `recherche.ts`, `csv.ts`…) et couvertes par des tests
+  unitaires Vitest ; les parcours par rôle, l'isolation multi-promoteur, les
+  sessions et la concurrence sont couverts par Playwright (voir README,
+  « Tests automatisés »). Chaque correction de comportement s'accompagne d'un
+  test qui la justifie.

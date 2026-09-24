@@ -30,10 +30,13 @@ l'exploitation. Les tests cités tournent à chaque `npm run test` /
 - [x] Mots de passe hachés avec bcrypt (coût 10), jamais stockés en clair.
 - [x] Message d'erreur identique que l'identifiant existe ou non (pas
       d'énumération de comptes).
-- [x] Comptes suspendus (`actif = false`) ou supprimés (`deleted_at`) :
-      connexion refusée, session en cours fermée à la prochaine page
-      (`requireStaffSession` / `requireClientSession`) **et, depuis cette
-      revue, routes API refusées** (`getSessionActive`, voir F3 ci-dessous).
+- [x] Comptes suspendus (`actif = false`) ou supprimés (`deleted_at`), et
+      **promoteur suspendu** : connexion refusée (staff et clients), session en
+      cours révoquée à la requête protégée suivante — pages (redirection vers
+      `/login?motif=compte-inactif` via `/api/session/fermer`), Server Actions
+      et routes API (401) — grâce à `src/lib/etat-compte.ts` (cache de 5 s
+      invalidé par les actions concernées). Tests : `sessions.spec.ts`,
+      `comptes.spec.ts`, `isolation.spec.ts`.
 - [x] L'abonnement du promoteur doit être `ACTIF` pour que ses utilisateurs se
       connectent.
 

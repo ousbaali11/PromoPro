@@ -116,6 +116,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   les clients
 - **Super Admin** : créer un promoteur avec ses trois directions (PDG,
   Directeur Commercial, Directeur Financier), activer/suspendre son abonnement
+  (la suspension coupe immédiatement toutes les sessions du promoteur, staff et
+  clients ; la date d'échéance de l'abonnement est affichée mais n'est pas
+  bloquante : seul le statut compte)
 - **Directeur Commercial** : projets (dont le délai des travaux modificatifs)
   et tableau de contenance (bouton « Dupliquer » sur une fiche bien : nouveau
   lot du même projet avec nature, prix et surface repris), plans de chaque bien (2D PDF/image, modèle 3D
@@ -124,7 +127,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
 - **PDG** : blocage de biens avec commentaire privé ; accepter / refuser /
   négocier les propositions
 - **Commercial** : clients (avec scan de pièce d'identité), propositions avec
-  échéancier 40/20/20/20 modifiable, saisie de la 1re tranche avec preuve,
+  échéancier 40/20/20/20 modifiable (total 100 % et dates non passées
+  vérifiés), saisie d'une tranche avec preuve (la première par défaut, ou
+  toute tranche non soldée : versements fractionnés),
   désistement (bien remis à zéro, historique « Biens désistés »), prospects
 - **Responsable Administratif** : contrat PDF généré à la confirmation, dépôt
   de la 4e copie signée, désistements (vérification, remboursement), dossiers
