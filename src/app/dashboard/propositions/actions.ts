@@ -80,6 +80,15 @@ export async function createProposition(_prev: { error?: string } | undefined, f
 
   if (!clientId) return { error: "Merci de sélectionner ou créer un client." };
 
+  // --- Réservation atomique du bien : DISPONIBLE → PROPOSITION_EN_COURS en une seule instruction conditionnelle.
+  // Deux envois quasi simultanés sur le même bien : un seul passe, l'autre reçoit un message clair.
+  const [reserve] = await db
+    .update(biens)
+    .set({ statut: "PROPOSITION_EN_COURS", commercialId: session.userId })
+    .where(and(eq(biens.id, bienId), eq(biens.statut, "DISPONIBLE")))
+    .returning({ id: biens.id });
+  if (!reserve) return { error: "Ce bien n'est plus disponible : une autre proposition vient d'être envoyée." };
+
   // --- Échéancier (modifiable par le commercial, défaut 40/20/20/20) ---
   const [proposition] = await db
     .insert(propositions)
@@ -97,11 +106,6 @@ export async function createProposition(_prev: { error?: string } | undefined, f
       dateEcheance: new Date(t.date),
     });
   }
-
-  await db
-    .update(biens)
-    .set({ statut: "PROPOSITION_EN_COURS", commercialId: session.userId })
-    .where(eq(biens.id, bienId));
 
   const pdgList = await db.query.users.findMany({
     where: and(eq(users.promoteurId, session.promoteurId!), eq(users.role, "PDG")),
@@ -121,30 +125,53 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   redirect("/dashboard/propositions");
 }
 
-/** Charge une proposition ENVOYEE du promoteur de la session (le PDG ne décide que pour son promoteur). */
-async function getPropositionOrThrow(propositionId: string, promoteurId: string | null) {
+export type DecisionState = { error?: string } | undefined;
+
+const DEJA_TRAITEE = "Cette proposition a déjà été traitée.";
+
+/** Charge une proposition du promoteur de la session (le PDG ne décide que pour son promoteur) ; erreur en valeur, jamais en exception. */
+async function chargerProposition(propositionId: string, promoteurId: string | null) {
   const proposition = await db.query.propositions.findFirst({ where: eq(propositions.id, propositionId) });
-  if (!proposition) throw new Error("Proposition introuvable.");
+  if (!proposition) return { error: "Proposition introuvable." as const };
   const commercial = await db.query.users.findFirst({ where: eq(users.id, proposition.commercialId) });
-  if (!commercial || commercial.promoteurId !== promoteurId) throw new Error("Proposition introuvable.");
-  if (proposition.statut !== "ENVOYEE") throw new Error("Cette proposition a déjà été traitée.");
+  if (!commercial || commercial.promoteurId !== promoteurId) return { error: "Proposition introuvable." as const };
+  if (proposition.statut !== "ENVOYEE") return { error: DEJA_TRAITEE };
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, proposition.bienId) });
-  if (!bien) throw new Error("Bien introuvable.");
+  if (!bien) return { error: "Bien introuvable." as const };
   return { proposition, bien };
 }
 
-export async function acceptProposition(propositionId: string) {
-  const session = await requireRole(["PDG"]);
-  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
-
-  await db
+/**
+ * Passe la proposition de ENVOYEE au statut voulu en une instruction
+ * conditionnelle : un double clic ou un onglet obsolète ne peut pas décider
+ * deux fois (la seconde tentative reçoit « déjà traitée »).
+ */
+async function decider(propositionId: string, valeurs: { statut: string; decidedAt?: Date; noteNegociation?: string }) {
+  const [ok] = await db
     .update(propositions)
-    .set({ statut: "ACCEPTEE", decidedAt: new Date() })
-    .where(eq(propositions.id, propositionId));
-  await db
+    .set(valeurs)
+    .where(and(eq(propositions.id, propositionId), eq(propositions.statut, "ENVOYEE")))
+    .returning({ id: propositions.id });
+  return !!ok;
+}
+
+export async function acceptProposition(propositionId: string): Promise<DecisionState> {
+  const session = await requireRole(["PDG"]);
+  const r = await chargerProposition(propositionId, session.promoteurId);
+  if ("error" in r) return { error: r.error };
+  const { proposition, bien } = r;
+
+  if (!(await decider(propositionId, { statut: "ACCEPTEE", decidedAt: new Date() }))) return { error: DEJA_TRAITEE };
+  // Le bien doit encore être réservé par cette proposition (pas désisté ni libéré entre-temps)
+  const [vendu] = await db
     .update(biens)
     .set({ statut: "VENDU", clientId: proposition.clientId })
-    .where(eq(biens.id, bien.id));
+    .where(and(eq(biens.id, bien.id), eq(biens.statut, "PROPOSITION_EN_COURS")))
+    .returning({ id: biens.id });
+  if (!vendu) {
+    await db.update(propositions).set({ statut: "ENVOYEE", decidedAt: null }).where(eq(propositions.id, propositionId));
+    return { error: "Le bien n'est plus réservé par cette proposition : décision annulée." };
+  }
 
   // Le commercial concerné reçoit "Affaire concrétisée"
   await notify({
@@ -188,17 +215,20 @@ export async function acceptProposition(propositionId: string) {
 
   revalidatePath("/dashboard/propositions");
   revalidatePath(`/dashboard/biens/${bien.id}`);
+  return undefined;
 }
 
-export async function refuseProposition(propositionId: string) {
+export async function refuseProposition(propositionId: string): Promise<DecisionState> {
   const session = await requireRole(["PDG"]);
-  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
+  const r = await chargerProposition(propositionId, session.promoteurId);
+  if ("error" in r) return { error: r.error };
+  const { proposition, bien } = r;
 
+  if (!(await decider(propositionId, { statut: "REFUSEE", decidedAt: new Date() }))) return { error: DEJA_TRAITEE };
   await db
-    .update(propositions)
-    .set({ statut: "REFUSEE", decidedAt: new Date() })
-    .where(eq(propositions.id, propositionId));
-  await db.update(biens).set({ statut: "DISPONIBLE", commercialId: null }).where(eq(biens.id, bien.id));
+    .update(biens)
+    .set({ statut: "DISPONIBLE", commercialId: null })
+    .where(and(eq(biens.id, bien.id), eq(biens.statut, "PROPOSITION_EN_COURS")));
 
   await notify({
     userId: proposition.commercialId,
@@ -210,6 +240,7 @@ export async function refuseProposition(propositionId: string) {
 
   revalidatePath("/dashboard/propositions");
   revalidatePath(`/dashboard/biens/${bien.id}`);
+  return undefined;
 }
 
 export async function negotiateProposition(_prev: { error?: string } | undefined, formData: FormData) {
@@ -217,13 +248,14 @@ export async function negotiateProposition(_prev: { error?: string } | undefined
   const propositionId = String(formData.get("propositionId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
   if (!note) return { error: "Merci de préciser votre contre-proposition." };
+  const tropLong = verifierTexte(note, { libelle: "La contre-proposition", max: LONGUEURS.moyenne });
+  if (tropLong) return { error: tropLong };
 
-  const { proposition, bien } = await getPropositionOrThrow(propositionId, session.promoteurId);
+  const r = await chargerProposition(propositionId, session.promoteurId);
+  if ("error" in r) return { error: r.error };
+  const { proposition, bien } = r;
 
-  await db
-    .update(propositions)
-    .set({ statut: "NEGOCIEE", noteNegociation: note })
-    .where(eq(propositions.id, propositionId));
+  if (!(await decider(propositionId, { statut: "NEGOCIEE", noteNegociation: note }))) return { error: DEJA_TRAITEE };
 
   await notify({
     userId: proposition.commercialId,

@@ -125,6 +125,14 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
     return { error: "Seul le commercial en charge de ce bien peut enregistrer le désistement." };
   }
 
+  // Transition atomique : si un autre traitement a déjà libéré ou modifié le bien, on s'arrête ici sans rien écrire
+  const [libere] = await db
+    .update(biens)
+    .set({ statut: "DISPONIBLE", clientId: null, commercialId: null, livraisonConfirmeeClient: false, livraisonConfirmeeSav: false })
+    .where(and(eq(biens.id, bien.id), eq(biens.statut, "VENDU"), eq(biens.clientId, bien.clientId)))
+    .returning({ id: biens.id });
+  if (!libere) return { error: "Ce bien n'est plus « Vendu » à ce client : le désistement a peut-être déjà été enregistré." };
+
   const paiementsClient = await db.query.paiements.findMany({
     where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, bien.clientId)),
   });
@@ -149,10 +157,6 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
     .update(contrats)
     .set({ statut: "ANNULE" })
     .where(and(eq(contrats.bienId, bien.id), ne(contrats.statut, "ANNULE")));
-  await db
-    .update(biens)
-    .set({ statut: "DISPONIBLE", clientId: null, commercialId: null, livraisonConfirmeeClient: false, livraisonConfirmeeSav: false })
-    .where(eq(biens.id, bien.id));
 
   await notifyRole(session.promoteurId!, "RESPONSABLE_ADMINISTRATIF", {
     type: "DESISTEMENT",

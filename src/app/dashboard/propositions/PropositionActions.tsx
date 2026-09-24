@@ -12,15 +12,24 @@ export function PropositionActions({ propositionId }: { propositionId: string })
   const [pending, startTransition] = useTransition();
   const [enCours, setEnCours] = useState<"accept" | "refuse" | null>(null);
   const [negoOpen, setNegoOpen] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [state, formAction, negoPending] = useActionState(negotiateProposition, undefined);
 
   const lancer = (action: "accept" | "refuse") => {
     setEnCours(action);
-    startTransition(() => (action === "accept" ? acceptProposition(propositionId) : refuseProposition(propositionId)));
+    startTransition(async () => {
+      const res = await (action === "accept" ? acceptProposition(propositionId) : refuseProposition(propositionId));
+      setErreur(res?.error ?? null);
+    });
   };
 
   return (
     <div className="space-y-3">
+      {erreur && (
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-small text-danger-fg ring-1 ring-inset ring-danger-border" role="alert" data-testid="decision-erreur">
+          {erreur}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" disabled={pending} loading={pending && enCours === "accept"} onClick={() => lancer("accept")}>
           <Check className="h-4 w-4" /> Accepter
