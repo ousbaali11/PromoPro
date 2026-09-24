@@ -376,7 +376,7 @@ Primitives dans `src/components/ui/` : `Button`/`LinkButton`/`ConfirmButton`
 `Breadcrumb`, `Section`, `Stat`, `Callout`, `EmptyState`, `DataTable` (tri,
 pagination, export CSV via `ExportCsv`), `SegmentedControl`, `Dropdown`,
 `Modal` (piège de focus), `Toast` (`useToast`, action « Annuler »),
-`FileUpload`, `Skeleton`. Pas de librairie de composants externe. Palette dans `src/app/globals.css`
+`FileUpload`, `Skeleton`, `Onglets` (onglets soulignés à indicateur doré glissant, partagés par l'espace client et la fiche client ; le `SegmentedControl` reste réservé aux filtres et bascules de vue), `DateRangePicker`. Les listes dynamiques (tranches d'échéancier, sections de contrat et de modèle) s'animent à l'ajout et au retrait (`AnimatePresence`), les étiquettes de champ du modèle reprennent le rendu du `Badge` gold, et chaque écran récent a son squelette de chargement (`loading.tsx`) et ses états vides (`EmptyState`). Pas de librairie de composants externe. Palette dans `src/app/globals.css`
 (`--color-navy-*`, `--color-gold-*`, `--color-cream`), utilisée via les
 classes Tailwind `bg-navy`, `text-gold-600`, etc. (Tailwind v4, configuration
 CSS-first via `@theme`).

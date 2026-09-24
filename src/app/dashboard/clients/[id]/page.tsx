@@ -8,6 +8,7 @@ import { clients, users } from "@/db/schema";
 import { Card, Info, PageHeader, Section, EmptyState, Breadcrumb, Callout } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Onglets } from "@/components/ui/Onglets";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
 import { ResetPasswordButton } from "../ResetPasswordButton";
@@ -189,10 +190,9 @@ export default async function ClientDetailPage({
               </div>
             </Card>
 
-            <SegmentedControl
+            <Onglets
               ariaLabel="Onglets du dossier"
               testId="onglets-dossier"
-              size="sm"
               value={onglet}
               items={ONGLETS.map((o) => ({ value: o, label: ONGLET_LABELS[o], href: lienOnglet(selection.bien.id, o) }))}
             />

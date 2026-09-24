@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Button, ConfirmButton } from "@/components/ui/Button";
 import { Callout, Card, Input } from "@/components/ui/Primitives";
@@ -53,8 +54,9 @@ export function EditeurModele({ sections, existant }: { sections: SectionModele[
   return (
     <form action={formAction} className="space-y-4" data-testid="editeur-modele">
       <ol className="space-y-3">
+        <AnimatePresence initial={false}>
         {lignes.map((s, index) => (
-          <li key={s.cle}>
+          <motion.li key={s.cle} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}>
             <Card className="space-y-3 p-4" data-testid="section-modele">
               <div className="flex items-start gap-2">
                 <span className="mt-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">{index + 1}</span>
@@ -82,8 +84,9 @@ export function EditeurModele({ sections, existant }: { sections: SectionModele[
               </div>
               <EditeurSegments nom="segments" segments={s.segments} label="Contenu" testId="contenu-modele" />
             </Card>
-          </li>
+          </motion.li>
         ))}
+        </AnimatePresence>
       </ol>
 
       <div className="flex flex-wrap gap-2">

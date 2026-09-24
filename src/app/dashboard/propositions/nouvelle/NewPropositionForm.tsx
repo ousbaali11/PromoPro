@@ -100,10 +100,20 @@ export function NewPropositionForm({
           pourcentages et les dates : seul le total de 100% est imposé.
         </p>
         <ol className="space-y-3" data-testid="liste-tranches">
+          <AnimatePresence initial={false}>
           {tranches.map((t, i) => {
             const n = i + 1;
             return (
-              <li key={t.cle} className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 rounded-md bg-navy-50 p-3" data-testid="tranche-ligne">
+              <motion.li
+                key={t.cle}
+                layout
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
+                className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 overflow-hidden rounded-md bg-navy-50 p-3"
+                data-testid="tranche-ligne"
+              >
                 <div className="flex flex-col items-center gap-1 pr-1">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">{n}</span>
                   <span className="text-caption text-navy-400 tabular">{formatMoney(Math.round((prix * (Number.isFinite(t.pct) ? t.pct : 0)) / 100))}</span>
@@ -125,9 +135,10 @@ export function NewPropositionForm({
                 <Button type="button" size="sm" variant="ghost" onClick={() => retirer(t.cle)} disabled={tranches.length === 1} aria-label={`Retirer la tranche ${n}`} data-testid="retirer-tranche">
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </li>
+              </motion.li>
             );
           })}
+          </AnimatePresence>
         </ol>
         <Button type="button" size="sm" variant="secondary" className="mt-3" onClick={ajouter} disabled={tranches.length >= NB_TRANCHES_MAX} data-testid="ajouter-tranche">
           <Plus className="h-4 w-4" /> Ajouter une tranche

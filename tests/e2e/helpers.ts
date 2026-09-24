@@ -105,13 +105,13 @@ export async function deposerFichier(
 export async function ouvrirBienClient(page: Page, designation: string) {
   await page.goto("/client");
   // Un seul bien → redirection automatique vers sa page ; plusieurs → liste à cliquer.
-  const redirige = await page
-    .waitForURL(/\/client\/biens\/[^/]+$/, { timeout: 5_000 })
-    .then(() => true)
-    .catch(() => false);
-  if (!redirige) {
-    await page.getByRole("link", { name: new RegExp(designation) }).first().click();
-    await expect(page).toHaveURL(/\/client\/biens\/[^/]+$/);
+  // On attend le premier des deux (sans délai fixe : la redirection peut être lente à froid).
+  const pageBien = /\/client\/biens\/[^/]+$/;
+  const lien = page.getByRole("link", { name: new RegExp(designation) }).first();
+  await Promise.race([page.waitForURL(pageBien), lien.waitFor()]);
+  if (!pageBien.test(page.url())) {
+    await lien.click();
+    await expect(page).toHaveURL(pageBien);
   }
   // Attendre le rendu du titre de la page bien, puis vérifier qu'il s'agit du bon bien
   const h1 = page.locator("h1").first();

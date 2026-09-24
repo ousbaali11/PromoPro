@@ -60,8 +60,10 @@ test("proposition : liste dynamique de tranches, 100 % en une fois puis cinq tra
   await expect(lignes).toHaveCount(4);
   await expect(page.getByTestId("total-pourcentages")).toHaveText("Total 100%");
   // Une seule tranche de 100 %
-  for (let i = 0; i < 3; i++) await lignes.last().getByTestId("retirer-tranche").click();
-  await expect(lignes).toHaveCount(1);
+  for (let i = 4; i > 1; i--) {
+    await lignes.nth(i - 1).getByTestId("retirer-tranche").click();
+    await expect(lignes).toHaveCount(i - 1); // la ligne retirée disparaît après sa transition de sortie
+  }
   await expect(lignes.first().getByTestId("retirer-tranche")).toBeDisabled();
   await expect(page.getByTestId("total-pourcentages")).toHaveText("Total 40%");
   await page.locator("#tranche1Pourcentage").fill("100");

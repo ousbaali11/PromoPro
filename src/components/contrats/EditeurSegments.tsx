@@ -50,13 +50,14 @@ export function EditeurSegments({ nom, segments, label, testId }: { nom: string;
     span.contentEditable = "false";
     span.dataset.cle = cle;
     span.dataset.testid = "champ-etiquette";
-    span.className = "mx-0.5 inline-flex select-none items-center gap-1 rounded-sm bg-gold-50 px-1.5 py-0.5 align-baseline text-caption font-medium text-gold-600 ring-1 ring-inset ring-gold-200";
+    // Même rendu que le Badge (ton gold) : pastille arrondie, ring, typographie caption
+    span.className = "mx-0.5 inline-flex select-none items-center gap-1.5 whitespace-nowrap rounded-full bg-gold-50 px-2.5 py-0.5 align-baseline text-caption font-medium text-gold-700 ring-1 ring-inset ring-gold-200";
     span.textContent = libelleChamp(cle);
     const bouton = document.createElement("button");
     bouton.type = "button";
     bouton.dataset.supprimer = "1";
     bouton.setAttribute("aria-label", `Retirer le champ ${libelleChamp(cle)}`);
-    bouton.className = "rounded-xs text-gold-600 hover:bg-gold-100 focus-visible:outline-none focus-visible:shadow-focus";
+    bouton.className = "rounded-full text-gold-700 transition-colors duration-fast hover:bg-gold-100 focus-visible:outline-none focus-visible:shadow-focus";
     bouton.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
     span.appendChild(bouton);
     return span;

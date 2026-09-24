@@ -58,6 +58,7 @@ test("modèle hérité converti : étiquettes de champ, aucun jeton ; ajout d'un
   await expect(premiere.getByTestId("champ-etiquette").filter({ hasText: "Nom du promoteur" })).toBeVisible();
   await expect(premiere.getByTestId("champ-etiquette").filter({ hasText: "Nom du client" })).toBeVisible();
   await expect(premiere).toContainText("Le vendeur :");
+  await expect(premiere.getByTestId("champ-etiquette").first()).toHaveClass(/rounded-full/); // même rendu que les Badge
 
   // Nouvelle section : texte libre + champ inséré par le bouton (pas tapé)
   await editeur.getByTestId("ajouter-section-modele").click();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, FileDown, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Button, ConfirmButton } from "@/components/ui/Button";
@@ -80,8 +81,9 @@ export function EditeurContrat({ contratId, sections, statut }: { contratId: str
   return (
     <form action={sauvegarder} className="space-y-4" data-testid="editeur-contrat">
       <ol className="space-y-3">
+        <AnimatePresence initial={false}>
         {lignes.map((s, index) => (
-          <li key={s.cle}>
+          <motion.li key={s.cle} layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}>
             <Card className="space-y-3 p-4" data-testid="section-contrat" data-section-id={s.id || undefined}>
               <input type="hidden" name="sectionId" value={s.id} />
               <div className="flex items-start gap-2">
@@ -112,8 +114,9 @@ export function EditeurContrat({ contratId, sections, statut }: { contratId: str
               </div>
               <Textarea id={`section-contenu-${s.cle}`} name="contenu" label="Texte" rows={4} value={s.contenu} onChange={(e) => modifier(s.cle, "contenu", e.target.value)} />
             </Card>
-          </li>
+          </motion.li>
         ))}
+        </AnimatePresence>
       </ol>
 
       <div className="flex flex-wrap gap-2">

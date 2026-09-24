@@ -78,6 +78,10 @@ test("sélecteur de bien et onglets : chaque onglet ne montre que le bien sélec
 
   const selecteur = page.getByTestId("selecteur-biens-client");
   await expect(selecteur.getByRole("link")).toHaveCount(2);
+  // Onglets soulignés : même motif que la navigation de l'espace client (indicateur doré sur l'onglet courant)
+  const onglets = page.getByTestId("onglets-dossier");
+  await expect(onglets.getByRole("link", { name: "Contrat" })).toHaveAttribute("aria-current", "page");
+  await expect(onglets.getByTestId("onglet-indicateur")).toHaveCount(1);
   await expect(page.getByTestId("bien-selectionne")).toHaveText(F01);
   await expect(page.getByTestId("onglet-contrat").getByTestId("carte-contrat")).toHaveAttribute("data-statut", "EN_ATTENTE");
 

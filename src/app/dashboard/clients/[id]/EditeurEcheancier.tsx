@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { CalendarClock, Plus, Save, Trash2 } from "lucide-react";
 import { Badge, Callout, Card, Input } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
@@ -69,12 +70,23 @@ export function EditeurEcheancier({ bienId, prix, tranches }: { bienId: string; 
           </Badge>
         </div>
         <ol className="space-y-2">
+          <AnimatePresence initial={false}>
           {lignes.map((t, i) => {
             const n = i + 1;
             const verrouillee = t.statut !== "EN_ATTENTE";
             const montant = Math.round((prix * (Number.isFinite(t.pourcentage) ? t.pourcentage : 0)) / 100);
             return (
-              <li key={t.cle} className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 rounded-md bg-navy-50 p-3" data-testid="tranche-edition" data-statut={t.statut}>
+              <motion.li
+                key={t.cle}
+                layout
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
+                className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 overflow-hidden rounded-md bg-navy-50 p-3"
+                data-testid="tranche-edition"
+                data-statut={t.statut}
+              >
                 <input type="hidden" name="trancheId" value={t.id ?? ""} />
                 <div className="flex flex-col items-center gap-1 pr-1">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">{n}</span>
@@ -102,9 +114,10 @@ export function EditeurEcheancier({ bienId, prix, tranches }: { bienId: string; 
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
-              </li>
+              </motion.li>
             );
           })}
+          </AnimatePresence>
         </ol>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={ajouter} disabled={lignes.length >= NB_TRANCHES_MAX} data-testid="ajouter-tranche">
