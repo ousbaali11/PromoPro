@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/session";
 import { notifyClient } from "@/lib/notifications";
 import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
+import { tenterStockage } from "@/lib/stockage-erreurs";
 import { parsePublicPath } from "@/lib/storage";
 import { enregistrerActivite } from "@/lib/journal";
 import { demandeTmaAvecBien } from "@/lib/tma-data";
@@ -145,12 +146,17 @@ export async function accepterVisite(visiteId: string): Promise<{ error?: string
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId!) });
   const decidedAt = new Date();
-  const autorisationUrl = await genererEtStockerAutorisationVisite(
-    { ...visite, statut: "ACCEPTEE", decidedAt },
-    bien,
-    client,
-    { projet, promoteur, savNom: `${session.prenom} ${session.nom}` },
+  // Disque des uploads indisponible → message propre, rien n'est écrit en base
+  const pdf = await tenterStockage("autorisation de visite (SAV)", () =>
+    genererEtStockerAutorisationVisite(
+      { ...visite, statut: "ACCEPTEE", decidedAt },
+      bien,
+      client,
+      { projet, promoteur, savNom: `${session.prenom} ${session.nom}` },
+    ),
   );
+  if (!pdf.ok) return { error: pdf.error };
+  const autorisationUrl = pdf.valeur;
 
   await db
     .update(visites)

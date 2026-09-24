@@ -4,6 +4,7 @@ import { biens, clients, contrats, echeances, paiements, projets, promoteurs, pr
 import { parsePublicPath } from "@/lib/storage";
 import { genererEtStockerRecu } from "@/lib/pdf/recu";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { exigerStockageInscriptible } from "@/lib/storage";
 import { notifyClient, notifyRole } from "@/lib/notifications";
 import { verifierMontant, lireNombre } from "@/lib/validation";
 import { repartirImputation, restantDuTotal } from "@/lib/imputation";
@@ -246,6 +247,12 @@ export async function validerPaiement(
     ? await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, projet.promoteurId) })
     : null;
   const validePar = await db.query.users.findFirst({ where: eq(users.id, complement.valideParId) });
+
+  // Le reçu et le contrat régénéré sont écrits sur le disque des uploads juste
+  // après : on s'assure qu'il est inscriptible AVANT de passer le paiement en
+  // VALIDE, pour ne jamais laisser un paiement validé sans reçu (ErreurStockage
+  // → message propre côté action, rien n'est écrit en base).
+  await exigerStockageInscriptible();
 
   const [updated] = await db
     .update(paiements)

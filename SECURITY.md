@@ -160,8 +160,13 @@ suffisant pour une instance ; derrière plusieurs instances, remplacer le
 
 Toutes les limites sont appliquées **côté serveur** dans `POST /api/upload`
 (extension par type, taille par type, signature du contenu, type autorisé à
-la session) et de nouveau dans `saveUpload` ; l'attribut `accept` du
-composant `FileUpload` n'est qu'une aide à la saisie.
+la session) et de nouveau dans `saveUpload` ; les vérifications de taille et
+d'extension faites par `FileUpload` avant l'envoi ne sont qu'un confort
+(mêmes règles, `src/lib/uploads-regles.ts`). La route répond toujours en
+JSON : une défaillance du disque (`ErreurStockage`) donne un 503 avec un
+message générique, une erreur inattendue un 500 générique ; le détail
+technique (code, appel système, chemin) ne va qu'aux journaux et à Sentry
+(`upload-route.test.ts`).
 
 | Type | Extensions | Taille max | Déposé par |
 | --- | --- | --- | --- |

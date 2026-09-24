@@ -7,6 +7,7 @@ import { contrats, biens, clients, projets, promoteurs, propositions, echeances,
 import { requireRole } from "@/lib/session";
 import { notify, notifyClient } from "@/lib/notifications";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { tenterStockage } from "@/lib/stockage-erreurs";
 import { parsePublicPath } from "@/lib/storage";
 
 /** Section 7.4 — le Responsable Administratif marque le dossier du bien livré comme transmis au notaire. */
@@ -87,12 +88,16 @@ export async function confirmerContrat(contratId: string): Promise<{ error?: str
     : [];
   const paiementsBien = await db.query.paiements.findMany({ where: eq(paiements.bienId, bien.id) });
 
-  const pdfUrl = await genererEtStockerContrat(bien, client, echeancier, {
-    projet,
-    promoteur,
-    paiements: paiementsBien,
-    reference: contrat.id.slice(0, 8).toUpperCase(),
-  });
+  const pdf = await tenterStockage("contrat (confirmation)", () =>
+    genererEtStockerContrat(bien, client, echeancier, {
+      projet,
+      promoteur,
+      paiements: paiementsBien,
+      reference: contrat.id.slice(0, 8).toUpperCase(),
+    }),
+  );
+  if (!pdf.ok) return { error: pdf.error };
+  const pdfUrl = pdf.valeur;
 
   await db
     .update(contrats)

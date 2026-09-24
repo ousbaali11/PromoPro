@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { biens, projets, clients } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { creerPaiement, lirePaiementForm, validerPaiement } from "@/lib/paiements";
+import { tenterStockage } from "@/lib/stockage-erreurs";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
 /**
@@ -31,14 +32,17 @@ export async function ajouterPaiementRecouvrement(
   const res = await creerPaiement(lu.data, { userId: session.userId });
   if ("error" in res) return { error: res.error };
 
-  const validation = await validerPaiement(res.paiement.id, {
-    reference,
-    montantExact: lu.data.montant,
-    dateReception: lu.data.dateOperation,
-    porteur: lu.data.porteur,
-    valideParId: session.userId,
-  });
-  if (validation.error) return { error: validation.error };
+  const validation = await tenterStockage("paiement constaté (reçu)", () =>
+    validerPaiement(res.paiement.id, {
+      reference,
+      montantExact: lu.data.montant,
+      dateReception: lu.data.dateOperation,
+      porteur: lu.data.porteur,
+      valideParId: session.userId,
+    }),
+  );
+  if (!validation.ok) return { error: validation.error };
+  if (validation.valeur.error) return { error: validation.valeur.error };
 
   const client = bien.clientId ? await db.query.clients.findFirst({ where: eq(clients.id, bien.clientId) }) : null;
 

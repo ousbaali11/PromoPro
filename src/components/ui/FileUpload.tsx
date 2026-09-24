@@ -3,21 +3,21 @@
 import { useId, useRef, useState, type DragEvent } from "react";
 import { UploadCloud, FileCheck2, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-type UploadType =
-  | "pieces-identite"
-  | "preuves-paiement"
-  | "plans"
-  | "desistements"
-  | "contrats"
-  | "photos-avancement"
-  | "recus"
-  | "autorisations-visite"
-  | "plans-3d"
-  | "tma-croquis"
-  | "tma-devis";
+import { MESSAGE_ENVOI_ECHOUE, messageFormatRefuse, messageTropVolumineux, isAllowedExtension, tailleMaxPour, type UploadType } from "@/lib/uploads-regles";
 
 type Uploaded = { path: string; name: string };
+
+/** Corps JSON de /api/upload, ou null s'il est vide ou mal formé (500 brut, page d'erreur d'un proxy…). */
+async function lireReponse(res: Response): Promise<{ path?: string; error?: string } | null> {
+  const texte = await res.text().catch(() => "");
+  if (!texte.trim()) return null;
+  try {
+    const json = JSON.parse(texte) as unknown;
+    return json && typeof json === "object" ? (json as { path?: string; error?: string }) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Zone de dépôt + bouton. Envoie le fichier à `POST /api/upload` dès sa
@@ -25,6 +25,12 @@ type Uploaded = { path: string; name: string };
  * portant `name`, pour qu'il parte avec le formulaire parent (Server Action).
  * En mode `multiple`, un input caché par fichier (côté serveur :
  * `formData.getAll(name)`).
+ *
+ * Robustesse : la taille et l'extension sont vérifiées ici avant tout envoi
+ * (message immédiat, aucune requête pour un fichier trop gros) ; la réponse
+ * du serveur est lue en texte puis parsée prudemment — une réponse vide ou
+ * non JSON (serveur planté, proxy, réseau) donne MESSAGE_ENVOI_ECHOUE et
+ * jamais l'erreur technique brute (« Unexpected end of JSON input »).
  */
 export function FileUpload({
   name,
@@ -57,12 +63,21 @@ export function FileUpload({
   const [dragging, setDragging] = useState(false);
 
   async function uploadOne(file: File): Promise<Uploaded> {
+    // Vérifications locales : mêmes règles et mêmes messages que le serveur, sans attendre le transfert
+    if (!isAllowedExtension(file.name, type)) throw new Error(messageFormatRefuse(type));
+    if (file.size > tailleMaxPour(type)) throw new Error(messageTropVolumineux(tailleMaxPour(type)));
+
     const body = new FormData();
     body.append("file", file);
     body.append("type", type);
-    const res = await fetch("/api/upload", { method: "POST", body });
-    const json = (await res.json()) as { path?: string; error?: string };
-    if (!res.ok || !json.path) throw new Error(json.error ?? "Échec de l'envoi du fichier.");
+    let res: Response;
+    try {
+      res = await fetch(`/api/upload?type=${encodeURIComponent(type)}`, { method: "POST", body });
+    } catch {
+      throw new Error(MESSAGE_ENVOI_ECHOUE); // réseau coupé, requête annulée
+    }
+    const json = await lireReponse(res);
+    if (!res.ok || !json?.path) throw new Error(json?.error || MESSAGE_ENVOI_ECHOUE);
     return { path: json.path, name: file.name };
   }
 
@@ -77,7 +92,7 @@ export function FileUpload({
       setFiles((prev) => (multiple ? [...prev, ...done] : done));
       onUploaded?.(done[done.length - 1]?.path ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Échec de l'envoi du fichier.");
+      setError(e instanceof Error && e.message ? e.message : MESSAGE_ENVOI_ECHOUE);
       if (!multiple) {
         setFiles([]);
         onUploaded?.(null);
@@ -205,7 +220,11 @@ export function FileUpload({
         </div>
       )}
 
-      {error && <p className="mt-1.5 text-xs text-rose-700">{error}</p>}
+      {error && (
+        <p className="mt-1.5 text-xs text-rose-700" role="alert" data-testid="upload-erreur">
+          {error}
+        </p>
+      )}
       {hint && !error && <span className="mt-1 block text-xs text-navy-400">{hint}</span>}
     </div>
   );

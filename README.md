@@ -324,7 +324,10 @@ Les fichiers (pièces d'identité, preuves de paiement, PDF générés, photos)
 sont écrits sur disque via `src/lib/storage.ts`, dans `storage/uploads/` par
 défaut. En production, ce dossier doit être un **disque persistant** : montez
 un volume et définissez `UPLOAD_DIR=/chemin/du/volume` (les chemins stockés en
-base ne changent pas). Sur une plateforme sans disque persistant (serverless),
+base ne changent pas). Au démarrage, le serveur vérifie que ce dossier est
+inscriptible et l'écrit dans les logs (`[stockage] …`) ; l'image Docker
+attribue le volume à l'utilisateur `node` avant de lancer le serveur (un
+volume Railway est monté en root : voir DEPLOY.md, « Piège : permissions »). Sur une plateforme sans disque persistant (serverless),
 remplacez `saveUpload` / `readUpload` dans `storage.ts` par un stockage objet
 S3-compatible (S3, R2, MinIO) : c'est le seul endroit du code qui touche au
 système de fichiers, les chemins publics `/api/files/...` et le contrôle

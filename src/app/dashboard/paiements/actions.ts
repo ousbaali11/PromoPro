@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { paiements, biens, projets, syndics, clients } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { validerPaiement } from "@/lib/paiements";
+import { tenterStockage } from "@/lib/stockage-erreurs";
 import { lireNombre, verifierMontant } from "@/lib/validation";
 import { notifyClient, notifyRole } from "@/lib/notifications";
 
@@ -76,14 +77,17 @@ export async function completerReference(
   if (!dateReceptionStr) return { error: "Merci d'indiquer la date de réception effective." };
   if (!porteur) return { error: "Merci d'indiquer le porteur de l'opération." };
 
-  const res = await validerPaiement(paiementId, {
-    reference,
-    montantExact,
-    dateReception: new Date(dateReceptionStr),
-    porteur,
-    valideParId: session.userId,
-  });
-  if (res.error) return { error: res.error };
+  const validation = await tenterStockage("validation d'un paiement (reçu)", () =>
+    validerPaiement(paiementId, {
+      reference,
+      montantExact,
+      dateReception: new Date(dateReceptionStr),
+      porteur,
+      valideParId: session.userId,
+    }),
+  );
+  if (!validation.ok) return { error: validation.error };
+  if (validation.valeur.error) return { error: validation.valeur.error };
 
   revalidatePath("/dashboard/paiements");
   revalidatePath("/dashboard/recouvrement");

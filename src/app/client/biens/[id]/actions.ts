@@ -15,6 +15,7 @@ import { consommer, LIMITES, messageLimite } from "@/lib/rate-limit";
 import { verifierTexte, LONGUEURS } from "@/lib/validation";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
+import { tenterStockage } from "@/lib/stockage-erreurs";
 import { addMonths, formatDate, formatDateTime, formatMoney, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
@@ -195,13 +196,12 @@ export async function choisirCreneauVisite(
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId) });
 
-  // L'autorisation est régénérée avec le créneau retenu
-  const autorisationUrl = await genererEtStockerAutorisationVisite(
-    { ...visite, dateVisite: date, statut: "PLANIFIEE" },
-    bien,
-    client,
-    { projet, promoteur },
+  // L'autorisation est régénérée avec le créneau retenu ; disque indisponible → message propre, rien n'est écrit
+  const pdf = await tenterStockage("autorisation de visite (créneau client)", () =>
+    genererEtStockerAutorisationVisite({ ...visite, dateVisite: date, statut: "PLANIFIEE" }, bien, client, { projet, promoteur }),
   );
+  if (!pdf.ok) return { error: pdf.error };
+  const autorisationUrl = pdf.valeur;
   await db
     .update(visites)
     .set({ statut: "PLANIFIEE", dateVisite: date, autorisationUrl })

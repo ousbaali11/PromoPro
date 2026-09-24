@@ -253,6 +253,31 @@ par `GET /api/files/[type]/[filename]` : session obligatoire, et pour un
 client, uniquement les documents rattachés à son dossier
 (`src/lib/file-access.ts` — à étendre à chaque nouveau type de document).
 
+Les règles partagées avec le navigateur (types, extensions, tailles maximales,
+messages) vivent dans `src/lib/uploads-regles.ts`, sans import Node :
+`FileUpload` vérifie taille et extension **avant** d'envoyer le fichier
+(message immédiat, aucun transfert inutile), puis `/api/upload` revérifie
+tout côté serveur (`Content-Length` contre le type annoncé dans l'URL avant
+de lire le corps, puis le fichier réel, puis sa signature).
+
+Contrat de `POST /api/upload` : **toujours du JSON** — `{ path, name }` ou
+`{ error }`, y compris pour une défaillance du disque (`ErreurStockage`
+levée par `saveUpload` : EACCES, ENOSPC, ENOTDIR… → 503 « Le stockage des
+fichiers est temporairement indisponible, contactez l'administrateur. ») et
+pour toute erreur inattendue (500 « Le fichier n'a pas pu être envoyé,
+réessayez ou contactez le support. ») ; le détail technique part dans Sentry.
+`FileUpload` lit la réponse en texte et la parse prudemment : un corps vide
+ou non JSON donne le même message générique, jamais « Unexpected end of JSON
+input » (incident de production du 24 septembre 2026). Les Server Actions qui
+écrivent un PDF (autorisation de visite, contrat, reçu) passent par
+`tenterStockage` (`src/lib/stockage-erreurs.ts`) pour le même message ;
+`validerPaiement` sonde le disque (`exigerStockageInscriptible`) **avant**
+de passer le paiement en VALIDE, pour ne jamais laisser un paiement validé
+sans reçu. Au démarrage, `src/instrumentation.ts` vérifie que `UPLOAD_DIR`
+est inscriptible (sous-dossiers créés, fichier témoin) et le signale dans les
+logs et Sentry sinon ; en production, `docker-entrypoint.sh` attribue le
+volume à l'utilisateur `node` avant de lancer le serveur (voir DEPLOY.md).
+
 ## Échéancier de paiement
 
 La règle par défaut (40% le jour du blocage, puis 20% tous les 6 mois,

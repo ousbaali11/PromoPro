@@ -51,8 +51,21 @@ COPY scripts ./scripts
 
 # /app/storage : fichiers uploadés (monter un volume persistant dessus)
 # /app/data    : base SQLite de repli si DATABASE_URL n'est pas défini
+# Les sous-dossiers par type (preuves-paiement/, contrats/…) ne sont PAS créés
+# ici : le montage du volume recouvrirait de toute façon /app/storage. Ils sont
+# créés au démarrage (src/instrumentation.ts) puis à la volée par saveUpload.
 RUN mkdir -p /app/storage /app/data && chown -R node:node /app
-USER node
+
+# Point d'entrée : démarre en root, attribue le volume (UPLOAD_DIR) et /app/data
+# à l'utilisateur `node` (UID 1000), puis bascule vers `node` via setpriv
+# (util-linux, déjà dans l'image) avant de lancer le serveur. Pas d'instruction
+# USER : c'est le script qui abandonne les privilèges. Un volume Railway
+# fraîchement monté appartient à root, d'où EACCES sur mkdir sous `node`
+# (voir DEPLOY.md, « Volume persistant »). Fins de ligne normalisées au cas où
+# le fichier aurait été extrait avec des CRLF.
+COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh
 
 EXPOSE 3000
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { UPLOAD_TYPES, extensionOf, extensionsPour, isAllowedExtension, isUploadType, type UploadType } from "@/lib/uploads-regles";
 
 /**
  * Stockage local des fichiers uploadés.
@@ -14,39 +15,55 @@ import path from "node:path";
  * déploiement sans disque persistant (serverless), remplacer `saveUpload` /
  * `readUpload` par un stockage objet S3-compatible — le reste du code ne
  * manipule que des chemins publics `/api/files/...`, rien d'autre ne change.
+ *
+ * Les sous-dossiers par type sont créés à la volée (`mkdir` récursif) à
+ * chaque écriture, et d'avance au démarrage par `verifierStockage`
+ * (src/instrumentation.ts). Toute défaillance du disque (EACCES sur un volume
+ * appartenant à root, ENOSPC, ENOTDIR…) est levée sous la forme d'une
+ * `ErreurStockage`, que les appelants traduisent en message utilisateur
+ * (`MESSAGE_STOCKAGE_INDISPONIBLE`) tout en gardant le détail pour Sentry.
+ *
+ * Les règles partagées avec le navigateur (types, extensions, tailles,
+ * messages) vivent dans src/lib/uploads-regles.ts et sont ré-exportées ici.
  */
 
-export const UPLOAD_TYPES = [
-  "pieces-identite",
-  "preuves-paiement",
-  "plans",
-  "desistements",
-  "contrats",
-  "photos-avancement",
-  "recus",
-  "autorisations-visite",
-  "plans-3d", // modèles .glb / .gltf
-  "tma-croquis", // photo ou croquis joint à une demande de travaux modificatifs
-  "tma-devis", // devis PDF du SAV
-] as const;
-export type UploadType = (typeof UPLOAD_TYPES)[number];
+export {
+  UPLOAD_TYPES,
+  ALLOWED_EXTENSIONS,
+  EXTENSIONS_PAR_TYPE,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_3D,
+  MARGE_MULTIPART,
+  TYPES_UPLOAD_CLIENT,
+  MESSAGE_STOCKAGE_INDISPONIBLE,
+  MESSAGE_ENVOI_ECHOUE,
+  tailleMaxPour,
+  extensionsPour,
+  isUploadType,
+  extensionOf,
+  isAllowedExtension,
+  messageTropVolumineux,
+  messageFormatRefuse,
+} from "@/lib/uploads-regles";
+export type { UploadType } from "@/lib/uploads-regles";
 
-export const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
-/** Extensions acceptées par type ; par défaut PDF / image, modèles 3D pour `plans-3d`. */
-export const EXTENSIONS_PAR_TYPE: Partial<Record<UploadType, readonly string[]>> = {
-  "plans-3d": ["glb", "gltf"],
-};
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
-export const MAX_FILE_SIZE_3D = 50 * 1024 * 1024; // 50 Mo pour un modèle 3D
-export function tailleMaxPour(type: UploadType) {
-  return type === "plans-3d" ? MAX_FILE_SIZE_3D : MAX_FILE_SIZE;
+/** Défaillance du disque des uploads : le détail technique (code, appel système, chemin) est réservé aux journaux et à Sentry. */
+export class ErreurStockage extends Error {
+  readonly code: string;
+  readonly syscall: string;
+  readonly chemin: string;
+  constructor(cause: unknown, chemin: string) {
+    const e = (cause ?? {}) as { code?: string; syscall?: string; path?: string; message?: string };
+    super(`Stockage des uploads inaccessible (${e.code ?? "?"} ${e.syscall ?? "?"} ${e.path ?? chemin}) : ${e.message ?? String(cause)}`);
+    this.name = "ErreurStockage";
+    this.code = e.code ?? "INCONNU";
+    this.syscall = e.syscall ?? "?";
+    this.chemin = e.path ?? chemin;
+  }
 }
-export function extensionsPour(type: UploadType): readonly string[] {
-  return EXTENSIONS_PAR_TYPE[type] ?? ALLOWED_EXTENSIONS;
+export function estErreurStockage(e: unknown): e is ErreurStockage {
+  return e instanceof ErreurStockage || (e instanceof Error && e.name === "ErreurStockage");
 }
-
-/** Types qu'une session client peut déposer (preuve de paiement, pièce du porteur, croquis TMA) ; le reste est réservé au staff. */
-export const TYPES_UPLOAD_CLIENT: readonly UploadType[] = ["preuves-paiement", "pieces-identite", "tma-croquis"];
 
 /**
  * Le contenu correspond-il à l'extension annoncée ? Signatures (magic bytes) :
@@ -68,7 +85,7 @@ export function contenuCoherent(filename: string, data: Uint8Array): boolean {
     case "glb":
       return texte(4) === "glTF";
     case "gltf":
-      return /^\uFEFF?\s*\{/.test(texte(16));
+      return /^﻿?\s*\{/.test(texte(16));
     default:
       return false;
   }
@@ -83,29 +100,17 @@ const MIME_BY_EXT: Record<string, string> = {
   gltf: "model/gltf+json",
 };
 
-const UPLOAD_ROOT = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(process.cwd(), "storage", "uploads");
+/** Racine des uploads : `UPLOAD_DIR` (lu à chaque appel, pour les tests) sinon `storage/uploads` du projet. */
+export function racineUploads() {
+  return process.env.UPLOAD_DIR ? path.resolve(process.env.UPLOAD_DIR) : path.join(process.cwd(), "storage", "uploads");
+}
 
 // Nom de fichier généré par nous : uuid + extension autorisée, rien d'autre
 // (protège contre toute traversée de répertoire lors de la lecture).
 const SAFE_FILENAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|jpg|jpeg|png|glb|gltf)$/;
 
-export function isUploadType(value: string): value is UploadType {
-  return (UPLOAD_TYPES as readonly string[]).includes(value);
-}
-
 export function isSafeFilename(value: string) {
   return SAFE_FILENAME.test(value);
-}
-
-export function extensionOf(filename: string) {
-  return filename.split(".").pop()?.toLowerCase() ?? "";
-}
-
-export function isAllowedExtension(filename: string, type?: UploadType) {
-  const autorisees = type ? extensionsPour(type) : ALLOWED_EXTENSIONS;
-  return autorisees.includes(extensionOf(filename));
 }
 
 export function mimeFor(filename: string) {
@@ -129,12 +134,13 @@ export function parsePublicPath(url: string | null | undefined): { type: UploadT
 }
 
 function diskPath(type: UploadType, filename: string) {
-  return path.join(UPLOAD_ROOT, type, filename);
+  return path.join(racineUploads(), type, filename);
 }
 
 /**
  * Écrit un fichier (déjà validé côté appelant pour la taille) dans le bon
- * sous-dossier et retourne son chemin public.
+ * sous-dossier et retourne son chemin public. Lève `ErreurStockage` si le
+ * disque refuse la création du dossier ou l'écriture.
  */
 export async function saveUpload(type: UploadType, originalName: string, data: Buffer | Uint8Array) {
   if (!isAllowedExtension(originalName, type)) {
@@ -142,8 +148,13 @@ export async function saveUpload(type: UploadType, originalName: string, data: B
   }
   if (!contenuCoherent(originalName, data)) throw new Error("Le contenu du fichier ne correspond pas à son extension.");
   const filename = `${crypto.randomUUID()}.${extensionOf(originalName)}`;
-  await fs.mkdir(path.join(UPLOAD_ROOT, type), { recursive: true });
-  await fs.writeFile(diskPath(type, filename), data);
+  const dossier = path.join(racineUploads(), type);
+  try {
+    await fs.mkdir(dossier, { recursive: true });
+    await fs.writeFile(diskPath(type, filename), data);
+  } catch (e) {
+    throw new ErreurStockage(e, dossier);
+  }
   return publicPath(type, filename);
 }
 
@@ -155,4 +166,41 @@ export async function readUpload(type: UploadType, filename: string): Promise<Bu
   } catch {
     return null;
   }
+}
+
+export const MESSAGE_UPLOAD_DIR_INACCESSIBLE =
+  "UPLOAD_DIR n'est pas accessible en écriture : vérifiez le volume Railway et ses permissions";
+
+/**
+ * Vérifie que la racine des uploads est inscriptible : crée la racine et
+ * chaque sous-dossier par type, écrit puis supprime un fichier témoin.
+ * Appelée au démarrage (src/instrumentation.ts) pour signaler un volume mal
+ * monté avant qu'un utilisateur ne tombe dessus, et avant toute opération qui
+ * doit écrire un PDF après une mise à jour en base (`exigerStockageInscriptible`).
+ */
+export async function verifierStockage(
+  racine = racineUploads(),
+): Promise<{ ok: true; racine: string } | { ok: false; racine: string; message: string; erreur: ErreurStockage }> {
+  const temoin = path.join(racine, `.verification-ecriture-${process.pid}-${Date.now()}`);
+  try {
+    await fs.mkdir(racine, { recursive: true });
+    for (const type of UPLOAD_TYPES) await fs.mkdir(path.join(racine, type), { recursive: true });
+    await fs.writeFile(temoin, "ok");
+    await fs.unlink(temoin);
+    return { ok: true, racine };
+  } catch (e) {
+    const erreur = new ErreurStockage(e, racine);
+    return {
+      ok: false,
+      racine,
+      erreur,
+      message: `${MESSAGE_UPLOAD_DIR_INACCESSIBLE} (${racine} : ${erreur.code} ${erreur.syscall} ${erreur.chemin}).`,
+    };
+  }
+}
+
+/** Lève `ErreurStockage` si le disque des uploads n'est pas inscriptible ; à appeler avant une écriture en base qui exige ensuite un PDF. */
+export async function exigerStockageInscriptible() {
+  const etat = await verifierStockage();
+  if (!etat.ok) throw etat.erreur;
 }

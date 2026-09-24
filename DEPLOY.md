@@ -58,7 +58,7 @@ Onglet **Variables** du service web :
 | `JWT_SECRET` | sortie de `openssl rand -base64 48` | **Obligatoire** : sans lui l'application refuse toute session en production. |
 | `UPLOAD_DIR` | `/app/storage` | Dossier des fichiers uploadés = point de montage du volume (étape 3). Déjà la valeur par défaut de l'image, mais explicite = plus sûr. |
 | `CRON_SECRET` | sortie de `openssl rand -base64 32` | Requis par `/api/cron/rappels-echeance` (rappel J-7) ; voir étape 6. |
-| `RAILWAY_RUN_UID` | `0` | **Seulement si** les logs montrent `EACCES` sur `/app/storage` : l'image tourne sous l'utilisateur `node`, et un volume fraîchement créé peut appartenir à `root`. Cette variable fait tourner le conteneur en root (voir la doc Railway « Volumes »). |
+| `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
 `PORT` est fourni par Railway (l'image écoute sur `PORT`, 3000 par défaut).
 Ne définissez **pas** `PGSSLMODE` avec l'hôte interne (pas de TLS sur le
@@ -77,12 +77,57 @@ sur disque : sans volume, ils disparaissent à chaque déploiement.
    fenêtre de création, ou glisser-déposer le volume sur le service).
 3. **Mount path** : `/app/storage` — exactement la valeur de `UPLOAD_DIR`.
 4. Redéployez si Railway ne l'a pas fait tout seul. Dans les logs de
-   déploiement, aucune erreur `ENOENT` / `EACCES` ne doit apparaître ; en cas
-   d'`EACCES`, ajoutez `RAILWAY_RUN_UID=0` (voir tableau ci-dessus).
+   déploiement doit apparaître la ligne
+   `[stockage] dossier des uploads inscriptible : /app/storage` ; si c'est
+   `[stockage] UPLOAD_DIR n'est pas accessible en écriture : vérifiez le
+   volume Railway et ses permissions (…)`, lisez le piège ci-dessous.
+
+### Piège : permissions root / non-root sur un volume fraîchement monté
+
+Railway monte tout volume **en tant que root** (doc « Volumes »), alors que
+l'image tourne sous l'utilisateur non-root `node` (UID 1000, GID 1000 dans
+`node:22-bookworm-slim`). Le `chown node:node /app/storage` fait au build
+ne sert à rien : le montage du volume **recouvre** le dossier préparé dans
+l'image. Résultat observé en production (24 septembre 2026, remonté par
+Sentry) : `EACCES: permission denied, mkdir '/app/storage/preuves-paiement'`
+au premier dépôt de fichier de chaque type (les sous-dossiers sont créés à la
+volée), soit une preuve de paiement impossible à envoyer et un message
+technique dans l'espace client. Sur un stockage local ou dans les tests e2e,
+le dossier appartient toujours au processus : le problème n'y est jamais
+visible.
+
+Correction en place (aucune action côté tableau de bord) :
+
+- `docker-entrypoint.sh` : le conteneur démarre en root, fait
+  `chown -R node:node` sur `UPLOAD_DIR` et `/app/data` **seulement si la
+  racine n'appartient pas déjà à `node`** (un gros volume déjà corrigé n'est
+  pas reparcouru), puis bascule vers `node` avec `setpriv` (util-linux,
+  déjà dans l'image ; `runuser` en repli) et lance `node server.js`. Le
+  Dockerfile n'a donc plus d'instruction `USER` : c'est le script qui
+  abandonne les privilèges. Choix retenu face à l'alternative « sous-dossiers
+  en 777 » : pas de compromis sur les droits du volume, et tout se passe dans
+  l'image.
+- `src/instrumentation.ts` : au démarrage, le serveur crée la racine et les
+  sous-dossiers par type, écrit puis supprime un fichier témoin ; en cas
+  d'échec, ligne `[stockage] UPLOAD_DIR n'est pas accessible en écriture…`
+  dans les logs et événement Sentry (tag `contexte: demarrage`), sans
+  empêcher le démarrage.
+- `POST /api/upload` et les Server Actions qui écrivent un PDF (contrat,
+  reçu, autorisation de visite) répondent « Le stockage des fichiers est
+  temporairement indisponible, contactez l'administrateur. » (503 JSON pour la
+  route) au lieu d'un plantage ; le détail (`EACCES mkdir /app/storage/…`)
+  part dans Sentry.
+
+Sur un **nouveau projet Railway** : montez le volume sur `/app/storage`,
+laissez `UPLOAD_DIR=/app/storage`, ne définissez pas `RAILWAY_RUN_UID`, et
+vérifiez la ligne `[stockage] …inscriptible` au premier démarrage. Si vous
+lancez le conteneur avec `--user` (ou `RAILWAY_RUN_UID`), le script ne peut
+plus corriger les droits : il lance le serveur tel quel et le garde-fou de
+démarrage signale le problème.
 
 Vérification : après un upload (ex. création d'un client avec pièce
-d'identité), `railway ssh` puis `ls /app/storage/pieces-identite` montre le
-fichier ; il survit à un redéploiement.
+d'identité), `railway ssh` puis `ls -l /app/storage/pieces-identite` montre
+le fichier, propriétaire `node` ; il survit à un redéploiement.
 
 ## 4. Initialiser la base (une seule fois)
 
@@ -404,7 +449,7 @@ toutes les fausses données de test sous la forme `[masqué]`.
 |---|---|---|
 | Logs : `JWT_SECRET manquant ou trop court` | variable absente | définir `JWT_SECRET` (≥ 16 caractères) |
 | Logs : `getaddrinfo ENOTFOUND postgres.railway.internal` | app et Postgres dans des projets différents, ou variable non référencée | utiliser `DATABASE_PUBLIC_URL` du service Postgres, ou déplacer le service dans le même projet |
-| `EACCES … /app/storage` | volume appartenant à root | `RAILWAY_RUN_UID=0` puis redéployer |
+| Logs : `[stockage] UPLOAD_DIR n'est pas accessible en écriture` ou `EACCES … /app/storage` | volume appartenant à root et conteneur lancé sans les privilèges nécessaires (`RAILWAY_RUN_UID` / `--user` défini), ou volume monté ailleurs que `UPLOAD_DIR` | retirer `RAILWAY_RUN_UID`, vérifier le mount path (étape 3, « Piège ») ; les utilisateurs voient « Le stockage des fichiers est temporairement indisponible » en attendant |
 | Uploads perdus après déploiement | volume non monté sur `/app/storage` | vérifier le mount path et `UPLOAD_DIR` |
 | Healthcheck en échec | mauvais chemin ou port, ou base injoignable (503) | `/api/health`, port cible `3000` ; logs du service : lignes `[health] base injoignable` |
 | `relation "users" does not exist` | base non initialisée | étape 4 (`npm run db:push`) |
