@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { eq, like, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { biens, clients, contrats, demandesTma, desistements, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
 
@@ -50,10 +50,14 @@ export async function proprietaireDuFichier(
   const photo = await db.query.photosAvancement.findFirst({ where: eq(photosAvancement.url, url) });
   if (photo) return viaBien(photo.bienId);
 
+  // Contrat : PDF courant, copie signée, ou version archivée (historique JSON) ; le client est celui du contrat
   const contrat = await db.query.contrats.findFirst({
-    where: or(eq(contrats.pdfUrl, url), eq(contrats.copieSigneeUrl, url)),
+    where: or(eq(contrats.pdfUrl, url), eq(contrats.copieSigneeUrl, url), like(contrats.historiquePdf, `%"${url}"%`)),
   });
-  if (contrat) return viaBien(contrat.bienId);
+  if (contrat) {
+    const p = await viaBien(contrat.bienId);
+    return p ? { ...p, clientId: contrat.clientId ?? p.clientId } : null;
+  }
 
   return null;
 }

@@ -64,7 +64,7 @@ describe("PDF : le nom du promoteur, jamais celui de la plateforme", () => {
       expect(meta.createur, nom).toBe("Résidences Atlas");
       expect(nombreImagesDuPdf(bytes), nom).toBe(0);
     }
-    expect(await texteDuPdf(docs.contrat)).toContain("Promoteur\nRésidences Atlas"); // champ « Promoteur » du vendeur
+    expect(await texteDuPdf(docs.contrat)).toContain("Le vendeur : Résidences Atlas"); // section « Identité des parties » fusionnée
   });
 
   it("un promoteur nommé « PromoPro » ne prouve rien : le nom vient bien de l'objet promoteur", async () => {

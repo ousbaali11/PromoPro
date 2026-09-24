@@ -195,11 +195,41 @@ export const contrats = sqliteTable("contrats", {
   bienId: text("bien_id")
     .notNull()
     .references(() => biens.id),
+  // Client acquéreur (null pour les contrats antérieurs à la colonne : celui du bien)
+  clientId: text("client_id").references(() => clients.id),
   statut: text("statut").notNull().default("EN_ATTENTE"),
   pdfUrl: text("pdf_url"),
   copieSigneeUrl: text("copie_signee_url"), // 4e copie scannée
+  // Versions précédentes du PDF, JSON [{ url, dateGeneration }] (jamais supprimées : trace de ce qui a pu être signé)
+  historiquePdf: text("historique_pdf"),
+  pdfGenereAt: integer("pdf_genere_at", { mode: "timestamp" }),
+  // Suppression douce : le contrat reste consultable, un nouveau peut être créé pour le même bien / client
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
   createdAt: createdAt(),
   confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
+});
+
+// Sections ordonnées d'un contrat (titre + texte avec jetons de fusion), éditées par le Responsable Administratif
+export const contratSections = sqliteTable("contrat_sections", {
+  id: id(),
+  contratId: text("contrat_id")
+    .notNull()
+    .references(() => contrats.id),
+  ordre: integer("ordre").notNull(),
+  titre: text("titre").notNull(),
+  contenu: text("contenu").notNull().default(""),
+});
+
+// Modèle par défaut du promoteur : jeu de sections (JSON [{ titre, contenu }]) dont partent les nouveaux contrats
+export const contratModeles = sqliteTable("contrat_modeles", {
+  id: id(),
+  promoteurId: text("promoteur_id")
+    .notNull()
+    .references(() => promoteurs.id),
+  nom: text("nom").notNull().default("Modèle par défaut"),
+  sections: text("sections").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  createdAt: createdAt(),
 });
 
 // ---------------------------------------------------------------------------

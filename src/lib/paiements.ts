@@ -1,9 +1,9 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, echeances, paiements, projets, promoteurs, propositions, users } from "@/db/schema";
+import { biens, clients, echeances, paiements, projets, propositions, users } from "@/db/schema";
 import { parsePublicPath } from "@/lib/storage";
 import { genererEtStockerRecu } from "@/lib/pdf/recu";
-import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { contratActif, genererPdfContrat } from "@/lib/contrats";
 import { chargerPromoteur } from "@/lib/promoteurs";
 import { exigerStockageInscriptible } from "@/lib/storage";
 import { notifyClient, notifyRole } from "@/lib/notifications";
@@ -195,28 +195,10 @@ export async function imputerSurEcheancier(bienId: string, echeanceId: string | 
  * comptables y figurent (section 9.1). Sans effet si le contrat n'est pas
  * encore confirmé ou a été annulé.
  */
-export async function regenererContratSiConfirme(
-  bien: typeof biens.$inferSelect,
-  client: typeof clients.$inferSelect,
-  projet: typeof projets.$inferSelect | null | undefined,
-  promoteur: typeof promoteurs.$inferSelect,
-) {
-  const contrat = await db.query.contrats.findFirst({
-    where: eq(contrats.bienId, bien.id),
-    orderBy: [desc(contrats.createdAt)],
-  });
+export async function regenererContratSiConfirme(bien: typeof biens.$inferSelect, client: typeof clients.$inferSelect) {
+  const contrat = await contratActif(bien.id, client.id);
   if (!contrat || !["PRET", "ENVOYE", "SIGNE"].includes(contrat.statut)) return null;
-  const echeancier = await echeancierDuBien(bien.id);
-  const paiementsBien = await db.query.paiements.findMany({
-    where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, client.id)),
-  });
-  const pdfUrl = await genererEtStockerContrat(bien, client, echeancier, {
-    projet,
-    promoteur,
-    paiements: paiementsBien,
-    reference: contrat.id.slice(0, 8).toUpperCase(),
-  });
-  await db.update(contrats).set({ pdfUrl }).where(eq(contrats.id, contrat.id));
+  const { pdfUrl } = await genererPdfContrat(contrat);
   return pdfUrl;
 }
 
@@ -283,7 +265,7 @@ export async function validerPaiement(
 
   // Section 9.1 — les références comptables apparaissent dans le contrat :
   // on régénère le PDF du contrat en cours avec les paiements validés à jour.
-  await regenererContratSiConfirme(bien, client, projet, promoteur);
+  await regenererContratSiConfirme(bien, client);
 
   const report = imputations.length > 1 ? " Un excédent a été reporté sur la tranche suivante." : "";
   await notifyClient({

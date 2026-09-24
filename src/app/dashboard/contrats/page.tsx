@@ -46,10 +46,11 @@ export default async function ContratsPage() {
   );
 
   const rows = (await db.query.contrats.findMany({ orderBy: [desc(contrats.createdAt)] }))
-    .filter((c) => bienById.has(c.bienId))
+    .filter((c) => bienById.has(c.bienId) && !c.deletedAt) // suppression douce : consultables sur la fiche client seulement
     .map((c) => {
       const bien = bienById.get(c.bienId)!;
-      const client = bien.clientId ? clientById.get(bien.clientId) : undefined;
+      const clientId = c.clientId ?? bien.clientId;
+      const client = clientId ? clientById.get(clientId) : undefined;
       return { contrat: c, bien, client };
     });
   const enAttente = rows.filter((r) => r.contrat.statut === "EN_ATTENTE").length;

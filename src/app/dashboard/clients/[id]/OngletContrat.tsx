@@ -1,17 +1,20 @@
 import { eq } from "drizzle-orm";
-import { FileCheck2, FileDown, FileSignature, Landmark } from "lucide-react";
+import { FileCheck2, FileDown, FileSignature, History, Landmark } from "lucide-react";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import type { SessionPayload } from "@/lib/auth";
-import { Badge, Card, EmptyState, Info, Section, type Tone } from "@/components/ui/Primitives";
+import { Badge, Callout, Card, EmptyState, Info, Section, type Tone } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import type { BienDuClient, Client, DossierBien } from "@/lib/dossier-client";
 import { DesistementCarte, lienDoc } from "@/components/dossier/cartes";
-import { ConfirmerButton } from "@/app/dashboard/contrats/ConfirmerButton";
 import { CopieSigneeForm } from "@/app/dashboard/contrats/CopieSigneeForm";
 import { NotaireButton } from "@/app/dashboard/contrats/NotaireButton";
 import { VerifierButton, RembourserForm } from "@/app/dashboard/desistements/DesistementActions";
+import { lireHistoriquePdf } from "@/lib/contrats-sections";
+import { contexteContrat, modeleDuPromoteur, sectionsDuContrat, valeursContrat } from "@/lib/contrats";
+import { CreerContratButton, EditeurContrat, RestaurerContratButton } from "./EditeurContrat";
+import { creerContrat } from "./contrat-actions";
 
 export const CONTRAT_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -28,7 +31,11 @@ export const CONTRAT_TONES: Record<string, Tone> = {
   ANNULE: "neutral",
 };
 
-/** Onglet Contrat : état du contrat du bien pour ce client, actions du Responsable Administratif, désistement éventuel. */
+/**
+ * Onglet Contrat : contrat actif du bien pour ce client (état, PDF courant et
+ * versions archivées, copie signée), éditeur par sections pour le Responsable
+ * Administratif, contrats supprimés consultables, dossier notaire, désistement.
+ */
 export async function OngletContrat({
   session,
   client,
@@ -43,35 +50,55 @@ export async function OngletContrat({
   const isRespAdm = session.role === "RESPONSABLE_ADMINISTRATIF";
   const { bien } = selection;
   const contrat = dossier.contrat;
+  const detenu = bien.clientId === client.id && ["VENDU", "LIVRE"].includes(bien.statut);
   const commercialDesistement = dossier.desistement?.commercialId
     ? await db.query.users.findFirst({ where: eq(users.id, dossier.desistement.commercialId) })
     : null;
+
+  // Éditeur : sections créées au premier accès, valeurs de fusion pour l'aperçu
+  let editeur: { sections: Awaited<ReturnType<typeof sectionsDuContrat>>; valeurs: Record<string, string>; modele: boolean } | null = null;
+  if (contrat && isRespAdm && contrat.statut !== "ANNULE") {
+    const ctx = await contexteContrat(contrat);
+    editeur = {
+      sections: await sectionsDuContrat(contrat, ctx.projet.promoteurId),
+      valeurs: valeursContrat(ctx),
+      modele: !!(await modeleDuPromoteur(ctx.projet.promoteurId)),
+    };
+  }
+  const historique = contrat ? lireHistoriquePdf(contrat.historiquePdf) : [];
 
   return (
     <div className="space-y-6">
       <Section title="Contrat de vente" testId="section-contrat">
         {!contrat ? (
-          <EmptyState
-            icon={<FileSignature />}
-            title="Aucun contrat"
-            description={
-              bien.clientId === client.id
-                ? "Le contrat apparaît dès que le PDG accepte la proposition de vente."
-                : "Ce client n'a pas de contrat sur ce bien."
-            }
-          />
+          <Card className="space-y-4 p-5" data-testid="carte-sans-contrat">
+            <EmptyState
+              icon={<FileSignature />}
+              title="Aucun contrat actif"
+              description={
+                detenu
+                  ? dossier.contratsSupprimes.length
+                    ? "Le contrat précédent a été supprimé ; il reste consultable ci-dessous. Vous pouvez en créer un nouveau."
+                    : "Le contrat apparaît dès que le PDG accepte la proposition de vente."
+                  : "Ce client n'a pas de contrat sur ce bien."
+              }
+              className="py-6"
+            />
+            {isRespAdm && detenu && <CreerContratButton bienId={bien.id} clientId={client.id} creer={creerContrat} />}
+          </Card>
         ) : (
           <Card className="space-y-4 p-5" data-testid="carte-contrat" data-statut={contrat.statut}>
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                 <Info label="Créé le" value={formatDate(contrat.createdAt)} />
                 <Info label="Confirmé le" value={contrat.confirmedAt ? formatDate(contrat.confirmedAt) : undefined} />
+                <Info label="PDF généré le" value={contrat.pdfGenereAt ? formatDateTime(contrat.pdfGenereAt) : contrat.confirmedAt ? formatDate(contrat.confirmedAt) : undefined} />
               </div>
               <StatusBadge statut={contrat.statut} label={CONTRAT_LABELS[contrat.statut]} tone={CONTRAT_TONES[contrat.statut]} />
             </div>
             <div className="flex flex-wrap items-center gap-4 text-caption">
               {contrat.pdfUrl && (
-                <a href={contrat.pdfUrl} target="_blank" rel="noreferrer" className={lienDoc}>
+                <a href={contrat.pdfUrl} target="_blank" rel="noreferrer" className={lienDoc} data-testid="lien-contrat-pdf">
                   <FileDown className="h-3.5 w-3.5" /> Contrat PDF
                 </a>
               )}
@@ -80,17 +107,92 @@ export async function OngletContrat({
                   <FileCheck2 className="h-3.5 w-3.5" /> Copie signée
                 </a>
               )}
-              {!contrat.pdfUrl && contrat.statut === "EN_ATTENTE" && <span className="text-navy-400">PDF généré à la confirmation.</span>}
+              {!contrat.pdfUrl && contrat.statut === "EN_ATTENTE" && (
+                <span className="text-navy-400">Aucun PDF pour l&apos;instant : complétez les sections puis générez-le.</span>
+              )}
             </div>
-            {isRespAdm && (contrat.statut === "EN_ATTENTE" || ["PRET", "ENVOYE"].includes(contrat.statut)) && (
-              <div className="flex flex-wrap items-center gap-3 border-t border-navy-50 pt-4">
-                {contrat.statut === "EN_ATTENTE" && <ConfirmerButton contratId={contrat.id} />}
-                {["PRET", "ENVOYE"].includes(contrat.statut) && <CopieSigneeForm contratId={contrat.id} />}
+            {historique.length > 0 && (
+              <div className="rounded-md bg-navy-50 p-3 text-caption" data-testid="historique-pdf">
+                <p className="mb-1 font-medium text-navy-900">
+                  <History className="mr-1 inline h-3.5 w-3.5" /> Versions précédentes du PDF ({historique.length})
+                </p>
+                <ul className="space-y-1">
+                  {historique.map((v, i) => (
+                    <li key={`${v.url}-${i}`} className="flex flex-wrap items-center gap-2" data-testid="version-pdf">
+                      <span className="text-navy-400">Version {historique.length - i} · générée le {formatDateTime(new Date(v.dateGeneration))}</span>
+                      <a href={v.url} target="_blank" rel="noreferrer" className={lienDoc}>
+                        <FileDown className="h-3.5 w-3.5" /> Ouvrir
+                      </a>
+                    </li>
+                  ))}
+                </ul>
               </div>
+            )}
+            {isRespAdm && ["PRET", "ENVOYE"].includes(contrat.statut) && (
+              <div className="flex flex-wrap items-center gap-3 border-t border-navy-50 pt-4">
+                <CopieSigneeForm contratId={contrat.id} />
+              </div>
+            )}
+            {contrat.statut === "ANNULE" && (
+              <Callout tone="neutral">Contrat annulé par le désistement du client : il n&apos;est plus modifiable.</Callout>
             )}
           </Card>
         )}
       </Section>
+
+      {contrat && editeur && (
+        <Section
+          title="Sections du contrat"
+          count={editeur.sections.length}
+          description="Modifiez, réordonnez, supprimez ou ajoutez des sections, puis générez le PDF. Un contrat déjà confirmé reste modifiable : chaque génération archive la version précédente."
+          testId="section-editeur-contrat"
+        >
+          <Card className="p-5">
+            <EditeurContrat contratId={contrat.id} sections={editeur.sections} valeurs={editeur.valeurs} modeleDisponible={editeur.modele} statut={contrat.statut} />
+          </Card>
+        </Section>
+      )}
+
+      {dossier.contratsSupprimes.length > 0 && (
+        <Section title="Contrats supprimés" count={dossier.contratsSupprimes.length} testId="section-contrats-supprimes">
+          <Card className="divide-y divide-navy-50">
+            {dossier.contratsSupprimes.map((c) => {
+              const versions = lireHistoriquePdf(c.historiquePdf);
+              return (
+                <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-small" data-testid="contrat-supprime">
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      Contrat créé le {formatDate(c.createdAt)} · supprimé le {formatDate(c.deletedAt)}
+                    </p>
+                    <p className="text-caption text-navy-400">
+                      Statut au moment de la suppression : {CONTRAT_LABELS[c.statut] ?? c.statut}
+                      {versions.length > 0 && ` · ${versions.length} version(s) archivée(s)`}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {c.pdfUrl && (
+                      <a href={c.pdfUrl} target="_blank" rel="noreferrer" className={lienDoc}>
+                        <FileDown className="h-3.5 w-3.5" /> Dernier PDF
+                      </a>
+                    )}
+                    {versions.map((v, i) => (
+                      <a key={v.url} href={v.url} target="_blank" rel="noreferrer" className={lienDoc}>
+                        <FileDown className="h-3.5 w-3.5" /> Version {versions.length - i}
+                      </a>
+                    ))}
+                    {c.copieSigneeUrl && (
+                      <a href={c.copieSigneeUrl} target="_blank" rel="noreferrer" className={lienDoc}>
+                        <FileCheck2 className="h-3.5 w-3.5" /> Copie signée
+                      </a>
+                    )}
+                    {isRespAdm && !contrat && detenu && <RestaurerContratButton contratId={c.id} />}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        </Section>
+      )}
 
       {bien.statut === "LIVRE" && bien.clientId === client.id && (
         <Section title="Dossier notaire" testId="section-notaire">

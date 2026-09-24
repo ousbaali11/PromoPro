@@ -1,13 +1,12 @@
 "use server";
 
-import { eq, and, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { contrats, biens, clients, projets, propositions, echeances, paiements } from "@/db/schema";
+import { contrats, biens, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { notify, notifyClient } from "@/lib/notifications";
-import { genererEtStockerContrat } from "@/lib/pdf/contrat";
-import { chargerPromoteur } from "@/lib/promoteurs";
+import { genererPdfContrat } from "@/lib/contrats";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { parsePublicPath } from "@/lib/storage";
 
@@ -67,56 +66,28 @@ export async function deposerCopieSignee(_prev: { error?: string } | undefined, 
  */
 export async function confirmerContrat(contratId: string): Promise<{ error?: string } | undefined> {
   const session = await requireRole(["RESPONSABLE_ADMINISTRATIF"]);
-
   const contrat = await db.query.contrats.findFirst({ where: eq(contrats.id, contratId) });
-  if (!contrat) return { error: "Contrat introuvable." };
+  if (!contrat || contrat.deletedAt) return { error: "Contrat introuvable." };
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, contrat.bienId) });
   if (!bien?.commercialId || !bien.clientId) return { error: "Le bien n'a pas de client ou de commercial associé." };
-
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   if (!projet || projet.promoteurId !== session.promoteurId) return { error: "Accès refusé." };
+  if (contrat.statut !== "EN_ATTENTE") return { error: "Ce contrat est déjà confirmé." };
 
-  const client = await db.query.clients.findFirst({ where: eq(clients.id, bien.clientId) });
-  if (!client) return { error: "Client introuvable." };
-
-  const promoteur = await chargerPromoteur(projet.promoteurId);
-
-  // Échéancier de la proposition acceptée (la plus récente pour ce bien)
-  const proposition = await db.query.propositions.findFirst({
-    where: and(eq(propositions.bienId, bien.id), eq(propositions.statut, "ACCEPTEE")),
-    orderBy: [desc(propositions.createdAt)],
-  });
-  const echeancier = proposition
-    ? await db.query.echeances.findMany({ where: eq(echeances.propositionId, proposition.id) })
-    : [];
-  const paiementsBien = await db.query.paiements.findMany({ where: eq(paiements.bienId, bien.id) });
-
-  const pdf = await tenterStockage("contrat (confirmation)", () =>
-    genererEtStockerContrat(bien, client, echeancier, {
-      projet,
-      promoteur,
-      paiements: paiementsBien,
-      reference: contrat.id.slice(0, 8).toUpperCase(),
-    }),
-  );
-  if (!pdf.ok) return { error: pdf.error };
-  const pdfUrl = pdf.valeur;
-
-  await db
-    .update(contrats)
-    .set({ statut: "PRET", confirmedAt: new Date(), pdfUrl })
-    .where(eq(contrats.id, contratId));
+  // Sections courantes (créées au premier accès) → PDF version 1, contrat PRET
+  const generation = await tenterStockage("contrat (confirmation)", () => genererPdfContrat(contrat));
+  if (!generation.ok) return { error: generation.error };
 
   await notify({
     userId: bien.commercialId,
     type: "CONTRAT_PRET",
     titre: "Contrat prêt",
     message: `Le contrat de ${bien.designation} est prêt : à imprimer sur place ou à envoyer par e-mail.`,
-    lien: "/dashboard/contrats",
+    lien: `/dashboard/clients/${contrat.clientId ?? bien.clientId}?bien=${bien.id}&onglet=contrat`,
   });
 
   revalidatePath("/dashboard/contrats");
   revalidatePath(`/client/biens/${bien.id}`);
-  return undefined;
   revalidatePath("/dashboard/clients/[id]", "page");
+  return undefined;
 }

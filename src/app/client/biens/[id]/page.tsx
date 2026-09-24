@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { MessageCircle, FileDown, FileImage, FileCheck2, Paperclip, Receipt, Phone } from "lucide-react";
 import { requireClientSession } from "@/lib/session";
@@ -46,7 +46,7 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
     : null;
   const ech = await echeancierDuBien(bien.id);
   const contrat = await db.query.contrats.findFirst({
-    where: eq(contrats.bienId, bien.id),
+    where: and(eq(contrats.bienId, bien.id), isNull(contrats.deletedAt)),
     orderBy: [desc(contrats.createdAt)],
   });
   const mesPaiements = await db.query.paiements.findMany({

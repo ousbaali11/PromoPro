@@ -200,11 +200,41 @@ export const contrats = pgTable("contrats", {
   bienId: text("bien_id")
     .notNull()
     .references(() => biens.id),
+  // Client acquéreur (null pour les contrats antérieurs à la colonne : celui du bien)
+  clientId: text("client_id").references(() => clients.id),
   statut: text("statut").notNull().default("EN_ATTENTE"),
   pdfUrl: text("pdf_url"),
   copieSigneeUrl: text("copie_signee_url"), // 4e copie scannée
+  // Versions précédentes du PDF, JSON [{ url, dateGeneration }] (jamais supprimées : trace de ce qui a pu être signé)
+  historiquePdf: text("historique_pdf"),
+  pdfGenereAt: timestamp("pdf_genere_at", { withTimezone: true }),
+  // Suppression douce : le contrat reste consultable, un nouveau peut être créé pour le même bien / client
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: createdAt(),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+});
+
+// Sections ordonnées d'un contrat (titre + texte avec jetons de fusion), éditées par le Responsable Administratif
+export const contratSections = pgTable("contrat_sections", {
+  id: id(),
+  contratId: text("contrat_id")
+    .notNull()
+    .references(() => contrats.id),
+  ordre: integer("ordre").notNull(),
+  titre: text("titre").notNull(),
+  contenu: text("contenu").notNull().default(""),
+});
+
+// Modèle par défaut du promoteur : jeu de sections (JSON [{ titre, contenu }]) dont partent les nouveaux contrats
+export const contratModeles = pgTable("contrat_modeles", {
+  id: id(),
+  promoteurId: text("promoteur_id")
+    .notNull()
+    .references(() => promoteurs.id),
+  nom: text("nom").notNull().default("Modèle par défaut"),
+  sections: text("sections").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).$defaultFn(() => new Date()),
+  createdAt: createdAt(),
 });
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
+import { contratActif, contratsSupprimes } from "@/lib/contrats";
 import {
   biens,
-  contrats,
   demandesTma,
   desistements,
   echeances,
@@ -76,10 +76,9 @@ export async function chargerDossierBien(client: Client, bien: Bien) {
     where: and(eq(desistements.bienId, bien.id), eq(desistements.clientId, client.id)),
     orderBy: [desc(desistements.createdAt)],
   });
-  // Contrat du bien pour ce client : le dernier contrat du bien tant qu'il le détient ;
-  // après désistement, le dernier contrat annulé antérieur à un éventuel nouveau client
-  const contratsDuBien = await db.query.contrats.findMany({ where: eq(contrats.bienId, bien.id), orderBy: [desc(contrats.createdAt)] });
-  const contrat = bien.clientId === client.id ? contratsDuBien[0] ?? null : contratsDuBien.find((c) => c.statut === "ANNULE") ?? null;
+  // Contrat actif (non supprimé) du bien pour ce client ; après désistement, le contrat annulé de ce client
+  const contrat = await contratActif(bien.id, client.id);
+  const supprimes = await contratsSupprimes(bien.id, client.id);
   const listePaiements = await db.query.paiements.findMany({
     where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, client.id)),
     orderBy: [desc(paiements.createdAt)],
@@ -99,6 +98,6 @@ export async function chargerDossierBien(client: Client, bien: Bien) {
     where: and(eq(visites.bienId, bien.id), eq(visites.clientId, client.id)),
     orderBy: [desc(visites.createdAt)],
   });
-  return { projet, proposition, echeancier, desistement, contrat, paiements: listePaiements, syndics: listeSyndics, tma: listeTma, visites: listeVisites };
+  return { projet, proposition, echeancier, desistement, contrat, contratsSupprimes: supprimes, paiements: listePaiements, syndics: listeSyndics, tma: listeTma, visites: listeVisites };
 }
 export type DossierBien = Awaited<ReturnType<typeof chargerDossierBien>>;

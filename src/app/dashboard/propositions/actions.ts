@@ -197,7 +197,7 @@ export async function acceptProposition(propositionId: string): Promise<Decision
   });
 
   // Dossier de contrat (statut "En attente" tant qu'il n'est pas complété)
-  await db.insert(contrats).values({ bienId: bien.id, statut: "EN_ATTENTE" });
+  await db.insert(contrats).values({ bienId: bien.id, clientId: proposition.clientId, statut: "EN_ATTENTE" });
 
   // Ordre de génération de contrat au Responsable Administratif
   const respAdmins = await db.query.users.findMany({

@@ -226,6 +226,7 @@ async function main() {
   });
   await db.insert(contrats).values({
     bienId: bienVendu.id,
+    clientId: demoClient.id,
     statut: "PRET",
     pdfUrl: contratPdfUrl,
     confirmedAt: new Date(Date.now() - 35 * 24 * 3600 * 1000),

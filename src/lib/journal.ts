@@ -26,6 +26,7 @@ export const CIBLE_LABELS: Record<string, string> = {
   promoteur: "Promoteur",
   projet: "Projet",
   bien: "Bien",
+  contrat: "Contrat",
   tma: "Travaux modificatifs",
   prospects: "Prospects",
 };

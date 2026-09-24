@@ -117,7 +117,7 @@ test("le Responsable Administratif confirme le contrat de F01 depuis la fiche : 
   await expect(page.getByTestId("bien-selectionne")).toHaveText(F01);
 
   const carte = page.getByTestId("carte-contrat");
-  await carte.getByRole("button", { name: "Vérifier et confirmer" }).click();
+  await page.getByTestId("editeur-contrat").getByTestId("generer-pdf").click(); // première génération = confirmation
   await expect(carte).toHaveAttribute("data-statut", "PRET");
   await expect(carte.getByRole("link", { name: "Contrat PDF" })).toBeVisible();
 
