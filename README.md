@@ -186,6 +186,15 @@ encore en attente : une tranche payée ou partielle n'est jamais supprimée ni
 réduite sous ce qui a été payé, le total reste 100 % du prix, chaque
 modification est journalisée avant → après et le client est prévenu.
 
+## Tableau de bord : plage de dates et graphiques
+
+Chaque rôle interne dispose en haut à droite de son tableau de bord d'un
+sélecteur de plage (préréglages en un clic, plage relative, plage
+personnalisée ; dernier choix mémorisé) qui alimente des totaux et deux
+graphiques (barres et courbe) adaptés au rôle : ventes et chiffre
+d'affaires, prospects, encaissements réels, paiements validés, contrats,
+demandes SAV. L'espace client n'en a pas.
+
 ## Structure du projet
 
 ```

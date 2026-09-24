@@ -12,6 +12,8 @@ import { RendezVousSection } from "@/app/dashboard/rendez-vous/RendezVousSection
 import { Suspense } from "react";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { decoderPlage } from "@/lib/plage-dates";
+import { SectionGraphiques } from "./SectionGraphiques";
+import { GraphiquesSkeleton } from "@/components/graphiques/Graphiques";
 
 async function countBiensByStatut(promoteurId: string, statut: string) {
   const rows = await db
@@ -93,6 +95,11 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
           <Stat label="Prospects non traités" value={prospectsNonTraites} icon={<Users />} accent={prospectsNonTraites > 0} hint="À contacter" />
         )}
       </div>
+
+      {/* Totaux et graphiques de la plage choisie : diffusés sous Suspense, squelette pendant le calcul (clé = plage) */}
+      <Suspense key={plage.code} fallback={<GraphiquesSkeleton />}>
+        <SectionGraphiques session={session} plage={plage} />
+      </Suspense>
 
       {epingles.length > 0 && (
         <Section

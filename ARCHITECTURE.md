@@ -234,6 +234,26 @@ utilisateur dans localStorage et rappelé quand l'URL n'en porte pas. Pas
 d'auto-rafraîchissement : les données ne changent pas assez vite pour le
 justifier.
 
+## Graphiques des tableaux de bord
+
+Sous les cartes Stat de `/dashboard`, une section « Activité » (composant
+serveur `SectionGraphiques`, diffusé sous `Suspense` avec un squelette
+pendant le calcul) affiche pour la plage choisie des totaux, un graphique en
+barres et une courbe (recharts, `src/components/graphiques/Graphiques.tsx`,
+couleurs navy / gold). L'agrégation est un module pur
+(`src/lib/graphiques.ts` : intervalles jour / semaine ISO / mois selon la
+longueur de la plage, comptage ou somme, cumul, lignes recharts) ; les
+données par rôle viennent de `src/lib/graphiques-data.ts`, cloisonnées au
+promoteur : PDG et Directeur Commercial (ventes conclues, CA cumulé),
+Commercial et Responsable Commercial (ventes personnelles ou de l'équipe,
+prospects reçus vs traités), Directeur Financier et Recouvrement
+(encaissements réels : paiements validés par date de réception),
+Comptable Interne (paiements validés), Responsable Administratif (contrats
+générés vs confirmés), Assistant Administratif (prospects importés vs
+traités), SAV (visites et travaux modificatifs traités). Les totaux et le
+total de chaque graphique sont exposés en attributs `data-valeur` /
+`data-total` pour les tests.
+
 ## Livraison et double confirmation
 
 La livraison d'un bien (section 12.1) exige la confirmation du client et
