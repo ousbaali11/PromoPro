@@ -3,11 +3,12 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { visites, biens, clients, projets, promoteurs, demandesPhotos, photosAvancement, syndics, demandesTma } from "@/db/schema";
+import { visites, biens, clients, projets, demandesPhotos, photosAvancement, syndics, demandesTma } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { notifyClient } from "@/lib/notifications";
 import { finaliserLivraisonSiComplete } from "@/lib/livraison";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { parsePublicPath } from "@/lib/storage";
 import { enregistrerActivite } from "@/lib/journal";
@@ -144,7 +145,7 @@ export async function accepterVisite(visiteId: string): Promise<{ error?: string
   const { session, visite, client, bien } = r;
 
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
-  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId!) });
+  const promoteur = await chargerPromoteur(session.promoteurId!);
   const decidedAt = new Date();
   // Disque des uploads indisponible → message propre, rien n'est écrit en base
   const pdf = await tenterStockage("autorisation de visite (SAV)", () =>

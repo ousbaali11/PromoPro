@@ -1,5 +1,6 @@
 import type { biens, clients, projets, promoteurs, visites } from "@/db/schema";
 import { PdfWriter, fmtDate, COLORS } from "./common";
+import { enteteDuPromoteur } from "./entete";
 import { saveUpload } from "@/lib/storage";
 import { CRENEAUX_LIBELLE } from "@/lib/creneaux";
 
@@ -23,10 +24,10 @@ export async function genererAutorisationVisitePdf(
   visite: Visite,
   bien: Bien,
   client: Client,
-  ctx: { projet?: typeof projets.$inferSelect | null; promoteur?: typeof promoteurs.$inferSelect | null; savNom?: string } = {},
+  ctx: { projet?: typeof projets.$inferSelect | null; promoteur: typeof promoteurs.$inferSelect; savNom?: string },
 ): Promise<Buffer> {
-  const promoteurNom = ctx.promoteur?.nom ?? "Promoteur";
-  const pdf = await PdfWriter.create("Autorisation de visite", promoteurNom);
+  const promoteurNom = ctx.promoteur.nom;
+  const pdf = await PdfWriter.create("Autorisation de visite", await enteteDuPromoteur(ctx.promoteur));
 
   pdf.title("Autorisation de visite");
   pdf.text(`N° ${visite.id.slice(0, 8).toUpperCase()} · délivrée le ${fmtDate(visite.decidedAt ?? new Date())}`, {

@@ -1,5 +1,6 @@
 import type { biens, clients, echeances, paiements, projets, promoteurs } from "@/db/schema";
 import { PdfWriter, fmtDate, fmtMoney, COLORS } from "./common";
+import { enteteDuPromoteur } from "./entete";
 import { saveUpload } from "@/lib/storage";
 
 type Bien = typeof biens.$inferSelect;
@@ -11,7 +12,8 @@ type Promoteur = typeof promoteurs.$inferSelect;
 
 export type RecuContext = {
   projet?: Projet | null;
-  promoteur?: Promoteur | null;
+  /** Promoteur émetteur : son nom (et son logo) figurent en en-tête, en pied de page et dans les métadonnées. */
+  promoteur: Promoteur;
   echeance?: Echeance | null;
   /** Nom du comptable ayant validé */
   validePar?: string;
@@ -30,10 +32,9 @@ export async function genererRecuPdf(
   paiement: Paiement,
   bien: Bien,
   client: Client,
-  ctx: RecuContext = {},
+  ctx: RecuContext,
 ): Promise<Buffer> {
-  const promoteurNom = ctx.promoteur?.nom ?? "Promoteur";
-  const pdf = await PdfWriter.create("Reçu de paiement", promoteurNom);
+  const pdf = await PdfWriter.create("Reçu de paiement", await enteteDuPromoteur(ctx.promoteur));
   const montant = paiement.montantExact ?? paiement.montant;
   const numero = numeroRecu(paiement);
 
@@ -86,7 +87,7 @@ export async function genererRecuPdf(
 }
 
 /** Génère puis enregistre le reçu dans storage/uploads/recus/ ; retourne son chemin public. */
-export async function genererEtStockerRecu(paiement: Paiement, bien: Bien, client: Client, ctx: RecuContext = {}) {
+export async function genererEtStockerRecu(paiement: Paiement, bien: Bien, client: Client, ctx: RecuContext) {
   const buffer = await genererRecuPdf(paiement, bien, client, ctx);
   return saveUpload("recus", "recu.pdf", buffer);
 }

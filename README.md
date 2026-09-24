@@ -76,6 +76,10 @@ Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 
 ### Comptes de démonstration (mot de passe entre parenthèses)
 
+Le promoteur de démonstration s'appelle **Résidences Atlas** : tout ce qui est
+adressé à ses clients (espace client, contrats, reçus, autorisations) porte ce
+nom, jamais celui de la plateforme.
+
 | Rôle | Identifiant | Compte créé par |
 |---|---|---|
 | Super Admin (plateforme) | `SUPERADMIN` (`admin1234`) | `npm run create-admin` (ou seed) |
@@ -115,7 +119,10 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   rate-limiting sur la connexion, notifications (cloche) pour le staff **et**
   les clients
 - **Super Admin** : créer un promoteur avec ses trois directions (PDG,
-  Directeur Commercial, Directeur Financier), activer/suspendre son abonnement
+  Directeur Commercial, Directeur Financier), lui associer un logo optionnel
+  (PNG / JPG, à la création ou depuis la liste : repris en en-tête des
+  contrats, reçus, autorisations de visite et de l'espace client — sinon
+  en-tête texte au nom du promoteur), activer/suspendre son abonnement
   (la suspension coupe immédiatement toutes les sessions du promoteur, staff et
   clients ; la date d'échéance de l'abonnement est affichée mais n'est pas
   bloquante : seul le statut compte)

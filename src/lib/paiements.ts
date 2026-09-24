@@ -4,6 +4,7 @@ import { biens, clients, contrats, echeances, paiements, projets, promoteurs, pr
 import { parsePublicPath } from "@/lib/storage";
 import { genererEtStockerRecu } from "@/lib/pdf/recu";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { exigerStockageInscriptible } from "@/lib/storage";
 import { notifyClient, notifyRole } from "@/lib/notifications";
 import { verifierMontant, lireNombre } from "@/lib/validation";
@@ -198,7 +199,7 @@ export async function regenererContratSiConfirme(
   bien: typeof biens.$inferSelect,
   client: typeof clients.$inferSelect,
   projet: typeof projets.$inferSelect | null | undefined,
-  promoteur: typeof promoteurs.$inferSelect | null | undefined,
+  promoteur: typeof promoteurs.$inferSelect,
 ) {
   const contrat = await db.query.contrats.findFirst({
     where: eq(contrats.bienId, bien.id),
@@ -243,9 +244,8 @@ export async function validerPaiement(
   });
   if (erreurMontant) return { error: erreurMontant };
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
-  const promoteur = projet
-    ? await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, projet.promoteurId) })
-    : null;
+  if (!projet) return { error: "Projet introuvable." };
+  const promoteur = await chargerPromoteur(projet.promoteurId);
   const validePar = await db.query.users.findFirst({ where: eq(users.id, complement.valideParId) });
 
   // Le reçu et le contrat régénéré sont écrits sur le disque des uploads juste

@@ -1,9 +1,15 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
+import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
+import type { EnteteDocument } from "./entete";
 
 /**
- * Petit moteur de mise en page pour les documents PDF de PromoPro (pdf-lib).
+ * Petit moteur de mise en page pour les documents PDF (pdf-lib).
  * Gère un curseur vertical, les sauts de page, les tableaux et l'en-tête.
  * Police standard Helvetica (encodage WinAnsi : accents français OK).
+ *
+ * L'en-tête, le pied de page et les métadonnées portent le nom du promoteur
+ * émetteur (`EnteteDocument`, voir entete.ts) et son logo s'il en a déposé un
+ * — jamais le nom de la plateforme : chaque promoteur signe ses propres
+ * documents.
  */
 
 export const A4 = { width: 595.28, height: 841.89 };
@@ -56,7 +62,8 @@ export class PdfWriter {
     private readonly font: PDFFont,
     private readonly bold: PDFFont,
     private readonly headerTitle: string,
-    private readonly headerSubtitle: string,
+    private readonly entete: EnteteDocument,
+    private readonly logo: PDFImage | null,
   ) {
     this.y = A4.height - MARGIN;
     this.drawHeader();
@@ -66,15 +73,24 @@ export class PdfWriter {
   readonly contentWidth = A4.width - 2 * MARGIN;
   readonly left = MARGIN;
 
-  static async create(headerTitle: string, headerSubtitle: string) {
+  static async create(headerTitle: string, entete: EnteteDocument) {
     const doc = await PDFDocument.create();
-    doc.setTitle(headerTitle);
-    doc.setProducer("PromoPro");
-    doc.setCreator("PromoPro");
+    doc.setTitle(`${headerTitle} — ${entete.nom}`);
+    doc.setAuthor(entete.nom);
+    doc.setCreator(entete.nom);
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    let logo: PDFImage | null = null;
+    if (entete.logo) {
+      // Un logo illisible ne doit jamais empêcher la génération du document : on l'ignore
+      try {
+        logo = entete.logo.format === "png" ? await doc.embedPng(entete.logo.bytes) : await doc.embedJpg(entete.logo.bytes);
+      } catch {
+        logo = null;
+      }
+    }
     const page = doc.addPage([A4.width, A4.height]);
-    return new PdfWriter(doc, page, font, bold, headerTitle, headerSubtitle);
+    return new PdfWriter(doc, page, font, bold, headerTitle, entete, logo);
   }
 
   private fontFor(isBold?: boolean) {
@@ -84,14 +100,18 @@ export class PdfWriter {
   private drawHeader() {
     const top = A4.height - MARGIN + 10;
     this.page.drawRectangle({ x: 0, y: A4.height - 6, width: A4.width, height: 6, color: COLORS.navy });
-    this.page.drawText("PromoPro", { x: this.left, y: top, size: 16, font: this.bold, color: COLORS.navy });
-    this.page.drawText(safeText(this.headerSubtitle), {
-      x: this.left,
-      y: top - 13,
-      size: 8.5,
-      font: this.font,
-      color: COLORS.grey,
-    });
+    let x = this.left;
+    if (this.logo) {
+      // Logo à gauche, hauteur fixe, largeur bornée ; le nom suit
+      const h = 30;
+      const w = Math.min(120, (this.logo.width / this.logo.height) * h);
+      this.page.drawImage(this.logo, { x, y: top - 14, width: w, height: h });
+      x += w + 10;
+    }
+    this.page.drawText(safeText(this.entete.nom), { x, y: top, size: 16, font: this.bold, color: COLORS.navy });
+    if (this.entete.sousTitre) {
+      this.page.drawText(safeText(this.entete.sousTitre), { x, y: top - 13, size: 8.5, font: this.font, color: COLORS.grey });
+    }
     const t = safeText(this.headerTitle);
     const w = this.bold.widthOfTextAtSize(t, 11);
     this.page.drawText(t, { x: A4.width - MARGIN - w, y: top, size: 11, font: this.bold, color: COLORS.gold });
@@ -110,7 +130,7 @@ export class PdfWriter {
       const txt = `Page ${i + 1} / ${pages.length}`;
       const w = this.font.widthOfTextAtSize(txt, 8);
       p.drawText(txt, { x: A4.width - MARGIN - w, y: 28, size: 8, font: this.font, color: COLORS.grey });
-      p.drawText(safeText("Document généré automatiquement par PromoPro"), {
+      p.drawText(safeText(`${this.entete.nom} · document généré automatiquement`), {
         x: this.left,
         y: 28,
         size: 8,

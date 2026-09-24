@@ -1,5 +1,7 @@
 "use client";
 
+import { FileUpload } from "@/components/ui/FileUpload";
+
 import { useActionState } from "react";
 import { ArrowLeft, KeyRound } from "lucide-react";
 import { createPromoteur, type Acces } from "../actions";
@@ -85,6 +87,13 @@ export default function NouveauPromoteurPage() {
               required
             />
             <Input id="contactEmail" name="contactEmail" type="email" label="E-mail de contact" />
+            <FileUpload
+              name="logoUrl"
+              type="logos"
+              label="Logo (optionnel)"
+              accept=".png,.jpg,.jpeg"
+              hint="PNG ou JPG : en-tête des contrats, reçus, autorisations de visite et de l'espace client. Modifiable ensuite depuis la liste."
+            />
           </div>
 
           {DIRECTIONS.map((d, i) => (

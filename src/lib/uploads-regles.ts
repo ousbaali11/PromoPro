@@ -17,6 +17,7 @@ export const UPLOAD_TYPES = [
   "plans-3d", // modèles .glb / .gltf
   "tma-croquis", // photo ou croquis joint à une demande de travaux modificatifs
   "tma-devis", // devis PDF du SAV
+  "logos", // logo du promoteur (PNG / JPG, déposé par le Super Admin) : en-tête des PDF et de l'espace client
 ] as const;
 export type UploadType = (typeof UPLOAD_TYPES)[number];
 
@@ -24,6 +25,7 @@ export const ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"] as const;
 /** Extensions acceptées par type ; par défaut PDF / image, modèles 3D pour `plans-3d`. */
 export const EXTENSIONS_PAR_TYPE: Partial<Record<UploadType, readonly string[]>> = {
   "plans-3d": ["glb", "gltf"],
+  logos: ["png", "jpg", "jpeg"], // pdf-lib n'embarque que PNG et JPEG
 };
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
 export const MAX_FILE_SIZE_3D = 50 * 1024 * 1024; // 50 Mo pour un modèle 3D

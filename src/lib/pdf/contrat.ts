@@ -1,5 +1,6 @@
 import type { biens, clients, echeances, paiements, projets, promoteurs } from "@/db/schema";
 import { PdfWriter, fmtDate, fmtMoney, COLORS } from "./common";
+import { enteteDuPromoteur } from "./entete";
 import { saveUpload } from "@/lib/storage";
 
 type Bien = typeof biens.$inferSelect;
@@ -11,7 +12,8 @@ type Promoteur = typeof promoteurs.$inferSelect;
 
 export type ContratContext = {
   projet?: Projet | null;
-  promoteur?: Promoteur | null;
+  /** Promoteur vendeur : son nom (et son logo) figurent en en-tête, en pied de page et dans les métadonnées. */
+  promoteur: Promoteur;
   /** Paiements validés par le Comptable Interne (référence, montant exact, date de réception, porteur) — section 9.1 */
   paiements?: Paiement[];
   reference?: string;
@@ -27,10 +29,10 @@ export async function genererContratPdf(
   bien: Bien,
   client: Client,
   echeancier: Echeance[],
-  ctx: ContratContext = {},
+  ctx: ContratContext,
 ): Promise<Buffer> {
-  const promoteurNom = ctx.promoteur?.nom ?? "Promoteur";
-  const pdf = await PdfWriter.create("Contrat de vente", promoteurNom);
+  const promoteurNom = ctx.promoteur.nom;
+  const pdf = await PdfWriter.create("Contrat de vente", await enteteDuPromoteur(ctx.promoteur));
   const ref = ctx.reference ?? bien.id.slice(0, 8).toUpperCase();
 
   pdf.title("Contrat de vente");
@@ -126,7 +128,7 @@ export async function genererEtStockerContrat(
   bien: Bien,
   client: Client,
   echeancier: Echeance[],
-  ctx: ContratContext = {},
+  ctx: ContratContext,
 ) {
   const buffer = await genererContratPdf(bien, client, echeancier, ctx);
   return saveUpload("contrats", "contrat.pdf", buffer);

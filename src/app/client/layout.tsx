@@ -1,14 +1,28 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { Building2, LogOut } from "lucide-react";
-import { requireClientSession } from "@/lib/session";
+import { getSessionActive, requireClientSession } from "@/lib/session";
 import { logout } from "@/app/login/actions";
 import { db } from "@/db/client";
-import { notifications as notificationsTable } from "@/db/schema";
+import { notifications as notificationsTable, promoteurs } from "@/db/schema";
+
+/*
+ * L'espace client est celui du promoteur, pas de la plateforme : son nom (et
+ * son logo) en en-tête et dans le titre de l'onglet. « PromoPro » n'apparaît
+ * qu'à la connexion, dans l'administration et les pages techniques.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await getSessionActive();
+  if (!session || session.kind !== "client") return { title: "Espace client" };
+  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId) });
+  return { title: promoteur ? `${promoteur.nom} — Espace client` : "Espace client" };
+}
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ClientNav } from "./ClientNav";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const session = await requireClientSession();
+  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId) });
 
   const notifs = await db.query.notifications.findMany({
     where: and(eq(notificationsTable.recipientType, "CLIENT"), eq(notificationsTable.clientId, session.clientId)),
@@ -22,11 +36,24 @@ export default async function ClientLayout({ children }: { children: React.React
       <header className="sticky top-0 z-20 bg-navy text-white shadow-e3">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold shadow-e2">
-              <Building2 className="h-[18px] w-[18px]" strokeWidth={2} />
-            </div>
+            {promoteur?.logoUrl ? (
+              // Fichier servi par /api/files avec la session : pas d'optimiseur d'image Next (il n'a pas le cookie)
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={promoteur.logoUrl}
+                alt={`Logo ${promoteur.nom}`}
+                className="h-9 w-9 rounded-md bg-white object-contain shadow-e2"
+                data-testid="logo-promoteur-client"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold shadow-e2">
+                <Building2 className="h-[18px] w-[18px]" strokeWidth={2} />
+              </div>
+            )}
             <div>
-              <p className="text-h3 leading-none tracking-tight">PromoPro</p>
+              <p className="text-h3 leading-none tracking-tight" data-testid="entete-promoteur">
+                {promoteur?.nom ?? "Espace client"}
+              </p>
               <p className="mt-1 text-label uppercase text-navy-200/80">Espace client</p>
             </div>
           </div>

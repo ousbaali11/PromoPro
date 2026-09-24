@@ -42,6 +42,8 @@ export const promoteurs = pgTable("promoteurs", {
   nom: text("nom").notNull(),
   contactEmail: text("contact_email"),
   contactTelephone: text("contact_telephone"),
+  // Logo optionnel (PNG / JPG déposé par le Super Admin, type d'upload « logos ») : en-tête des PDF et de l'espace client
+  logoUrl: text("logo_url"),
   // EN_ATTENTE | ACTIF | SUSPENDU
   statut: text("statut").notNull().default("EN_ATTENTE"),
   abonnementFormule: text("abonnement_formule"), // ex: "Annuel", "Mensuel"

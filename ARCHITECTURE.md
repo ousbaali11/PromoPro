@@ -252,6 +252,29 @@ soumis avec le formulaire parent. Côté serveur, valide toujours ce chemin avec
 par `GET /api/files/[type]/[filename]` : session obligatoire, et pour un
 client, uniquement les documents rattachés à son dossier
 (`src/lib/file-access.ts` — à étendre à chaque nouveau type de document).
+Exception : le **logo du promoteur** (`promoteurs.logo_url`, type d'upload
+`logos`, PNG / JPG déposé par le Super Admin à la création ou depuis la liste
+`/admin`) n'est rattaché à aucun client et est servi à tout compte du
+promoteur, staff comme clients (`partageAuPromoteur`).
+
+## Documents PDF et identité du promoteur
+
+Les documents remis au client (contrat, reçu, autorisation de visite —
+`src/lib/pdf/`) et l'espace client (`src/app/client/layout.tsx` : en-tête et
+titre de l'onglet) portent le nom du **promoteur**, jamais celui de la
+plateforme. `PdfWriter.create(titre, entete)` reçoit un `EnteteDocument`
+(`src/lib/pdf/entete.ts` : nom, ligne de contact, logo lu depuis le stockage
+s'il existe) ; nom en en-tête de chaque page, logo à gauche s'il est
+renseigné (illisible → ignoré), pied de page « <nom> · document généré
+automatiquement », métadonnées Auteur / Créateur au nom du promoteur. Les
+générateurs exigent un promoteur (`chargerPromoteur`, `src/lib/promoteurs.ts`,
+lève une erreur si la clé étrangère est rompue) : aucun repli sur un nom
+générique. « PromoPro » reste la marque du logiciel là où il s'adresse à ses
+utilisateurs et non aux clients d'un promoteur : page de connexion, pages
+légales, administration, tableau de bord interne. Le jeu de démonstration
+nomme le promoteur « Résidences Atlas » pour que la présence de « PromoPro »
+dans un document ou l'espace client soit toujours une erreur (tests
+`pdf-marque.test.ts`, `marque.spec.ts`).
 
 Les règles partagées avec le navigateur (types, extensions, tailles maximales,
 messages) vivent dans `src/lib/uploads-regles.ts`, sans import Node :

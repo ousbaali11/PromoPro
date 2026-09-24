@@ -13,6 +13,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
 import { formatDate } from "@/lib/utils";
 import { PromoteurActions } from "./PromoteurActions";
+import { LogoPromoteurForm } from "./LogoPromoteurForm";
 
 const LABELS: Record<string, string> = { EN_ATTENTE: "En attente", ACTIF: "Actif", SUSPENDU: "Suspendu" };
 const TONES: Record<string, Tone> = { EN_ATTENTE: "warning", ACTIF: "success", SUSPENDU: "danger" };
@@ -58,6 +59,7 @@ export default async function AdminPage() {
         caption="Liste des promoteurs"
         columns={[
           { header: "Promoteur", sortable: true },
+          { header: "Logo", hideBelow: "sm" },
           { header: "Abonnement", hideBelow: "sm" },
           { header: "Échéance", sortable: true, hideBelow: "md" },
           { header: "Statut", sortable: true },
@@ -67,11 +69,12 @@ export default async function AdminPage() {
           key: p.id,
           testId: "promoteur-ligne",
           accent: p.statut === "EN_ATTENTE" ? "warning" : undefined,
-          sort: [p.nom, null, p.abonnementFin ? new Date(p.abonnementFin).getTime() : 0, LABELS[p.statut]],
+          sort: [p.nom, null, null, p.abonnementFin ? new Date(p.abonnementFin).getTime() : 0, LABELS[p.statut]],
           cells: [
             <span key="nom" className="font-medium">
               {p.nom}
             </span>,
+            <LogoPromoteurForm key="logo" promoteurId={p.id} nom={p.nom} logoUrl={p.logoUrl} />,
             <span key="ab" className="text-navy-400">
               {p.abonnementFormule ?? "—"}
             </span>,

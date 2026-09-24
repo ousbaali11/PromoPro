@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, clients, demandesPhotos, demandesTma, projets, promoteurs, syndics, visites } from "@/db/schema";
+import { biens, clients, demandesPhotos, demandesTma, projets, syndics, visites } from "@/db/schema";
 import { requireClientSession } from "@/lib/session";
 import { creerPaiement, lirePaiementForm, notifierComptable, NATURES_OPERATION } from "@/lib/paiements";
 import { notify, notifyRole } from "@/lib/notifications";
@@ -15,6 +15,7 @@ import { consommer, LIMITES, messageLimite } from "@/lib/rate-limit";
 import { verifierTexte, LONGUEURS } from "@/lib/validation";
 import { estCreneauValide, CRENEAUX_LIBELLE } from "@/lib/creneaux";
 import { genererEtStockerAutorisationVisite } from "@/lib/pdf/autorisation-visite";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { addMonths, formatDate, formatDateTime, formatMoney, DELAI_PHOTOS_MOIS } from "@/lib/utils";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
@@ -194,7 +195,7 @@ export async function choisirCreneauVisite(
   const bien = (await db.query.biens.findFirst({ where: eq(biens.id, visite.bienId) }))!;
   const client = (await db.query.clients.findFirst({ where: eq(clients.id, session.clientId) }))!;
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
-  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, session.promoteurId) });
+  const promoteur = await chargerPromoteur(session.promoteurId);
 
   // L'autorisation est régénérée avec le créneau retenu ; disque indisponible → message propre, rien n'est écrit
   const pdf = await tenterStockage("autorisation de visite (créneau client)", () =>

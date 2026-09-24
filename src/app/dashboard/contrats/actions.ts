@@ -3,10 +3,11 @@
 import { eq, and, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { contrats, biens, clients, projets, promoteurs, propositions, echeances, paiements } from "@/db/schema";
+import { contrats, biens, clients, projets, propositions, echeances, paiements } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { notify, notifyClient } from "@/lib/notifications";
 import { genererEtStockerContrat } from "@/lib/pdf/contrat";
+import { chargerPromoteur } from "@/lib/promoteurs";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { parsePublicPath } from "@/lib/storage";
 
@@ -76,7 +77,7 @@ export async function confirmerContrat(contratId: string): Promise<{ error?: str
   const client = await db.query.clients.findFirst({ where: eq(clients.id, bien.clientId) });
   if (!client) return { error: "Client introuvable." };
 
-  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, projet.promoteurId) });
+  const promoteur = await chargerPromoteur(projet.promoteurId);
 
   // Échéancier de la proposition acceptée (la plus récente pour ce bien)
   const proposition = await db.query.propositions.findFirst({

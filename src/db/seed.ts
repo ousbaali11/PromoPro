@@ -51,12 +51,12 @@ async function main() {
     await db.delete(table);
   }
 
-  console.log("→ Création du promoteur PromoPro...");
+  console.log("→ Création du promoteur de démonstration (Résidences Atlas)...");
   const [promopro] = await db
     .insert(promoteurs)
     .values({
-      nom: "PromoPro",
-      contactEmail: "contact@promopro.ma",
+      nom: "Résidences Atlas",
+      contactEmail: "contact@residences-atlas.ma",
       contactTelephone: "+212 5 00 00 00 00",
       statut: "ACTIF",
       abonnementFormule: "Annuel",

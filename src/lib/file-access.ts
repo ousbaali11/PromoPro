@@ -1,13 +1,15 @@
 import { eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, demandesTma, desistements, paiements, photosAvancement, projets, syndics, visites } from "@/db/schema";
+import { biens, clients, contrats, demandesTma, desistements, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
 
 /**
  * Retrouve à quel promoteur et à quel client appartient un fichier stocké, à
  * partir des colonnes qui le référencent. `null` si le fichier n'est
  * rattaché à aucun enregistrement (orphelin : jamais servi).
  */
-export async function proprietaireDuFichier(url: string): Promise<{ promoteurId: string; clientId: string | null } | null> {
+export async function proprietaireDuFichier(
+  url: string,
+): Promise<{ promoteurId: string; clientId: string | null; partageAuPromoteur?: boolean } | null> {
   const viaBien = async (bienId: string) => {
     const bien = await db.query.biens.findFirst({ where: eq(biens.id, bienId) });
     const projet = bien ? await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) }) : null;
@@ -17,6 +19,10 @@ export async function proprietaireDuFichier(url: string): Promise<{ promoteurId:
     const client = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
     return client ? { promoteurId: client.promoteurId, clientId: client.id } : null;
   };
+
+  // Logo du promoteur : rattaché à aucun client, visible par tous ses comptes (staff et clients)
+  const promoteurLogo = await db.query.promoteurs.findFirst({ where: eq(promoteurs.logoUrl, url) });
+  if (promoteurLogo) return { promoteurId: promoteurLogo.id, clientId: null, partageAuPromoteur: true };
 
   const client = await db.query.clients.findFirst({ where: eq(clients.pieceDocUrl, url) });
   if (client) return { promoteurId: client.promoteurId, clientId: client.id };
@@ -52,10 +58,15 @@ export async function proprietaireDuFichier(url: string): Promise<{ promoteurId:
   return null;
 }
 
-/** Un client ne peut lire qu'un fichier rattaché à son propre dossier. */
+/** Un client ne peut lire qu'un fichier rattaché à son propre dossier — ou le logo de son promoteur. */
 export async function clientCanAccessFile(clientId: string, url: string): Promise<boolean> {
   const p = await proprietaireDuFichier(url);
-  return !!p && p.clientId === clientId;
+  if (!p) return false;
+  if (p.partageAuPromoteur) {
+    const client = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
+    return !!client && client.promoteurId === p.promoteurId;
+  }
+  return p.clientId === clientId;
 }
 
 /** Un utilisateur interne ne lit que les fichiers de son promoteur (le Super Admin lit tout). */

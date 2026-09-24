@@ -223,7 +223,10 @@ Changements de schéma en attente sur la base Railway au moment d'écrire ces
 lignes (à appliquer avant le prochain déploiement, tous additifs) : table
 `epingles`, colonnes `users.deleted_at`, `clients.actif`, `clients.deleted_at`,
 table `journal_activite`, colonnes `biens.plan_3d_url`, `biens.visite_virtuelle_url`,
-`projets.delai_tma_jours`, table `demandes_tma`.
+`projets.delai_tma_jours`, table `demandes_tma`, colonne `promoteurs.logo_url`
+(logo optionnel du promoteur, septembre 2026 : sans elle, la création d'un
+promoteur, la liste `/admin` et l'espace client échouent — appliquez
+`npm run db:push` avant de déployer cette version).
 
 ## 9. Sauvegardes
 

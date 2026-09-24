@@ -8,6 +8,15 @@ import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { enregistrerActivite } from "@/lib/journal";
 import { invaliderTousLesEtats } from "@/lib/etat-compte";
+import { parsePublicPath } from "@/lib/storage";
+
+/** Chemin d'un logo déposé via /api/upload (type « logos »), ou null ; toute autre valeur est ignorée. */
+function lireLogo(valeur: FormDataEntryValue | null) {
+  const p = parsePublicPath(String(valeur ?? ""));
+  return p && p.type === "logos" ? String(valeur) : null;
+}
+
+export type LogoState = { error?: string; success?: true } | undefined;
 
 export type Acces = { role: Role; nom: string; prenom: string; identifiant: string; password: string };
 
@@ -39,6 +48,7 @@ export async function createPromoteur(
 
   const nom = String(formData.get("nom") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "").trim();
+  const logoUrl = lireLogo(formData.get("logoUrl"));
   if (!nom) return { error: "Merci de renseigner le nom du promoteur." };
 
   const identites: Record<string, { nom: string; prenom: string }> = {};
@@ -51,7 +61,7 @@ export async function createPromoteur(
 
   const [promoteur] = await db
     .insert(promoteurs)
-    .values({ nom, contactEmail: contactEmail || null, statut: "EN_ATTENTE" })
+    .values({ nom, contactEmail: contactEmail || null, logoUrl, statut: "EN_ATTENTE" })
     .returning();
 
   const acces = {} as Record<(typeof DIRECTIONS)[number]["cle"], Acces>;
@@ -127,4 +137,31 @@ export async function suspendrePromoteur(promoteurId: string) {
   });
   revalidatePath("/admin");
   revalidatePath("/admin/journal");
+}
+
+/**
+ * Dépose ou retire le logo d'un promoteur (optionnel) : repris en en-tête des
+ * contrats, reçus, autorisations de visite et de l'espace client. Un champ
+ * vide retire le logo.
+ */
+export async function definirLogoPromoteur(promoteurId: string, _prev: LogoState, formData: FormData): Promise<LogoState> {
+  const session = await requireRole(["SUPER_ADMIN"]);
+  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
+  if (!promoteur) return { error: "Promoteur introuvable." };
+  const brut = String(formData.get("logoUrl") ?? "");
+  const logoUrl = lireLogo(brut);
+  if (brut && !logoUrl) return { error: "Le fichier déposé n'est pas un logo valide (PNG ou JPG)." };
+  await db.update(promoteurs).set({ logoUrl }).where(eq(promoteurs.id, promoteurId));
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "promoteur",
+    cibleId: promoteurId,
+    cibleNom: promoteur.nom,
+    details: logoUrl ? "Logo déposé" : "Logo retiré",
+    promoteurId,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/client", "layout");
+  return { success: true };
 }

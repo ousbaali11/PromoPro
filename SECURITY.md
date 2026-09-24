@@ -176,6 +176,7 @@ technique (code, appel système, chemin) ne va qu'aux journaux et à Sentry
 | `plans` | pdf, jpg, jpeg, png | 10 Mo | staff |
 | `plans-3d` | glb, gltf | 50 Mo | staff |
 | `desistements`, `contrats`, `photos-avancement`, `recus`, `autorisations-visite`, `tma-devis` | pdf, jpg, jpeg, png | 10 Mo | staff (`recus`, `contrats`, `autorisations-visite` sont surtout générés par le serveur) |
+| `logos` | png, jpg, jpeg | 10 Mo | Super Admin (logo du promoteur) — seul fichier lisible par **tous** les comptes du promoteur, clients compris, sans rattachement à un dossier |
 
 Les fichiers sont nommés `uuid.ext` (non devinables, expression régulière
 stricte : aucune traversée de répertoire), servis uniquement par
