@@ -177,6 +177,15 @@ modificatifs. Les pages Contrats, Paiements, Désistements et SAV listent les
 dossiers en attente ou récents et renvoient vers la fiche : aucune action ne
 s'exerce depuis une liste.
 
+## Échéancier flexible
+
+À la proposition, le commercial compose librement l'échéancier (ajout ou
+retrait de tranches, 40/20/20/20 par défaut, total 100 % imposé). Après la
+vente, il peut le modifier depuis la fiche client, uniquement sur les tranches
+encore en attente : une tranche payée ou partielle n'est jamais supprimée ni
+réduite sous ce qui a été payé, le total reste 100 % du prix, chaque
+modification est journalisée avant → après et le client est prévenu.
+
 ## Structure du projet
 
 ```

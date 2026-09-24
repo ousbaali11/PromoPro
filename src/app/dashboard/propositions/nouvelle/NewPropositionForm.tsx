@@ -2,18 +2,28 @@
 
 import { useActionState, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Send } from "lucide-react";
+import { Plus, Send, Trash2 } from "lucide-react";
 import { createProposition } from "../actions";
 import { Card, Input, Select, Badge, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
-import { formatMoney } from "@/lib/utils";
+import { addMonths, formatMoney } from "@/lib/utils";
 import { useHydrated } from "@/components/ui/useHydrated";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { NB_TRANCHES_MAX, ymd } from "@/lib/echeancier";
 
 type ClientRow = { id: string; nom: string; prenom: string; telephone1: string | null };
+type Tranche = { cle: number; pct: number; date: string };
 
 const DEFAULT_PCT = [40, 20, 20, 20];
 
+/**
+ * Proposition de vente : client (existant ou nouveau) et échéancier libre —
+ * liste dynamique de tranches (pourcentage + date), 40/20/20/20 par défaut,
+ * « Ajouter une tranche » / « Retirer », total en temps réel. N'importe quelle
+ * répartition est acceptée (100 % en une fois, dix tranches de 10 %…) tant que
+ * le total fait 100 % — règle revérifiée côté serveur. Les champs gardent les
+ * identifiants tranche<N>Pourcentage / tranche<N>Date par position.
+ */
 export function NewPropositionForm({
   bienId,
   prix,
@@ -27,9 +37,20 @@ export function NewPropositionForm({
 }) {
   const [state, formAction, pending] = useActionState(createProposition, undefined);
   const [clientChoice, setClientChoice] = useState(clients[0]?.id ?? "__nouveau__");
-  const [pct, setPct] = useState<number[]>(DEFAULT_PCT);
+  const [tranches, setTranches] = useState<Tranche[]>(() => DEFAULT_PCT.map((pct, i) => ({ cle: i + 1, pct, date: defaultDates[i] ?? "" })));
+  const [prochaineCle, setProchaineCle] = useState(DEFAULT_PCT.length + 1);
   const hydrated = useHydrated();
-  const total = pct.reduce((s, p) => s + (Number.isFinite(p) ? p : 0), 0);
+  const total = Math.round(tranches.reduce((s, t) => s + (Number.isFinite(t.pct) ? t.pct : 0), 0) * 100) / 100;
+
+  const modifier = (cle: number, champ: "pct" | "date", valeur: number | string) =>
+    setTranches((l) => l.map((t) => (t.cle === cle ? { ...t, [champ]: valeur } : t)));
+  const ajouter = () => {
+    const derniere = tranches[tranches.length - 1];
+    const base = derniere?.date ? new Date(derniere.date) : new Date();
+    setTranches((l) => [...l, { cle: prochaineCle, pct: 0, date: ymd(addMonths(Number.isNaN(base.getTime()) ? new Date() : base, 6)) }]);
+    setProchaineCle((n) => n + 1);
+  };
+  const retirer = (cle: number) => setTranches((l) => (l.length > 1 ? l.filter((t) => t.cle !== cle) : l));
 
   return (
     <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="space-y-6" data-testid="form-nouvelle-proposition" data-hydrated={hydrated ? "true" : undefined}>
@@ -75,34 +96,42 @@ export function NewPropositionForm({
           </Badge>
         </div>
         <p className="mb-4 text-caption text-navy-400">
-          Par défaut : 40% le jour du blocage, puis 20% tous les 6 mois. Vous pouvez modifier les pourcentages et
-          les dates.
+          Par défaut : 40% le jour du blocage, puis 20% tous les 6 mois. Ajoutez ou retirez des tranches, modifiez les
+          pourcentages et les dates : seul le total de 100% est imposé.
         </p>
-        <ol className="space-y-3">
-          {[1, 2, 3, 4].map((n, i) => (
-            <li key={n} className="grid grid-cols-[auto_1fr_1fr] items-center gap-3 rounded-md bg-navy-50 p-3">
-              <div className="flex flex-col items-center gap-1 pr-1">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">
-                  {n}
-                </span>
-                <span className="text-caption text-navy-400 tabular">{formatMoney(Math.round((prix * (pct[i] || 0)) / 100))}</span>
-              </div>
-              <Input
-                id={`tranche${n}Pourcentage`}
-                name={`tranche${n}Pourcentage`}
-                type="number"
-                label="Pourcentage"
-                min={0}
-                max={100}
-                value={Number.isFinite(pct[i]) ? pct[i] : ""}
-                onChange={(e) => setPct((p) => p.map((v, j) => (j === i ? e.target.valueAsNumber : v)))}
-                clearable={false}
-                required
-              />
-              <Input id={`tranche${n}Date`} name={`tranche${n}Date`} type="date" label="Date" defaultValue={defaultDates[i]} clearable={false} required />
-            </li>
-          ))}
+        <ol className="space-y-3" data-testid="liste-tranches">
+          {tranches.map((t, i) => {
+            const n = i + 1;
+            return (
+              <li key={t.cle} className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 rounded-md bg-navy-50 p-3" data-testid="tranche-ligne">
+                <div className="flex flex-col items-center gap-1 pr-1">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">{n}</span>
+                  <span className="text-caption text-navy-400 tabular">{formatMoney(Math.round((prix * (Number.isFinite(t.pct) ? t.pct : 0)) / 100))}</span>
+                </div>
+                <Input
+                  id={`tranche${n}Pourcentage`}
+                  name={`tranche${n}Pourcentage`}
+                  type="number"
+                  label="Pourcentage"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  value={Number.isFinite(t.pct) ? t.pct : ""}
+                  onChange={(e) => modifier(t.cle, "pct", e.target.valueAsNumber)}
+                  clearable={false}
+                  required
+                />
+                <Input id={`tranche${n}Date`} name={`tranche${n}Date`} type="date" label="Date" value={t.date} onChange={(e) => modifier(t.cle, "date", e.target.value)} clearable={false} required />
+                <Button type="button" size="sm" variant="ghost" onClick={() => retirer(t.cle)} disabled={tranches.length === 1} aria-label={`Retirer la tranche ${n}`} data-testid="retirer-tranche">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            );
+          })}
         </ol>
+        <Button type="button" size="sm" variant="secondary" className="mt-3" onClick={ajouter} disabled={tranches.length >= NB_TRANCHES_MAX} data-testid="ajouter-tranche">
+          <Plus className="h-4 w-4" /> Ajouter une tranche
+        </Button>
       </Card>
 
       {state?.error && <Callout tone="danger">{state.error}</Callout>}

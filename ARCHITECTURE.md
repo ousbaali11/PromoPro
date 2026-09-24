@@ -194,6 +194,29 @@ index, `actions` sur la fiche. Les visites, photos, livraisons et la
 définition du syndic restent sur la page SAV (pas d'onglet dédié). Les
 Server Actions concernées revalident `/dashboard/clients/[id]`.
 
+## Échéancier flexible
+
+La proposition de vente porte une liste **dynamique** de tranches
+(`NewPropositionForm` : « Ajouter une tranche » / « Retirer », 40/20/20/20
+par défaut, total en temps réel) ; le serveur lit les champs
+`tranche<N>Pourcentage` / `tranche<N>Date` jusqu'au premier absent
+(`lireTranchesProposition`) et impose 1 à 24 tranches, chaque pourcentage
+dans ]0 ; 100], total 100 %, dates non passées (`verifierNouvelEcheancier`,
+`src/lib/echeancier.ts`, module pur testé). N'importe quelle répartition est
+acceptée (100 % en une fois, dix tranches de 10 %…).
+
+Une fois la vente conclue, le **commercial du bien** (ou le Responsable
+Commercial) modifie l'échéancier depuis la fiche client, onglet Échéancier &
+Paiements (`EditeurEcheancier`, action `modifierEcheancier`) :
+`verifierModificationEcheancier` conserve obligatoirement les tranches PAYEE
+ou PARTIELLE (jamais supprimées, montant jamais réduit sous ce qui a été
+payé), ne laisse retirer, redécouper ou ajouter que des tranches EN_ATTENTE
+(date non passée si nouvelle ou modifiée), impose un total de 100 % du prix,
+puis renumérote 1..N — les paiements suivent (`paiements.trancheNumero`).
+Chaque modification est journalisée avec l'échéancier avant → après (cible
+« Échéancier »), le contrat confirmé est régénéré (version archivée) et le
+client notifié.
+
 ## Livraison et double confirmation
 
 La livraison d'un bien (section 12.1) exige la confirmation du client et

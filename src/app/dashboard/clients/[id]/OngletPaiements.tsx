@@ -14,6 +14,8 @@ import { CompleterForm } from "@/app/dashboard/paiements/CompleterForm";
 import { ValiderSyndicButton } from "@/app/dashboard/paiements/ValiderSyndicButton";
 import { PaiementForm } from "@/components/paiements/PaiementForm";
 import { saisirPaiementCommercial } from "@/app/dashboard/biens/[id]/actions";
+import { EditeurEcheancier } from "./EditeurEcheancier";
+import { ymd } from "@/lib/echeancier";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_TONE = { EN_ATTENTE: "warning", PARTIELLE: "info", PAYEE: "success" } as const;
@@ -106,6 +108,16 @@ export async function OngletPaiements({
           }))}
           empty={{ title: "Échéancier non disponible", description: "Aucune tranche n'a été définie pour cette vente.", icon: <CalendarClock /> }}
         />
+        {detenu && isCommercialDuBien && dossier.proposition?.statut === "ACCEPTEE" && dossier.echeancier.length > 0 && (
+          <div className="mt-4">
+            <EditeurEcheancier
+              key={dossier.echeancier.map((e) => `${e.id}:${e.numero}:${e.pourcentage}`).join("|")}
+              bienId={bien.id}
+              prix={bien.prix}
+              tranches={dossier.echeancier.map((e) => ({ id: e.id, numero: e.numero, pourcentage: e.pourcentage, montantPaye: e.montantPaye, statut: e.statut, date: ymd(new Date(e.dateEcheance)) }))}
+            />
+          </div>
+        )}
       </Section>
 
       <Section

@@ -8,7 +8,8 @@ import { biens, clients, propositions, echeances, users, contrats, projets } fro
 import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { notify, notifyMany } from "@/lib/notifications";
-import { lireNombre, verifierPourcentages, verifierDateEcheance, verifierTexte, LONGUEURS } from "@/lib/validation";
+import { verifierTexte, LONGUEURS } from "@/lib/validation";
+import { lireTranchesProposition, montantTranche, verifierNouvelEcheancier } from "@/lib/echeancier";
 
 export async function createProposition(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["COMMERCIAL", "RESPONSABLE_COMMERCIAL"]);
@@ -21,19 +22,10 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
   if (!projet || projet.promoteurId !== session.promoteurId) return { error: "Bien introuvable." };
 
-  // --- Échéancier : lu et vérifié AVANT toute écriture (total 100 %, dates non passées) ---
-  const tranches = [1, 2, 3, 4].map((i) => ({
-    numero: i,
-    pourcentage: lireNombre(formData.get(`tranche${i}Pourcentage`)),
-    date: String(formData.get(`tranche${i}Date`) ?? ""),
-  }));
-  const erreurPourcentages = verifierPourcentages(tranches.map((t) => t.pourcentage));
-  if (erreurPourcentages) return { error: erreurPourcentages };
-  for (const t of tranches) {
-    if (!Number.isFinite(t.pourcentage)) continue;
-    const erreurDate = verifierDateEcheance(t.date, new Date(), `La date de la tranche ${t.numero}`);
-    if (erreurDate) return { error: erreurDate };
-  }
+  // --- Échéancier libre (1 à 24 tranches) : lu et vérifié AVANT toute écriture (total 100 %, dates non passées) ---
+  const tranches = lireTranchesProposition(formData);
+  const erreurEcheancier = verifierNouvelEcheancier(tranches);
+  if (erreurEcheancier) return { error: erreurEcheancier };
 
   // --- Client : sélection d'un client existant, ou création d'un nouveau ---
   let clientId = String(formData.get("clientId") ?? "");
@@ -89,20 +81,19 @@ export async function createProposition(_prev: { error?: string } | undefined, f
     .returning({ id: biens.id });
   if (!reserve) return { error: "Ce bien n'est plus disponible : une autre proposition vient d'être envoyée." };
 
-  // --- Échéancier (modifiable par le commercial, défaut 40/20/20/20) ---
+  // --- Échéancier (libre, défaut 40/20/20/20 dans le formulaire) ---
   const [proposition] = await db
     .insert(propositions)
     .values({ bienId, commercialId: session.userId, clientId, statut: "ENVOYEE" })
     .returning();
 
-  for (const t of tranches) {
-    if (!Number.isFinite(t.pourcentage)) continue;
+  for (const [i, t] of tranches.entries()) {
     await db.insert(echeances).values({
       propositionId: proposition.id,
       bienId,
-      numero: t.numero,
+      numero: i + 1,
       pourcentage: t.pourcentage,
-      montant: Math.round((t.pourcentage / 100) * bien.prix),
+      montant: montantTranche(bien.prix, t.pourcentage),
       dateEcheance: new Date(t.date),
     });
   }
