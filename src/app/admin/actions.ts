@@ -7,6 +7,7 @@ import { promoteurs, users, type Role } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { enregistrerActivite } from "@/lib/journal";
+import { invaliderTousLesEtats } from "@/lib/etat-compte";
 
 export type Acces = { role: Role; nom: string; prenom: string; identifiant: string; password: string };
 
@@ -94,6 +95,7 @@ export async function activerAbonnement(promoteurId: string, formule: string, du
     .update(promoteurs)
     .set({ statut: "ACTIF", abonnementFormule: formule, abonnementDebut: debut, abonnementFin: fin })
     .where(eq(promoteurs.id, promoteurId));
+  invaliderTousLesEtats();
   const p = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
   await enregistrerActivite({
     acteur: session,
@@ -112,6 +114,7 @@ export async function activerAbonnement(promoteurId: string, formule: string, du
 export async function suspendrePromoteur(promoteurId: string) {
   const session = await requireRole(["SUPER_ADMIN"]);
   await db.update(promoteurs).set({ statut: "SUSPENDU" }).where(eq(promoteurs.id, promoteurId));
+  invaliderTousLesEtats(); // toutes les sessions du promoteur sont révoquées dès la requête suivante
   const p = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
   await enregistrerActivite({
     acteur: session,

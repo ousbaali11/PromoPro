@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import { users, clients } from "@/db/schema";
+// (les cookies ne peuvent pas être modifiés pendant le rendu : la fermeture passe par une route)
+import { compteClientActif, compteStaffActif } from "./etat-compte";
 import {
   SESSION_COOKIE,
   verifySession,
@@ -18,17 +17,16 @@ export async function getSession() {
 }
 
 /**
- * Session staff dont le compte est encore actif (ni suspendu, ni supprimé),
- * sinon null. Pour les routes API, qui répondent 401 au lieu de rediriger.
+ * Session staff dont le compte est encore utilisable (ni suspendu, ni
+ * supprimé, promoteur actif), sinon null. Vérifié à chaque requête protégée
+ * (cache de 5 s invalidé par les actions de suspension / suppression, voir
+ * src/lib/etat-compte.ts). Pour les routes API, qui répondent 401 au lieu de
+ * rediriger.
  */
 export async function getStaffSessionActive(): Promise<SessionPayload | null> {
   const session = await getSession();
   if (!session || session.kind !== "staff") return null;
-  const compte = await db.query.users.findFirst({
-    where: eq(users.id, session.userId),
-    columns: { actif: true, deletedAt: true },
-  });
-  if (!compte || !compte.actif || compte.deletedAt) return null;
+  if (!(await compteStaffActif(session.userId))) return null;
   return session as SessionPayload;
 }
 
@@ -43,10 +41,14 @@ export async function requireStaffSession(): Promise<SessionPayload> {
   return session as SessionPayload;
 }
 
+/**
+ * Compte suspendu, supprimé ou promoteur suspendu pendant la session : on
+ * redirige vers la route qui supprime le cookie puis renvoie à /login avec un
+ * motif (un Server Component n'a pas le droit de modifier les cookies ; le
+ * faire ici renvoyait une erreur 500 au lieu de la page de connexion).
+ */
 async function fermerSession(): Promise<never> {
-  const store = await cookies();
-  store.delete(SESSION_COOKIE);
-  redirect("/login");
+  redirect("/api/session/fermer?motif=compte-inactif");
 }
 
 /** Requires a logged-in client session, or redirects to /login. */
@@ -55,11 +57,8 @@ export async function requireClientSession(): Promise<ClientSessionPayload> {
   if (!session || session.kind !== "client") {
     redirect("/login");
   }
-  const compte = await db.query.clients.findFirst({
-    where: eq(clients.id, session.clientId),
-    columns: { actif: true, deletedAt: true },
-  });
-  if (!compte || !compte.actif || compte.deletedAt) await fermerSession();
+  // Suspension / suppression du client, ou suspension de son promoteur : session fermée immédiatement
+  if (!(await compteClientActif(session.clientId))) await fermerSession();
   return session as ClientSessionPayload;
 }
 
@@ -82,10 +81,6 @@ export async function getSessionActive(): Promise<SessionPayload | ClientSession
   const session = await getSession();
   if (!session) return null;
   if (session.kind === "staff") return getStaffSessionActive();
-  const compte = await db.query.clients.findFirst({
-    where: eq(clients.id, session.clientId),
-    columns: { actif: true, deletedAt: true },
-  });
-  if (!compte || !compte.actif || compte.deletedAt) return null;
+  if (!(await compteClientActif(session.clientId))) return null;
   return session as ClientSessionPayload;
 }

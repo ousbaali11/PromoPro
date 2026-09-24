@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
+import { invaliderEtatCompte } from "@/lib/etat-compte";
 import { users, clients, biens, propositions } from "@/db/schema";
 import type { SessionPayload } from "@/lib/auth";
 import { enregistrerActivite } from "@/lib/journal";
@@ -46,6 +47,7 @@ export async function suspendreUtilisateur(session: SessionPayload, userId: stri
   if ("error" in r) return r;
   if (!r.cible.actif) return { error: "Ce compte est déjà suspendu." };
   await db.update(users).set({ actif: false }).where(eq(users.id, userId));
+  invaliderEtatCompte("user", userId);
   await enregistrerActivite({
     acteur: session,
     action: "SUSPENSION",
@@ -64,6 +66,7 @@ export async function supprimerUtilisateur(session: SessionPayload, userId: stri
   if ("error" in r) return r;
   if (r.cible.deletedAt) return { error: "Ce compte est déjà supprimé." };
   await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+  invaliderEtatCompte("user", userId);
   await enregistrerActivite({
     acteur: session,
     action: "SUPPRESSION",
@@ -83,6 +86,7 @@ export async function restaurerUtilisateur(session: SessionPayload, userId: stri
   if (r.cible.actif && !r.cible.deletedAt) return { error: "Ce compte est déjà actif." };
   const etaitSupprime = !!r.cible.deletedAt;
   await db.update(users).set({ actif: true, deletedAt: null }).where(eq(users.id, userId));
+  invaliderEtatCompte("user", userId);
   await enregistrerActivite({
     acteur: session,
     action: "RESTAURATION",
@@ -117,6 +121,7 @@ export async function suspendreClient(session: SessionPayload, clientId: string)
   if ("error" in r) return r;
   if (!r.cible.actif) return { error: "Ce compte est déjà suspendu." };
   await db.update(clients).set({ actif: false }).where(eq(clients.id, clientId));
+  invaliderEtatCompte("client", clientId);
   await enregistrerActivite({
     acteur: session,
     action: "SUSPENSION",
@@ -137,6 +142,7 @@ export async function supprimerClient(session: SessionPayload, clientId: string)
     return { error: "Ce client a une vente ou une proposition en cours : suspendez son compte plutôt que de le supprimer." };
   }
   await db.update(clients).set({ deletedAt: new Date() }).where(eq(clients.id, clientId));
+  invaliderEtatCompte("client", clientId);
   await enregistrerActivite({
     acteur: session,
     action: "SUPPRESSION",
@@ -155,6 +161,7 @@ export async function restaurerClient(session: SessionPayload, clientId: string)
   if (r.cible.actif && !r.cible.deletedAt) return { error: "Ce compte est déjà actif." };
   const etaitSupprime = !!r.cible.deletedAt;
   await db.update(clients).set({ actif: true, deletedAt: null }).where(eq(clients.id, clientId));
+  invaliderEtatCompte("client", clientId);
   await enregistrerActivite({
     acteur: session,
     action: "RESTAURATION",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { login } from "./actions";
@@ -25,6 +25,12 @@ const DEMO = [
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
+  // Motif de fermeture de session transmis par /api/session/fermer (compte ou promoteur suspendu) ; lu après hydratation
+  const motif = useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("motif"),
+    () => null,
+  );
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-navy px-4 py-10">
@@ -54,6 +60,12 @@ export default function LoginPage() {
           {state?.error && (
             <Callout tone="danger" className="mt-4">
               {state.error}
+            </Callout>
+          )}
+          {!state?.error && motif === "compte-inactif" && (
+            <Callout tone="warning" className="mt-4" testId="session-fermee">
+              Votre session a été fermée : ce compte n&apos;est plus actif ou l&apos;accès de votre promoteur est suspendu. Contactez votre
+              responsable.
             </Callout>
           )}
 

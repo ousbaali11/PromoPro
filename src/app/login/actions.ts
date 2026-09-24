@@ -89,6 +89,10 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     if (!client.actif || client.deletedAt) return echec("Ce compte a été désactivé. Contactez votre commercial.");
     const ok = await verifyPassword(motDePasse, client.passwordHash);
     if (!ok) return echec("Identifiant ou mot de passe incorrect.");
+    const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, client.promoteurId) });
+    if (promoteur?.statut !== "ACTIF") {
+      return { error: "L'espace client de votre promoteur est momentanément indisponible. Contactez votre commercial." };
+    }
 
     const token = await signSession({
       kind: "client",

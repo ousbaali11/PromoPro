@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notifications, users, type Role } from "@/db/schema";
 
@@ -36,7 +36,7 @@ export async function notifyMany(userIds: string[], params: NotifParams) {
 export async function notifyRole(promoteurId: string, role: Role | Role[], params: NotifParams) {
   const roles = Array.isArray(role) ? role : [role];
   const list = await db.query.users.findMany({
-    where: and(eq(users.promoteurId, promoteurId), eq(users.actif, true)),
+    where: and(eq(users.promoteurId, promoteurId), eq(users.actif, true), isNull(users.deletedAt)),
   });
   const ids = list.filter((u) => roles.includes(u.role)).map((u) => u.id);
   await notifyMany(ids, params);

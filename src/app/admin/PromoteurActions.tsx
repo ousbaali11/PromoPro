@@ -12,7 +12,7 @@ export function PromoteurActions({ promoteurId, statut }: { promoteurId: string;
   if (statut === "ACTIF") {
     // Action destructive : confirmation inline à deux temps (pas de confirm() navigateur)
     return (
-      <ConfirmButton size="sm" variant="danger" confirmLabel="Confirmer la suspension ?" onConfirm={() => suspendrePromoteur(promoteurId)}>
+      <ConfirmButton size="sm" variant="danger" confirmLabel="Confirmer la suspension ?" onConfirm={() => suspendrePromoteur(promoteurId)} data-testid="bouton-suspendre-promoteur">
         Suspendre
       </ConfirmButton>
     );
