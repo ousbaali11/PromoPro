@@ -557,6 +557,40 @@ nomme le promoteur « Résidences Atlas » pour que la présence de « PromoPro 
 dans un document ou l'espace client soit toujours une erreur (tests
 `pdf-marque.test.ts`, `marque.spec.ts`).
 
+### Icône de favori (favicon) : marque par défaut, logo du promoteur dans les espaces connectés
+
+Fichiers spéciaux de l'App Router (`src/app/`), aucune balise `<link>`
+écrite à la main :
+
+- `icon.svg` — icône PromoPro par défaut, même visuel que la barre latérale
+  et la page de connexion (carré doré `#b08d57` arrondi, pictogramme
+  Building2 de lucide en blanc à la moitié de la taille) ; `favicon.ico`
+  (entrées PNG 16 / 32 / 48 px, générées depuis le SVG) pour les navigateurs
+  qui ne lisent pas le SVG ; `apple-icon.tsx` (PNG 180 px, fond doré plein
+  bord — iOS arrondit lui-même) pour l'écran d'accueil iOS. Ces trois fichiers
+  s'appliquent à toute page sans icône plus spécifique : connexion, pages
+  légales, administration.
+- `dashboard/icon.tsx` et `client/icon.tsx` — icône d'onglet générée par
+  requête (`src/lib/icone-promoteur.tsx`) : le **logo du promoteur** de la
+  session s'il en a déposé un, sinon l'icône PromoPro en PNG
+  (`src/lib/icone-marque.tsx`, même dessin que `icon.svg`). Next ne
+  conserve que les icônes du segment le plus profond : dans ces deux espaces,
+  `icon.svg` n'est plus proposé (le navigateur n'a pas à choisir), seul
+  `favicon.ico` l'accompagne. Le logo (PNG ou JPG, n'importe quelle taille)
+  est ramené à un PNG carré de 64 px, contenu sans déformation sur fond
+  transparent, par `ImageResponse` (next/og) : aucune dépendance native.
+  Cache en mémoire par promoteur, invalidé dès que l'URL du logo change (un
+  nouveau dépôt a un nouveau nom de fichier) et au plus tard après dix
+  minutes ; `Cache-Control: private, max-age=900` côté navigateur. Toute
+  défaillance (promoteur introuvable, fichier absent, image illisible, base
+  indisponible) retombe silencieusement sur l'icône par défaut : une icône
+  d'onglet ne fait jamais échouer une page. L'identifiant du promoteur vient
+  de la session, jamais de la requête : un compte ne peut voir que le logo de
+  son promoteur. Sans session, ces deux routes répondent l'icône par défaut
+  — `src/proxy.ts` les exempte de la redirection vers `/login`, qui
+  servirait une page HTML en guise d'icône. L'en-tête `X-Icone-Origine`
+  (`par-defaut` / `promoteur`) dit d'où vient l'image (`favicon.spec.ts`).
+
 Les règles partagées avec le navigateur (types, extensions, tailles maximales,
 messages) vivent dans `src/lib/uploads-regles.ts`, sans import Node :
 `FileUpload` vérifie taille et extension **avant** d'envoyer le fichier

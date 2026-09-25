@@ -5,6 +5,10 @@ const SESSION_COOKIE = "promopro_session";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  // Icônes d'onglet générées (/dashboard/icon, /client/icon) : la route lit elle-même la session
+  // et ne sert le logo qu'au promoteur de cette session ; sans session elle répond l'icône par
+  // défaut. Rediriger vers /login servirait une page HTML en guise d'icône.
+  if (pathname === "/dashboard/icon" || pathname === "/client/icon") return NextResponse.next();
   const isProtected =
     pathname.startsWith("/admin") || pathname.startsWith("/dashboard") || pathname.startsWith("/client");
   if (!isProtected) return NextResponse.next();
