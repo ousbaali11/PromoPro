@@ -4,6 +4,9 @@ import * as XLSX from "xlsx";
 
 export const MDP = "demo1234";
 
+/** Suffixe des données créées par un spec : celui du run (playwright.config.ts), identique dans tous les workers. */
+export const SUFFIXE_RUN = process.env.E2E_SUFFIXE ?? Date.now().toString(36).toUpperCase().slice(-4);
+
 /** Comptes créés par le seed (src/db/seed.ts) et page d'atterrissage attendue. */
 export const COMPTES = {
   SUPERADMIN: { identifiant: "SUPERADMIN", mdp: "admin1234", atterrissage: /\/admin$/ },
@@ -26,8 +29,29 @@ export async function login(page: Page, compte: keyof typeof COMPTES) {
   await loginAvec(page, c.identifiant, c.mdp, c.atterrissage);
 }
 
+/**
+ * Masque le badge de l'overlay de développement Next.js (« N Issues », bas gauche) dans
+ * toutes les pages de la session : il est ancré au-dessus du contenu et intercepte les
+ * clics sur petit écran dès qu'un avertissement React a été émis. Les erreurs restent
+ * visibles dans la console du navigateur et dans les journaux du serveur.
+ */
+async function masquerOverlayDev(page: Page) {
+  await page.addInitScript(() => {
+    const cacher = () => {
+      if (document.getElementById("e2e-sans-overlay")) return;
+      const style = document.createElement("style");
+      style.id = "e2e-sans-overlay";
+      style.textContent = "nextjs-portal { display: none !important; }";
+      document.head.appendChild(style);
+    };
+    if (document.head) cacher();
+    else document.addEventListener("DOMContentLoaded", cacher);
+  });
+}
+
 /** Connexion avec des identifiants arbitraires (comptes créés pendant le test). */
 export async function loginAvec(page: Page, identifiant: string, mdp: string, atterrissage: RegExp = /\/(dashboard|admin|client(\/biens\/[^/]+)?)$/) {
+  await masquerOverlayDev(page);
   await page.context().clearCookies();
   await page.goto("/login");
   await page.getByLabel("Identifiant").fill(identifiant);
@@ -129,6 +153,23 @@ export async function ouvrirBienClient(page: Page, designation: string) {
     await page.getByRole("link", { name: designation, exact: true }).first().click();
   }
   await expect(page.getByRole("heading", { name: designation })).toBeVisible();
+}
+
+/**
+ * Ouvre la fiche d'un client depuis la liste en lisant le href de son lien, puis
+ * en naviguant : la liste (DataTable) est réhydratée côté client et un clic posé
+ * pendant ce re-rendu peut tomber sur un nœud détaché sans naviguer.
+ * Renvoie l'URL de la fiche (sans paramètres).
+ */
+export async function ouvrirFicheClientDepuisListe(page: Page, nom: RegExp) {
+  await page.goto("/dashboard/clients");
+  const lien = page.getByRole("link", { name: nom }).first();
+  await expect(lien).toBeVisible();
+  const href = await lien.getAttribute("href");
+  expect(href, `lien du client ${nom}`).toMatch(/^\/dashboard\/clients\/[^/?]+$/);
+  await page.goto(href!);
+  await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
+  return href!;
 }
 
 /** Id (uuid) d'un bien depuis la page projet côté staff, par sa désignation. */

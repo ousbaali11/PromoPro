@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, forgerArgumentAction, hrefBienStaff, login, loginAvec } from "./helpers";
+import { deposerFichier, forgerArgumentAction, hrefBienStaff, login, loginAvec, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Autorisation fine à l'intérieur d'un même promoteur, sur le territoire de
@@ -14,7 +14,7 @@ import { deposerFichier, forgerArgumentAction, hrefBienStaff, login, loginAvec }
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const V = { bien: `Appartement AUT${SUFFIXE}`, clientNom: `Zerouali${SUFFIXE}`, bienId: "", bienHref: "", hrefFiche: "" };
 const RC = { identifiant: "", mdp: "" };
 const NACIRI = { hrefFiche: "", bienId: "" };
@@ -26,7 +26,7 @@ async function lireAcces(bloc: ReturnType<Page["getByTestId"]>) {
 
 async function ficheDepuisListe(page: Page, nom: string) {
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(nom) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(nom));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   return page.url().split("?")[0];
 }

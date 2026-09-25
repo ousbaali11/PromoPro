@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { confirmer, forgerArgumentAction, login, loginAvec } from "./helpers";
+import { confirmer, forgerArgumentAction, login, loginAvec, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Isolation multi-promoteur sur le territoire de la restructuration : fiche
@@ -14,7 +14,7 @@ import { confirmer, forgerArgumentAction, login, loginAvec } from "./helpers";
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const C = {
   nom: `Promoteur C ${SUFFIXE}`,
   projet: `Projet C ${SUFFIXE}`,
@@ -55,7 +55,7 @@ async function recruter(page: Page, role: string, nom: string, prenom: string) {
 
 async function ouvrirFicheClient(page: Page, nom: string) {
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(nom) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(nom));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   return page.url().split("?")[0];
 }
@@ -150,7 +150,8 @@ test("mise en place : promoteur C, vente conclue, contrat en deux versions, mod√
   await page.goto(`${C.hrefFiche}?onglet=contrat`);
   C.contratId = (await page.getByTestId("carte-contrat").getAttribute("data-contrat-id"))!;
   expect(C.contratId).toMatch(/^[0-9a-f-]{36}$/);
-  const editeur = page.getByTestId("editeur-contrat");
+  const editeur = page.locator('[data-testid="editeur-contrat"][data-hydrated="true"]');
+  await expect(editeur).toBeVisible();
   await editeur.getByTestId("section-contrat").first().getByLabel("Titre de la section").fill(C.titreSection);
   await editeur.getByTestId("enregistrer-sections").click();
   await expect(page.getByTestId("contrat-message")).toContainText("Sections enregistr√©es");
@@ -166,6 +167,7 @@ test("mise en place : promoteur C, vente conclue, contrat en deux versions, mod√
   expect(C.pdfArchive).not.toBe(C.pdfCourant);
 
   await page.goto("/dashboard/contrats/modele");
+  await page.locator('[data-testid="editeur-modele"][data-hydrated="true"]').waitFor();
   await page.getByTestId("ajouter-section-modele").click();
   const nouvelle = page.getByTestId("section-modele").last();
   await nouvelle.getByLabel("Titre de la section").fill(C.titreModele);

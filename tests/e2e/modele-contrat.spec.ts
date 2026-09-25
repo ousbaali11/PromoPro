@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { confirmer, deposerFichier, hrefBienStaff, login } from "./helpers";
+import { confirmer, deposerFichier, hrefBienStaff, login, SUFFIXE_RUN } from "./helpers";
 
 /*
  * Écran « Gérer le modèle par défaut » (Responsable Administratif), séparé
@@ -11,7 +11,7 @@ import { confirmer, deposerFichier, hrefBienStaff, login } from "./helpers";
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const BIEN = `Appartement M1${SUFFIXE}`;
 const CLIENT = { nom: `Modele${SUFFIXE}`, prenom: "Contrat" };
 

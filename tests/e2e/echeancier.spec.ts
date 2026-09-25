@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { choisirTranche, deposerFichier, hrefBienStaff, login, ymd } from "./helpers";
+import { choisirTranche, deposerFichier, hrefBienStaff, login, ymd, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Échéancier flexible (phase 3). Sur une vente créée par le test :
@@ -14,7 +14,7 @@ import { choisirTranche, deposerFichier, hrefBienStaff, login, ymd } from "./hel
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const BIEN = `Appartement G1${SUFFIXE}`;
 const CLIENT = { nom: `Souple${SUFFIXE}`, prenom: "Echeancier" };
 const PRIX = 500_000;
@@ -28,7 +28,7 @@ function plusJours(d: Date, n: number) {
 
 async function ouvrirFiche(page: Page) {
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(`${CLIENT.prenom} ${CLIENT.nom}`) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(`${CLIENT.prenom} ${CLIENT.nom}`));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   hrefFiche = `${page.url().split("?")[0]}`;
   await page.getByTestId("onglets-dossier").getByRole("link", { name: "Échéancier & Paiements" }).click();

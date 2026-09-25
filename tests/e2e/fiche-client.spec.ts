@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, hrefBienStaff, login } from "./helpers";
+import { deposerFichier, hrefBienStaff, login, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Fiche client = point d'entrée unique de gestion (phase 1 de la
@@ -11,7 +11,7 @@ import { deposerFichier, hrefBienStaff, login } from "./helpers";
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const F01 = `Appartement F1${SUFFIXE}`;
 const F02 = `Appartement F2${SUFFIXE}`;
 const CLIENT = { nom: `Double${SUFFIXE}`, prenom: "Fiche" };
@@ -72,7 +72,7 @@ test("mise en place : deux biens vendus au même client", async ({ page }) => {
 test("sélecteur de bien et onglets : chaque onglet ne montre que le bien sélectionné", async ({ page }) => {
   await login(page, "COM1");
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(`${CLIENT.prenom} ${CLIENT.nom}`) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(`${CLIENT.prenom} ${CLIENT.nom}`));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   hrefClient = page.url().split("?")[0];
 

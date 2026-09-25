@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { classeurXlsx, deposerFichier, hrefBienStaff, login, loginAvec, prochainJour, ymd } from "./helpers";
+import { classeurXlsx, deposerFichier, hrefBienStaff, login, loginAvec, prochainJour, ymd, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Audit mobile avec interaction réelle : chaque page est visitée aux trois
@@ -17,7 +17,7 @@ import { classeurXlsx, deposerFichier, hrefBienStaff, login, loginAvec, prochain
  * messages sans laisser de données aux specs suivants.
  */
 const LARGEURS = [320, 375, 768] as const;
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 
 async function taille(page: Page, largeur: number) {
   await page.setViewportSize({ width: largeur, height: 740 });
@@ -41,9 +41,10 @@ async function sansDebordement(page: Page, contexte: string) {
 
 /** 2. / 3. Un élément est entièrement dans la fenêtre (largeur) et, si demandé, en hauteur. */
 async function dansLaFenetre(locator: Locator, contexte: string, hauteurAussi = false) {
-  await locator.scrollIntoViewIfNeeded();
-  // Réessai : les panneaux animés (ressort, fondu) se mesurent une fois stabilisés
+  // Réessai : les panneaux animés (ressort, fondu) se mesurent une fois stabilisés, et un re-rendu
+  // entre le défilement et la mesure (élément détaché) est simplement retenté
   await expect(async () => {
+    await locator.scrollIntoViewIfNeeded();
     const box = await locator.boundingBox();
     const vw = await locator.page().evaluate(() => window.innerWidth);
     const vh = await locator.page().evaluate(() => window.innerHeight);
@@ -256,7 +257,7 @@ test.describe("audit mobile", () => {
     test.setTimeout(600_000);
     await login(page, "COM1");
     await page.goto("/dashboard/clients");
-    await page.getByRole("link", { name: /Naciri/ }).first().click();
+    await ouvrirFicheClientDepuisListe(page, /Naciri/);
     await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
     const hrefFiche = page.url().split("?")[0];
     for (const largeur of LARGEURS) {
@@ -619,7 +620,7 @@ test.describe("audit mobile", () => {
     M.hrefX = await hrefBienStaff(page, M.bienX);
     M.hrefY = await hrefBienStaff(page, M.bienY);
     await page.goto("/dashboard/clients");
-    await page.getByRole("link", { name: new RegExp(`${M.clientPrenom} ${M.clientNom}`) }).first().click();
+    await ouvrirFicheClientDepuisListe(page, new RegExp(`${M.clientPrenom} ${M.clientNom}`));
     await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
     M.hrefFiche = page.url().split("?")[0];
   });

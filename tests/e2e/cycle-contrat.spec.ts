@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { COMPTES, confirmer, deposerFichier, hrefBienStaff, login, loginAvec } from "./helpers";
+import { COMPTES, confirmer, deposerFichier, hrefBienStaff, login, loginAvec, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Cycle suppression douce / recréation d'un contrat pour le même couple
@@ -10,7 +10,7 @@ import { COMPTES, confirmer, deposerFichier, hrefBienStaff, login, loginAvec } f
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const D = { bien: `Appartement CY${SUFFIXE}`, clientNom: `Cycle${SUFFIXE}`, bienHref: "", hrefFiche: "", contrat1: "", pdf1: "", archive1: "" };
 
 async function contexte(browser: Browser, compte: keyof typeof COMPTES) {
@@ -23,6 +23,8 @@ async function contexte(browser: Browser, compte: keyof typeof COMPTES) {
 async function ongletContrat(page: Page) {
   await page.goto(`${D.hrefFiche}?onglet=contrat`);
   await expect(page.getByTestId("onglet-contrat")).toBeVisible();
+  // L'éditeur n'est présent qu'avec un contrat actif ; s'il l'est, on attend son hydratation avant d'agir
+  if ((await page.getByTestId("editeur-contrat").count()) > 0) await page.locator('[data-testid="editeur-contrat"][data-hydrated="true"]').waitFor();
 }
 
 /** Nombre de contrats (toutes lignes) du bien dans l'index Contrats : un seul actif attendu. */
@@ -69,7 +71,7 @@ test("mise en place : vente conclue, contrat généré deux fois (une version ar
 
   await login(page, "RESPADM");
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(D.clientNom) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(D.clientNom));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   D.hrefFiche = page.url().split("?")[0];
   await ongletContrat(page);

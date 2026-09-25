@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
   // Build autonome (.next/standalone) : serveur Node minimal + dépendances
   // tracées, utilisé par le Dockerfile pour le déploiement conteneurisé.
   output: "standalone",
+  // Tests de bout en bout (serveur de dev lancé par Playwright avec E2E_TESTS=1) : le badge de
+  // l'overlay de développement, ancré en bas à gauche, recouvrait des boutons sur petit écran et
+  // interceptait les clics ; il est retiré pendant les tests, jamais en développement courant.
+  devIndicators: process.env.E2E_TESTS === "1" ? false : undefined,
   // Import Excel des prospects : le fichier transite par une Server Action
   // (lu en mémoire, jamais stocké) ; la limite par défaut est de 1 Mo.
   experimental: {

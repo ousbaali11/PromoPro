@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { login, loginAvec, confirmer } from "./helpers";
+import { login, loginAvec, confirmer, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Révocation immédiate des sessions (audit, phase 4) : un compte suspendu ou
@@ -59,7 +59,7 @@ test("client suspendu pendant sa session : l'espace client est fermé à la page
 
   await login(page, "COM1");
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: /Naciri/ }).first().click();
+  await ouvrirFicheClientDepuisListe(page, /Naciri/);
   await confirmer(page, "bouton-suspendre");
   await expect(page.getByTestId("etat-compte")).toHaveText("(suspendu)");
 

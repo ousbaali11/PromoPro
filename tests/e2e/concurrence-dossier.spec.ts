@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { COMPTES, choisirTranche, deposerFichier, hrefBienStaff, login, loginAvec, ymd } from "./helpers";
+import { COMPTES, choisirTranche, deposerFichier, hrefBienStaff, login, loginAvec, ymd, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * Concurrence sur l'échéancier flexible et le contrat par sections. Deux
@@ -13,7 +13,7 @@ import { COMPTES, choisirTranche, deposerFichier, hrefBienStaff, login, loginAve
  */
 test.describe.configure({ mode: "serial" });
 
-const SUFFIXE = Date.now().toString(36).toUpperCase().slice(-4);
+const SUFFIXE = SUFFIXE_RUN;
 const D = { bien: `Appartement CC${SUFFIXE}`, clientNom: `Concur${SUFFIXE}`, clientPrenom: "Yasmine", prix: 800000, bienHref: "", hrefFiche: "" };
 const nomClient = () => `${D.clientPrenom} ${D.clientNom}`;
 
@@ -102,7 +102,7 @@ test("mise en place : vente conclue (40/20/20/20) et contrat généré une premi
 
   await login(page, "RESPADM");
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: new RegExp(D.clientNom) }).first().click();
+  await ouvrirFicheClientDepuisListe(page, new RegExp(D.clientNom));
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   D.hrefFiche = page.url().split("?")[0];
   await page.goto(`${D.hrefFiche}?onglet=contrat`);
@@ -185,7 +185,7 @@ test("deux générations du PDF presque simultanées (deux onglets du Responsabl
   const deux = await contexte(browser, "RESPADM");
   for (const c of [un, deux]) {
     await c.page.goto(`${D.hrefFiche}?onglet=contrat`);
-    await expect(c.page.getByTestId("editeur-contrat")).toBeVisible();
+    await expect(c.page.locator('[data-testid="editeur-contrat"][data-hydrated="true"]')).toBeVisible();
   }
   const versionsAvant = await un.page.getByTestId("version-pdf").count();
   await retenir(un.page.getByTestId("editeur-contrat"), 1500);

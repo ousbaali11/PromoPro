@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, Plus, RotateCcw, Save, Trash2 } from "lucide-react"
 import { Button, ConfirmButton } from "@/components/ui/Button";
 import { Callout, Card, Input } from "@/components/ui/Primitives";
 import { useToast } from "@/components/ui/Toast";
+import { useHydrated } from "@/components/ui/useHydrated";
 import type { SectionModele } from "@/lib/contrats-sections";
 import { EditeurSegments } from "./EditeurSegments";
 import { enregistrerModele, repartirDuJeuIntegre, type EtatModele } from "@/app/dashboard/contrats/modele/actions";
@@ -23,6 +24,7 @@ export function EditeurModele({ sections, existant }: { sections: SectionModele[
   const [prochaineCle, setProchaineCle] = useState(sections.length + 1);
   const [titres, setTitres] = useState<Record<number, string>>(() => Object.fromEntries(sections.map((s, i) => [i + 1, s.titre])));
   const { toast } = useToast();
+  const hydrated = useHydrated();
   // Succès signalé par un toast : la page revalidée remonte l'éditeur (clé = date du modèle) avec les sections enregistrées
   const [state, formAction, pending] = useActionState<EtatModele, FormData>(async (prev, formData) => {
     const r = await enregistrerModele(prev, formData);
@@ -52,7 +54,7 @@ export function EditeurModele({ sections, existant }: { sections: SectionModele[
   };
 
   return (
-    <form action={formAction} className="space-y-4" data-testid="editeur-modele">
+    <form action={formAction} className="space-y-4" data-testid="editeur-modele" data-hydrated={hydrated ? "true" : undefined}>
       <ol className="space-y-3">
         <AnimatePresence initial={false}>
         {lignes.map((s, index) => (

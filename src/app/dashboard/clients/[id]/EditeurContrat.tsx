@@ -7,6 +7,7 @@ import { ArrowDown, ArrowUp, FileDown, Plus, RotateCcw, Save, Trash2 } from "luc
 import { Button, ConfirmButton } from "@/components/ui/Button";
 import { Callout, Card, Input, Textarea } from "@/components/ui/Primitives";
 import { useToast } from "@/components/ui/Toast";
+import { useHydrated } from "@/components/ui/useHydrated";
 import type { SectionContrat } from "@/lib/contrats-sections";
 import { enregistrerEtGenererContrat, enregistrerSectionsContrat, repartirDuModele, restaurerContrat, supprimerContrat, type EtatContrat } from "./contrat-actions";
 
@@ -30,6 +31,7 @@ export function EditeurContrat({ contratId, sections, statut }: { contratId: str
   const [pendingAutre, startTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
+  const hydrated = useHydrated();
   const pending = pendingSauvegarde || pendingGeneration || pendingAutre;
   const etat = etatGeneration ?? etatSauvegarde ?? message;
 
@@ -79,7 +81,7 @@ export function EditeurContrat({ contratId, sections, statut }: { contratId: str
     });
 
   return (
-    <form action={sauvegarder} className="space-y-4" data-testid="editeur-contrat">
+    <form action={sauvegarder} className="space-y-4" data-testid="editeur-contrat" data-hydrated={hydrated ? "true" : undefined}>
       <ol className="space-y-3">
         <AnimatePresence initial={false}>
         {lignes.map((s, index) => (

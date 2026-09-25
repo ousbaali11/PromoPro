@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { login, ouvrirFicheClientDepuisListe } from "./helpers";
 
 /*
  * En-tête de chaque espace : le nom (et le logo) du promoteur est un lien qui
@@ -34,7 +34,7 @@ test("rôles internes : le nom du promoteur dans l'en-tête ramène au tableau d
 
   await login(page, "COM1");
   await page.goto("/dashboard/clients");
-  await page.getByRole("link", { name: /Naciri/ }).first().click();
+  await ouvrirFicheClientDepuisListe(page, /Naciri/);
   await expect(page).toHaveURL(/\/dashboard\/clients\/[^/?]+/);
   await page.getByTestId("lien-accueil").click();
   await expect(page).toHaveURL(/\/dashboard$/);

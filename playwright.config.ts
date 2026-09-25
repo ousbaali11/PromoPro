@@ -8,6 +8,11 @@ import { defineConfig } from "@playwright/test";
  */
 const PORT = 3100;
 
+// Suffixe unique du run, hérité par les workers : un worker redémarré (après un dépassement global)
+// recharge les specs, dont les constantes de module ; ce suffixe reste identique et les données créées
+// par les tests précédents restent retrouvables.
+process.env.E2E_SUFFIXE ??= Date.now().toString(36).toUpperCase().slice(-4);
+
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 90_000,
@@ -17,6 +22,10 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   use: {
+    // Un clic ou une navigation qui n'aboutit pas en une minute échoue proprement (le test continue de tomber,
+    // mais sans dépassement global : le worker et l'état du spec survivent, le nettoyage reste possible)
+    actionTimeout: 60_000,
+    navigationTimeout: 60_000,
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -33,6 +42,8 @@ export default defineConfig({
       DATABASE_URL: "",
       ALLOW_REMOTE_DB_IN_DEV: "",
       SQLITE_PATH: "data/test.db",
+      // Retire le badge de l'overlay de développement Next.js (voir next.config.ts)
+      E2E_TESTS: "1",
       JWT_SECRET: "secret-de-test-e2e-promopro-0123456789",
       NEXT_TELEMETRY_DISABLED: "1",
     },
