@@ -219,14 +219,34 @@ Si vous modifiez `src/db/schema.sqlite.ts` :
    demande confirmation ; relisez-les avant d'accepter — une suppression de
    colonne perd ses données).
 
-Changements de schéma en attente sur la base Railway au moment d'écrire ces
-lignes (à appliquer avant le prochain déploiement, tous additifs) : table
-`epingles`, colonnes `users.deleted_at`, `clients.actif`, `clients.deleted_at`,
-table `journal_activite`, colonnes `biens.plan_3d_url`, `biens.visite_virtuelle_url`,
-`projets.delai_tma_jours`, table `demandes_tma`, colonne `promoteurs.logo_url`
-(logo optionnel du promoteur, septembre 2026 : sans elle, la création d'un
-promoteur, la liste `/admin` et l'espace client échouent — appliquez
-`npm run db:push` avant de déployer cette version).
+Changements de schéma en attente sur la base Railway (registre unique, tenu à
+jour à chaque commit qui touche `src/db/schema.sqlite.ts` ; relu et
+consolidé le 25 septembre 2026 à partir de l'historique git depuis le dernier
+`db:push` confirmé, antérieur au commit ac5a973 du 23 septembre). Tous ces
+changements sont additifs : `npm run db:push` ne supprime rien.
+
+Tables nouvelles :
+
+- `epingles` (biens épinglés par utilisateur) — ac5a973 ;
+- `journal_activite` (journal des actions) — d1a9a10 ;
+- `demandes_tma` (travaux modificatifs) — 2774856 ;
+- `contrat_sections` et `contrat_modeles` (éditeur de contrat par sections,
+  modèle par défaut) — 36bb475.
+
+Colonnes nouvelles :
+
+- `users.deleted_at` ; `clients.actif`, `clients.deleted_at` — d1a9a10 ;
+- `biens.plan_3d_url`, `biens.visite_virtuelle_url` ; `projets.delai_tma_jours`
+  — 2774856 (`biens.plan_url` est inchangée, seulement renommée côté code) ;
+- `promoteurs.logo_url` — 91db585 (sans elle, la création d'un promoteur, la
+  liste `/admin` et l'espace client échouent) ;
+- `contrats.client_id`, `contrats.historique_pdf`, `contrats.pdf_genere_at`,
+  `contrats.deleted_at` — 36bb475.
+
+Aucun commit postérieur à 36bb475 (audit, corrections CI, audit mobile,
+graphiques) ne touche le schéma. Après `db:push`, lancer une fois la
+migration ponctuelle ci-dessous, puis retirer de ce registre les entrées
+appliquées.
 
 ### Migration ponctuelle : éditeur de contrat par sections (seconde version)
 
