@@ -28,7 +28,7 @@ export function DesistementForm({ bienId, clientNom }: { bienId: string; clientN
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -6 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-clip"
           >
             <Card accent="danger" className="p-5">
               <h3 className="text-h3 text-navy-900">Désistement de {clientNom}</h3>

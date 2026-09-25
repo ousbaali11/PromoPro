@@ -47,7 +47,10 @@ export function verifierMontant(
 export function lireDate(valeur: FormDataEntryValue | string | null | undefined): Date | null {
   const s = String(valeur ?? "").trim();
   if (!s) return null;
-  const d = new Date(s);
+  // Une date seule (champ <input type="date">) est un jour LOCAL : new Date("AAAA-MM-JJ")
+  // la lirait à minuit UTC, soit la veille au soir à l'ouest de Greenwich.
+  const jour = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  const d = jour ? new Date(Number(jour[1]), Number(jour[2]) - 1, Number(jour[3])) : new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 

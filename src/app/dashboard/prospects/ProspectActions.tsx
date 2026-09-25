@@ -38,7 +38,7 @@ export function ProspectRowActions({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="w-64 overflow-hidden text-left"
+            className="w-64 overflow-clip text-left"
           >
             <div className="space-y-2 rounded-md bg-navy-50 p-3">
               <input type="hidden" name="prospectId" value={prospectId} />

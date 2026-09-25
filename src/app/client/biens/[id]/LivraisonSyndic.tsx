@@ -133,7 +133,7 @@ export function SyndicCard({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-clip"
           >
             <div className="space-y-3 rounded-md bg-navy-50 p-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

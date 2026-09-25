@@ -259,6 +259,15 @@ dans ]0 ; 100], total 100 %, dates non passées (`verifierNouvelEcheancier`,
 `src/lib/echeancier.ts`, module pur testé). N'importe quelle répartition est
 acceptée (100 % en une fois, dix tranches de 10 %…).
 
+**Dates « aujourd'hui » toujours en heure locale.** Les dates par défaut de
+la proposition viennent de `datesEcheancierParDefaut` (`ymd`, heure locale du
+serveur) ; `toISOString().slice(0, 10)` donne la date UTC, donc la veille
+entre minuit et l'heure du décalage (00 h–02 h en été à Paris, 00 h–01 h à
+Casablanca), et le formulaire refusait sa propre date par défaut. Côté
+validation, `lireDate` lit une date `AAAA-MM-JJ` à minuit local
+(`new Date("AAAA-MM-JJ")` vaut minuit UTC). Même règle pour toute borne
+`min` d'un champ date côté client (créneau de visite).
+
 Une fois la vente conclue, le **commercial du bien** (ou le Responsable
 Commercial) modifie l'échéancier depuis la fiche client, onglet Échéancier &
 Paiements (`EditeurEcheancier`, action `modifierEcheancier`) :
@@ -415,11 +424,45 @@ formulaires soumis, listes dynamiques, éditeurs) :
   dans une colonne toujours visible ; la table défile horizontalement).
 - **En-têtes repliables** : l'en-tête de l'administration passe en
   `flex-wrap` sous 375 px.
+- **Lignes de tranche sur deux lignes sous 640 px** (nouvelle proposition,
+  éditeur d'échéancier) : numéro, pourcentage et bouton Retirer, puis la date
+  sur toute la largeur, colonnes en `minmax(0,1fr)`. En une seule ligne, les
+  largeurs minimales des deux champs poussaient le bouton hors de la ligne ;
+  `overflow-hidden` masquait le défaut (Playwright faisait défiler la ligne),
+  `overflow-clip` l'a révélé. Le spec mobile vérifie désormais le bouton.
 - **Formulaires manipulés par script dans les tests** : les formulaires
   portent `data-hydrated` (`useHydrated`) ; un test qui désactive la
   validation HTML5 (`noValidate`) pour provoquer un message serveur doit
   attendre ce marqueur — posé avant l'hydratation, l'attribut déclenche un
   avertissement React et le badge de Next.js recouvre le bouton de soumission.
+
+### Animations et interactions : trois pièges rencontrés en CI
+
+Le runner GitHub est plus lent qu'un poste de développement ; trois aléas
+n'apparaissaient que là (journal et traces Playwright à l'appui) :
+
+- **Conteneur animé en hauteur = `overflow-clip`, jamais `overflow-hidden`.**
+  Un bloc `motion` qui passe de `height: 0` à `auto` en `overflow-hidden`
+  est un *conteneur de défilement* : pendant l'animation, `scrollIntoView`
+  (Playwright, lecteur d'écran, focus clavier) le fait défiler en interne
+  pour atteindre un bouton encore rogné, puis le contenu se recale quand la
+  hauteur atteint `auto`. Un clic calculé avant ce recalage atterrit sur un
+  autre élément (le formulaire de demande TMA n'était jamais soumis en CI).
+  `overflow-clip` rogne sans être défilable : le bouton reste inatteignable
+  jusqu'à la fin de l'animation, et Playwright attend naturellement.
+- **Focus géré en `useLayoutEffect`, pas en `useEffect` (`Dropdown`).** Le
+  survol d'une entrée (`mouseenter`, événement *continu* que React rend en
+  différé) laissait un effet passif en attente ; React l'exécutait au début
+  du clic suivant, *après* que `selectionner()` eut fermé le menu et placé le
+  focus dans la zone de texte de l'éditeur de modèle : l'entrée survolée
+  reprenait le focus dans un menu fermé, et l'Espace tapé ensuite rouvrait le
+  menu puis insérait une étiquette parasite. L'effet de mise en page
+  s'exécute au commit, et un miroir synchrone `ouvertRef` neutralise tout
+  effet périmé.
+- **Bouton à deux temps : toujours `confirmer()` (`tests/e2e/helpers.ts`).**
+  Un clic posé 30 ms après `load`, avant l'hydratation, est perdu ; deux
+  clics enchaînés sans vérifier `data-armed` n'arment alors que le bouton.
+  Le helper clique jusqu'à constater l'armement, puis confirme.
 
 ## Fichiers uploadés
 

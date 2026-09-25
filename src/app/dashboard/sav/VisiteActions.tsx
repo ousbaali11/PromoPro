@@ -43,7 +43,7 @@ export function VisiteActions({ visiteId }: { visiteId: string }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-clip"
           >
             <div className="flex flex-wrap items-start gap-2 rounded-md bg-navy-50 p-3">
               <Input name="motif" label="Motif (facultatif)" containerClassName="w-64" />

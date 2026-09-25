@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout, Input, Select } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { ymd } from "@/lib/echeancier";
 
 type Visite = {
   id: string;
@@ -96,7 +97,7 @@ function ChoixCreneau({ visite }: { visite: Visite }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [date, setDate] = useState("");
   const heures = useMemo(() => heuresPour(date), [date]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = ymd(new Date()); // heure locale : toISOString() donnait la veille entre minuit et l'heure du décalage
   const hydrate = useHydrated(); // marqueur pour les tests : la date est un champ contrôlé, inutile avant hydratation
 
   return (

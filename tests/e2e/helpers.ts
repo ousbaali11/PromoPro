@@ -36,11 +36,19 @@ export async function loginAvec(page: Page, identifiant: string, mdp: string, at
   await expect(page).toHaveURL(atterrissage);
 }
 
-/** Bouton de confirmation à deux temps (ConfirmButton) : premier clic arme, second confirme. */
+/**
+ * Bouton de confirmation à deux temps (ConfirmButton) : premier clic arme, second
+ * confirme. Sur un runner lent (CI), le premier clic peut tomber avant
+ * l'hydratation du composant et se perdre : on clique jusqu'à constater
+ * l'armement (`data-armed`), puis on confirme. Ne jamais cliquer deux fois de
+ * suite sans cette vérification.
+ */
 export async function confirmer(page: Page, testId: string, dans?: Locator) {
   const bouton = (dans ?? page).getByTestId(testId);
-  await bouton.click();
-  await expect(bouton).toHaveAttribute("data-armed", "true");
+  await expect(async () => {
+    await bouton.click();
+    await expect(bouton).toHaveAttribute("data-armed", "true", { timeout: 1_500 });
+  }).toPass({ timeout: 15_000 });
   await bouton.click();
 }
 

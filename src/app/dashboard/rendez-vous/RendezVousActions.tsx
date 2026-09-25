@@ -43,7 +43,7 @@ export function RendezVousActions({ rdvId }: { rdvId: string }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-clip"
           >
             <div className="flex flex-wrap items-start gap-2 rounded-md bg-navy-50 p-3">
               <Input id={`date-${rdvId}`} name="date" type="datetime-local" label="Nouvelle date et heure" containerClassName="w-56" clearable={false} required />

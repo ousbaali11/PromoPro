@@ -279,6 +279,7 @@ test.describe("audit mobile", () => {
     await expect(lignes).toHaveCount(avant + 1);
     await sansDebordement(page, "éditeur d'échéancier après ajout 375px");
     for (const champ of [`#edition-tranche${avant + 1}Pourcentage`, `#edition-tranche${avant + 1}Date`]) await dansLaFenetre(formEch.locator(champ), `${champ} 375px`);
+    await dansLaFenetre(lignes.last().getByTestId("retirer-tranche"), "bouton Retirer de la tranche ajoutée 375px");
     await dansLaFenetre(formEch.getByTestId("enregistrer-echeancier"), "bouton Enregistrer l'échéancier 375px");
     await lignes.last().getByTestId("retirer-tranche").click();
     await expect(lignes).toHaveCount(avant);
@@ -354,6 +355,7 @@ test.describe("audit mobile", () => {
       await sansDebordement(page, `nouvelle proposition + tranche ${largeur}px`);
       await dansLaFenetre(page.locator("#tranche5Pourcentage"), `pourcentage de la 5e tranche ${largeur}px`);
       await dansLaFenetre(page.locator("#tranche5Date"), `date de la 5e tranche ${largeur}px`);
+      await dansLaFenetre(lignes.last().getByTestId("retirer-tranche"), `bouton Retirer de la 5e tranche ${largeur}px`);
       await lignes.last().getByTestId("retirer-tranche").click();
       await expect(lignes).toHaveCount(4);
     }

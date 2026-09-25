@@ -146,3 +146,18 @@ export function ymd(d: Date) {
   const z = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
+
+/**
+ * Dates par défaut d'une nouvelle proposition (40 % le jour du blocage puis
+ * tous les 6 mois), au format des champs date, en heure LOCALE du serveur.
+ * `toISOString()` donnait la date UTC : entre minuit et l'heure du décalage
+ * (00 h–02 h en été à Paris, 00 h–01 h à Casablanca), la première tranche
+ * tombait « hier » et le formulaire refusait sa propre date par défaut.
+ */
+export function datesEcheancierParDefaut(now = new Date(), ecartMois = [0, 6, 12, 18]): string[] {
+  return ecartMois.map((m) => {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() + m);
+    return ymd(d);
+  });
+}

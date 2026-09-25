@@ -11,7 +11,8 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Build + unitaires + ~19 min de bout en bout : marge sur un runner partagé.
+    timeout-minutes: 35
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       # Aucune DATABASE_URL : mode SQLite local, garanti hors production.

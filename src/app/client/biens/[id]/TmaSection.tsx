@@ -75,7 +75,7 @@ export function TmaSection({
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-                    className="overflow-hidden"
+                    className="overflow-clip"
                     data-testid="form-tma"
                   >
                     <div className="space-y-3 rounded-md bg-navy-50 p-3">

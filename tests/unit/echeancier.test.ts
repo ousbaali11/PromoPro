@@ -7,13 +7,37 @@ import {
   montantTranche,
   verifierModificationEcheancier,
   verifierNouvelEcheancier,
+  datesEcheancierParDefaut,
   ymd,
 } from "@/lib/echeancier";
+import { verifierDateEcheance } from "@/lib/validation";
 
 const aujourdHui = new Date("2026-09-24T10:00:00");
 const demain = "2026-09-25";
 const dans6mois = "2027-03-25";
 const hier = "2026-09-23";
+
+describe("dates par défaut et fenêtre de minuit (heure locale)", () => {
+  // 00 h 30 heure locale : en UTC+2 il est encore 22 h 30 la veille — toISOString() donnait la veille.
+  const minuitTrente = new Date(2026, 8, 25, 0, 30);
+
+  it("les dates par défaut sont locales : la première tranche tombe aujourd'hui, puis tous les 6 mois", () => {
+    expect(datesEcheancierParDefaut(minuitTrente)).toEqual(["2026-09-25", "2027-03-25", "2027-09-25", "2028-03-25"]);
+    expect(datesEcheancierParDefaut(minuitTrente)[0]).toBe(ymd(minuitTrente));
+  });
+
+  it("le formulaire accepte ses propres dates par défaut à 00 h 30", () => {
+    const dates = datesEcheancierParDefaut(minuitTrente);
+    const tranches = [40, 20, 20, 20].map((pourcentage, i) => ({ id: "", pourcentage, date: dates[i] }));
+    expect(verifierNouvelEcheancier(tranches, minuitTrente)).toBeNull();
+    expect(verifierDateEcheance(dates[0], minuitTrente)).toBeNull();
+  });
+
+  it("une date AAAA-MM-JJ est lue à minuit local : hier est refusé, aujourd'hui accepté quel que soit le fuseau", () => {
+    expect(verifierDateEcheance("2026-09-24", minuitTrente)).toMatch(/dans le passé/);
+    expect(verifierDateEcheance("2026-09-25", new Date(2026, 8, 25, 23, 59))).toBeNull();
+  });
+});
 
 describe("échéancier flexible : nouvelle proposition (N tranches)", () => {
   it("lit les tranches numérotées du formulaire jusqu'à la première absente", () => {

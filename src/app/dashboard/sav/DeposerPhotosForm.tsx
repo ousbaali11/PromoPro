@@ -30,7 +30,7 @@ export function DeposerPhotosForm({ demandeId }: { demandeId: string }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="w-full overflow-hidden sm:w-96"
+            className="w-full overflow-clip sm:w-96"
           >
             <div className="space-y-3 rounded-md bg-navy-50 p-3">
               <FileUpload name="photos" type="photos-avancement" label="Photos (JPG, PNG ou PDF)" multiple required accept=".jpg,.jpeg,.png,.pdf" />

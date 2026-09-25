@@ -26,7 +26,7 @@ export function AjouterPaiement({ bienId, echeances }: { bienId: string; echeanc
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="overflow-hidden"
+            className="overflow-clip"
           >
             <div className="rounded-md bg-navy-50 p-4">
               <div className="mb-4 flex items-start justify-between gap-3">

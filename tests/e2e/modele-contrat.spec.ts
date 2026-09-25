@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, hrefBienStaff, login } from "./helpers";
+import { confirmer, deposerFichier, hrefBienStaff, login } from "./helpers";
 
 /*
  * Écran « Gérer le modèle par défaut » (Responsable Administratif), séparé
@@ -132,8 +132,7 @@ test("nettoyage : désistement traité jusqu'au remboursement, modèle ramené a
   await expect(dossier.getByText("Remboursé", { exact: true })).toBeVisible();
 
   await page.goto("/dashboard/contrats/modele");
-  await page.getByTestId("repartir-jeu-integre").click();
-  await page.getByTestId("repartir-jeu-integre").click();
+  await confirmer(page, "repartir-jeu-integre");
   await expect(page.getByTestId("toast").filter({ hasText: "jeu de sections intégré" })).toBeVisible();
   await expect(page.getByTestId("editeur-modele").getByTestId("section-modele")).toHaveCount(6);
 });

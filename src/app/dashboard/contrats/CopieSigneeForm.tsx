@@ -29,7 +29,7 @@ export function CopieSigneeForm({ contratId }: { contratId: string }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-            className="w-72 overflow-hidden"
+            className="w-72 overflow-clip"
           >
             <div className="space-y-2 rounded-md bg-navy-50 p-3">
               <input type="hidden" name="contratId" value={contratId} />

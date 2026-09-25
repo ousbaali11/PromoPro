@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,12 +41,18 @@ export function Dropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [actif, setActif] = useState(0);
+  // Miroir synchrone de `open` : mis à false dans fermer() avant tout rendu, pour
+  // qu'un effet de focus issu d'un rendu antérieur ne puisse plus agir.
+  const ouvertRef = useRef(false);
   const racine = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const actifs = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
 
-  const fermer = useCallback(() => setOpen(false), []);
+  const fermer = useCallback(() => {
+    ouvertRef.current = false;
+    setOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -57,8 +63,15 @@ export function Dropdown({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open, fermer]);
 
-  useEffect(() => {
-    if (!open) return;
+  // Focus de l'entrée active : en effet de mise en page (synchrone au commit).
+  // En effet passif, le rendu déclenché par le survol (événement continu, différé
+  // par React) laissait un effet en attente que React exécutait au début du clic
+  // suivant, APRÈS que selectionner() eut fermé le menu et placé le focus
+  // ailleurs : l'entrée survolée reprenait le focus dans un menu fermé, et la
+  // frappe suivante (Espace) rouvrait le menu puis sélectionnait une entrée
+  // parasite. Le miroir ouvertRef écarte tout effet périmé.
+  useLayoutEffect(() => {
+    if (!open || !ouvertRef.current) return;
     const el = racine.current?.querySelector<HTMLElement>(`[data-index="${actif}"]`);
     el?.focus();
   }, [open, actif]);
@@ -67,6 +80,7 @@ export function Dropdown({
   useRecalageDansFenetre(open, racine, menu, align);
 
   const ouvrir = () => {
+    ouvertRef.current = true;
     setActif(actifs[0] ?? 0);
     setOpen(true);
   };

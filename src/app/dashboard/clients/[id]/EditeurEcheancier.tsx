@@ -83,12 +83,12 @@ export function EditeurEcheancier({ bienId, prix, tranches }: { bienId: string; 
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.8 }}
-                className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 overflow-hidden rounded-md bg-navy-50 p-3"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 overflow-clip rounded-md bg-navy-50 p-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto]"
                 data-testid="tranche-edition"
                 data-statut={t.statut}
               >
                 <input type="hidden" name="trancheId" value={t.id ?? ""} />
-                <div className="flex flex-col items-center gap-1 pr-1">
+                <div className="row-span-2 flex flex-col items-center gap-1 pr-1 sm:row-span-1">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy text-[11px] font-semibold text-white tabular">{n}</span>
                   <span className="text-caption text-navy-400 tabular">{formatMoney(montant)}</span>
                   {verrouillee && <StatusBadge statut={t.statut} label={ECH_LABEL[t.statut] ?? t.statut} tone={ECH_TONE[t.statut as keyof typeof ECH_TONE] ?? "neutral"} />}
@@ -106,7 +106,17 @@ export function EditeurEcheancier({ bienId, prix, tranches }: { bienId: string; 
                   clearable={false}
                   required
                 />
-                <Input id={`edition-tranche${n}Date`} name="trancheDate" type="date" label="Date" value={t.date} onChange={(e) => modifier(t.cle, "date", e.target.value)} clearable={false} required />
+                <Input
+                  id={`edition-tranche${n}Date`}
+                  name="trancheDate"
+                  type="date"
+                  label="Date"
+                  value={t.date}
+                  onChange={(e) => modifier(t.cle, "date", e.target.value)}
+                  containerClassName="col-span-2 sm:col-span-1"
+                  clearable={false}
+                  required
+                />
                 {verrouillee ? (
                   <span className="w-9" aria-hidden />
                 ) : (

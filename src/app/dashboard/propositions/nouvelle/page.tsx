@@ -4,7 +4,8 @@ import { db } from "@/db/client";
 import { biens, clients, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
 import { PageHeader, Breadcrumb } from "@/components/ui/Primitives";
-import { formatMoney, addMonths } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
+import { datesEcheancierParDefaut } from "@/lib/echeancier";
 import { NewPropositionForm } from "./NewPropositionForm";
 
 export default async function NouvellePropositionPage({
@@ -23,10 +24,7 @@ export default async function NouvellePropositionPage({
   // Seuls les clients actifs (ni suspendus, ni supprimés) peuvent recevoir une nouvelle proposition
   const listeClients = (await db.query.clients.findMany({ where: and(eq(clients.promoteurId, session.promoteurId!), isNull(clients.deletedAt)) })).filter((c) => c.actif);
 
-  const today = new Date();
-  const defaultDates = [today, addMonths(today, 6), addMonths(today, 12), addMonths(today, 18)].map(
-    (d) => d.toISOString().slice(0, 10),
-  );
+  const defaultDates = datesEcheancierParDefaut();
 
   return (
     <div className="mx-auto max-w-2xl">
