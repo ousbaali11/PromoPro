@@ -280,6 +280,37 @@ Chaque modification est journalisée avec l'échéancier avant → après (cible
 « Échéancier »), le contrat confirmé est régénéré (version archivée) et le
 client notifié.
 
+## Concurrence sur le dossier client
+
+Deux Server Actions peuvent viser le même dossier au même instant (deux
+onglets, deux rôles). Trois mécanismes, combinés :
+
+- **Verrou en mémoire par clé** (`avecVerrou`, `src/lib/verrou.ts`) : les
+  sections critiques d'une même clé s'enchaînent dans l'ordre d'arrivée —
+  `echeancier:<bienId>` (modification de l'échéancier et imputation d'un
+  paiement validé), `contrat-actif:<bienId>` (création et restauration d'un
+  contrat). Un seul serveur Node en production ; le verrou ne traverse pas
+  plusieurs instances, d'où les deux mécanismes suivants.
+- **Écritures conditionnelles** : une tranche ne se supprime que si elle est
+  encore `EN_ATTENTE` au moment d'écrire (`delete … where statut = 'EN_ATTENTE'`,
+  sinon « vient de recevoir un paiement ») ; un paiement ne passe à `VALIDE`
+  que s'il ne l'est pas déjà ; une tranche visée par un paiement encore en
+  attente de validation comptable ne peut pas être supprimée
+  (`verifierModificationEcheancier`, module pur). Les tranches sont relues
+  sous le verrou, jamais depuis l'état lu avant lui.
+- **Génération de PDF optimiste** (`genererPdfContrat`) : l'historique est
+  relu au moment d'écrire et l'écriture n'est acceptée que si le PDF courant
+  n'a pas changé entre-temps, sinon on recommence sur l'état frais — deux
+  générations presque simultanées archivent chacune la version précédente,
+  aucune n'est perdue ni dupliquée. `creerContrat` vérifie après insertion
+  qu'un seul contrat actif subsiste pour le couple bien-client et retire le
+  sien sinon.
+
+Le champ caché `_delaiTest` (`delaiDeTest`, ignoré en production) retient
+une action après sa lecture initiale pour que les tests de concurrence
+(`concurrence-dossier.spec.ts`, `cycle-contrat.spec.ts`) placent la seconde
+requête exactement dans la fenêtre « lu, pas encore écrit ».
+
 ## Plage de dates des tableaux de bord
 
 Le tableau de bord interne (`/dashboard`, tous les rôles sauf le client)

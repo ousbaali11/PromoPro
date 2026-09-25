@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { biens, clients, echeances, paiements, projets, propositions, users } from "@/db/schema";
 import { parsePublicPath } from "@/lib/storage";
@@ -9,6 +9,7 @@ import { exigerStockageInscriptible } from "@/lib/storage";
 import { notifyClient, notifyRole } from "@/lib/notifications";
 import { verifierMontant, lireNombre } from "@/lib/validation";
 import { repartirImputation, restantDuTotal } from "@/lib/imputation";
+import { avecVerrou } from "@/lib/verrou";
 
 /**
  * Logique métier partagée des paiements (sections 6.8, 9, 11.8, 11.9, 13.3).
@@ -247,10 +248,12 @@ export async function validerPaiement(
       valideParId: complement.valideParId,
       validatedAt: new Date(),
     })
-    .where(eq(paiements.id, paiementId))
+    .where(and(eq(paiements.id, paiementId), ne(paiements.statut, "VALIDE")))
     .returning();
+  if (!updated) return { error: "Ce paiement est déjà validé." };
 
-  const { imputations } = await imputerSurEcheancier(bien.id, paiement.echeanceId, complement.montantExact);
+  // Sous le verrou de l'échéancier du bien : une modification concurrente de l'échéancier attend la fin de l'imputation
+  const { imputations } = await avecVerrou(`echeancier:${bien.id}`, () => imputerSurEcheancier(bien.id, paiement.echeanceId, complement.montantExact));
   const echeance = paiement.echeanceId
     ? await db.query.echeances.findFirst({ where: eq(echeances.id, paiement.echeanceId) })
     : null;

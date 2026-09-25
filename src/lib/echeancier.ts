@@ -86,6 +86,8 @@ export function verifierModificationEcheancier(
   saisies: TrancheSaisie[],
   prix: number,
   aujourdHui = new Date(),
+  /** Tranches visées par un paiement encore en attente de validation comptable : conservées elles aussi. */
+  avecPaiementEnAttente: ReadonlySet<string> = new Set(),
 ): ModificationEcheancier | { error: string } {
   if (saisies.length === 0) return { error: "Renseignez au moins une tranche." };
   if (saisies.length > NB_TRANCHES_MAX) return { error: `Un échéancier ne peut pas dépasser ${NB_TRANCHES_MAX} tranches.` };
@@ -100,6 +102,9 @@ export function verifierModificationEcheancier(
   for (const e of existantes) {
     if (e.statut !== "EN_ATTENTE" && !idsSaisis.has(e.id)) {
       return { error: `La tranche ${e.numero} a déjà reçu un paiement : elle ne peut pas être supprimée.` };
+    }
+    if (avecPaiementEnAttente.has(e.id) && !idsSaisis.has(e.id)) {
+      return { error: `La tranche ${e.numero} est visée par un paiement en attente de validation comptable : elle ne peut pas être supprimée avant son traitement.` };
     }
   }
   const erreurPct = verifierPourcentages(saisies.map((t) => t.pourcentage));

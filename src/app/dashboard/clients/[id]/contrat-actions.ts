@@ -10,6 +10,7 @@ import { tenterStockage } from "@/lib/stockage-erreurs";
 import { notify } from "@/lib/notifications";
 import { decrireChangementsSections, lireSectionsFormulaire } from "@/lib/contrats-sections";
 import { appliquerSections, contexteContrat, genererPdfContrat, modeleDuPromoteur, remplacerSections, sectionsDuContrat, sectionsInitiales, type Contrat } from "@/lib/contrats";
+import { avecVerrou, delaiDeTest } from "@/lib/verrou";
 
 /*
  * Éditeur de contrat (fiche client, onglet Contrat) — Responsable
@@ -85,6 +86,7 @@ export async function enregistrerEtGenererContrat(contratId: string, _prev: Etat
   const changements = decrireChangementsSections(avant, lu.sections);
   if (changements) await appliquerSections(contratId, lu.sections);
 
+  await delaiDeTest(formData);
   const generation = await tenterStockage("contrat (génération du PDF)", () => genererPdfContrat(r.contrat));
   if (!generation.ok) return { error: generation.error };
   const { version, premiere } = generation.valeur;
@@ -155,13 +157,17 @@ export async function restaurerContrat(contratId: string): Promise<EtatContrat> 
   const r = await contratDuPromoteur(contratId, session);
   if ("error" in r) return { error: r.error };
   if (!r.contrat.deletedAt) return { error: "Ce contrat n'est pas supprimé." };
-  const autre = await db.query.contrats.findFirst({
-    where: and(eq(contrats.bienId, r.bien.id), isNull(contrats.deletedAt), ne(contrats.id, contratId)),
+  const restauration = await avecVerrou(`contrat-actif:${r.bien.id}`, async () => {
+    const autre = await db.query.contrats.findFirst({
+      where: and(eq(contrats.bienId, r.bien.id), isNull(contrats.deletedAt), ne(contrats.id, contratId)),
+    });
+    if (autre && (!autre.clientId || autre.clientId === (r.contrat.clientId ?? r.bien.clientId))) {
+      return { error: "Un autre contrat actif existe déjà pour ce bien : supprimez-le d'abord." };
+    }
+    await db.update(contrats).set({ deletedAt: null }).where(eq(contrats.id, contratId));
+    return null;
   });
-  if (autre && (!autre.clientId || autre.clientId === (r.contrat.clientId ?? r.bien.clientId))) {
-    return { error: "Un autre contrat actif existe déjà pour ce bien : supprimez-le d'abord." };
-  }
-  await db.update(contrats).set({ deletedAt: null }).where(eq(contrats.id, contratId));
+  if (restauration) return restauration;
   await enregistrerActivite({ acteur: session, action: "RESTAURATION", cibleType: "contrat", cibleId: contratId, cibleNom: `Contrat ${r.bien.designation}` });
   revalider(r.bien.id);
   return { success: "Contrat restauré." };
@@ -174,9 +180,23 @@ export async function creerContrat(bienId: string, clientId: string): Promise<Et
   const projet = bien ? await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) }) : null;
   if (!bien || !projet || projet.promoteurId !== session.promoteurId) return { error: "Bien introuvable." };
   if (bien.clientId !== clientId || !["VENDU", "LIVRE"].includes(bien.statut)) return { error: "Ce bien n'est pas vendu à ce client." };
-  const actif = await db.query.contrats.findFirst({ where: and(eq(contrats.bienId, bienId), isNull(contrats.deletedAt)) });
-  if (actif && (!actif.clientId || actif.clientId === clientId)) return { error: "Un contrat actif existe déjà pour ce bien." };
-  const [contrat] = await db.insert(contrats).values({ bienId, clientId, statut: "EN_ATTENTE" }).returning();
+  // Jamais deux contrats actifs pour le même bien et le même client : vérification et insertion sous verrou,
+  // puis contrôle après écriture (si deux insertions se sont tout de même croisées, seule la plus ancienne reste).
+  const creation = await avecVerrou(`contrat-actif:${bienId}`, async () => {
+    const actif = await db.query.contrats.findFirst({ where: and(eq(contrats.bienId, bienId), isNull(contrats.deletedAt)) });
+    if (actif && (!actif.clientId || actif.clientId === clientId)) return { error: "Un contrat actif existe déjà pour ce bien." };
+    const [contrat] = await db.insert(contrats).values({ bienId, clientId, statut: "EN_ATTENTE" }).returning();
+    const actifs = (await db.query.contrats.findMany({ where: and(eq(contrats.bienId, bienId), isNull(contrats.deletedAt)) }))
+      .filter((c) => !c.clientId || c.clientId === clientId)
+      .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0) || a.id.localeCompare(b.id));
+    if (actifs.length > 1 && actifs[0].id !== contrat.id) {
+      await db.delete(contrats).where(eq(contrats.id, contrat.id));
+      return { error: "Un contrat actif existe déjà pour ce bien." };
+    }
+    return { contrat };
+  });
+  if ("error" in creation) return { error: creation.error };
+  const { contrat } = creation;
   await enregistrerActivite({ acteur: session, action: "CREATION", cibleType: "contrat", cibleId: contrat.id, cibleNom: `Contrat ${bien.designation}`, details: "Nouveau contrat créé après suppression du précédent" });
   revalider(bien.id);
   return { success: "Nouveau contrat créé : complétez ses sections puis générez le PDF." };

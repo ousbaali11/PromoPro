@@ -140,3 +140,18 @@ describe("échéancier flexible : modification d'une vente conclue", () => {
     );
   });
 });
+
+describe("échéancier flexible : tranche visée par un paiement en attente", () => {
+  const existantes = [
+    { id: "e1", numero: 1, pourcentage: 40, montant: 400000, montantPaye: 0, statut: "EN_ATTENTE", dateEcheance: new Date("2026-09-24") },
+    { id: "e2", numero: 2, pourcentage: 60, montant: 600000, montantPaye: 0, statut: "EN_ATTENTE", dateEcheance: new Date("2027-03-24") },
+  ];
+  it("ne peut pas être supprimée tant que le paiement n'est pas traité", () => {
+    const r = verifierModificationEcheancier(existantes, [{ id: "e1", pourcentage: 100, date: "2026-09-24" }], 1_000_000, new Date("2026-09-24T10:00:00"), new Set(["e2"]));
+    expect(r).toEqual({ error: "La tranche 2 est visée par un paiement en attente de validation comptable : elle ne peut pas être supprimée avant son traitement." });
+  });
+  it("reste modifiable (pourcentage, date) tant qu'elle est conservée", () => {
+    const r = verifierModificationEcheancier(existantes, [{ id: "e1", pourcentage: 50, date: "2026-09-24" }, { id: "e2", pourcentage: 50, date: "2027-03-24" }], 1_000_000, new Date("2026-09-24T10:00:00"), new Set(["e2"]));
+    expect("error" in r).toBe(false);
+  });
+});

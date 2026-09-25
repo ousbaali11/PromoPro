@@ -142,16 +142,25 @@ export async function genererPdfContrat(contrat: Contrat): Promise<{ pdfUrl: str
     reference: ctx.reference,
     sections: sections.map((s) => ({ titre: s.titre, contenu: contientJetons(s.contenu) ? rendreTexte(s.contenu, valeurs) : s.contenu })),
   });
-  const historique = archiverPdf(lireHistoriquePdf(contrat.historiquePdf), contrat.pdfUrl, contrat.pdfGenereAt ?? contrat.confirmedAt);
-  const premiere = contrat.statut === "EN_ATTENTE";
-  await db
-    .update(contrats)
-    .set({
-      pdfUrl,
-      pdfGenereAt: new Date(),
-      historiquePdf: JSON.stringify(historique),
-      ...(premiere ? { statut: "PRET", confirmedAt: new Date() } : {}),
-    })
-    .where(eq(contrats.id, contrat.id));
-  return { pdfUrl, version: historique.length + 1, premiere };
+  // Mise à jour optimiste : l'historique est relu au moment d'écrire et l'écriture n'est acceptée que si le
+  // PDF courant n'a pas changé entre-temps ; sinon on recommence sur l'état frais (deux générations presque
+  // simultanées archivent chacune la version précédente, aucune n'est perdue ni dupliquée).
+  for (let essai = 0; essai < 5; essai++) {
+    const frais = essai === 0 ? contrat : await db.query.contrats.findFirst({ where: eq(contrats.id, contrat.id) });
+    if (!frais) throw new Error("Contrat introuvable pendant la génération.");
+    const historique = archiverPdf(lireHistoriquePdf(frais.historiquePdf), frais.pdfUrl, frais.pdfGenereAt ?? frais.confirmedAt);
+    const premiere = frais.statut === "EN_ATTENTE";
+    const [maj] = await db
+      .update(contrats)
+      .set({
+        pdfUrl,
+        pdfGenereAt: new Date(),
+        historiquePdf: JSON.stringify(historique),
+        ...(premiere ? { statut: "PRET", confirmedAt: new Date() } : {}),
+      })
+      .where(and(eq(contrats.id, contrat.id), frais.pdfUrl ? eq(contrats.pdfUrl, frais.pdfUrl) : isNull(contrats.pdfUrl)))
+      .returning({ id: contrats.id });
+    if (maj) return { pdfUrl, version: historique.length + 1, premiere };
+  }
+  throw new Error("Le contrat a été modifié pendant la génération du PDF : réessayez.");
 }
