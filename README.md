@@ -481,7 +481,13 @@ npm run test:e2e    # bout en bout (Playwright) : serveur de dev sur data/test.d
   et soumis à 375 px avec message d'erreur affiché, liste dynamique de
   tranches et éditeur de contrat par sections) ; à chaque étape : aucun
   débordement horizontal (`scrollWidth` ≤ largeur de la fenêtre) et boutons,
-  champs et panneaux entièrement dans la fenêtre.
+  champs et panneaux entièrement dans la fenêtre. Le spec crée son propre jeu
+  de données à 375 px (deux biens, un client, deux propositions acceptées)
+  pour parcourir les chemins de succès réels — paiement, import de prospects
+  confirmé, syndic, encaissement, demande de modification, devis, rendez-vous,
+  livraison, visite, photos —, l'accueil de l'espace client à plusieurs biens,
+  la recherche globale, les modales Bloquer / Supprimer et Négocier, et les
+  éditeurs à 320 px ; il nettoie par désistement traité jusqu'au remboursement.
   Les contrastes de la palette se vérifient à part, sans navigateur :
   `npm run check:contrast` lit les tokens de `src/app/globals.css` et
   calcule le ratio WCAG de chaque paire d'usage (texte 4,5:1, graphique

@@ -315,7 +315,7 @@ Comptable Interne (paiements validés), Responsable Administratif (contrats
 générés vs confirmés), Assistant Administratif (prospects importés vs
 traités), SAV (visites et travaux modificatifs traités). Les totaux et le
 total de chaque graphique sont exposés en attributs `data-valeur` /
-`data-total` pour les tests.
+`data-total` pour les tests. **État vide** explicite (`graphique-vide`, « Aucune donnée sur cette période ») à la place des axes à zéro dès qu'aucune série n'a de valeur (`seriesVides`, module pur) ; **frontière d'erreur** propre à la section (`ErreurGraphiques`, composant client) : un calcul qui échoue affiche un message et un bouton Réessayer sans emporter la page vers `error.tsx` ; `?graphiques=panne` simule la panne hors production pour les tests
 
 ## Livraison et double confirmation
 
@@ -424,6 +424,10 @@ formulaires soumis, listes dynamiques, éditeurs) :
   dans une colonne toujours visible ; la table défile horizontalement).
 - **En-têtes repliables** : l'en-tête de l'administration passe en
   `flex-wrap` sous 375 px.
+- **Jeu de données propre au spec mobile** : deux biens vendus à un client de
+  test, créés par les vrais formulaires à 375 px, pour exercer les chemins de
+  succès sans toucher aux données du seed que les specs suivants supposent
+  (une seule vente sur A01) ; nettoyé par désistement remboursé.
 - **Lignes de tranche sur deux lignes sous 640 px** (nouvelle proposition,
   éditeur d'échéancier) : numéro, pourcentage et bouton Retirer, puis la date
   sur toute la largeur, colonnes en `minmax(0,1fr)`. En une seule ligne, les

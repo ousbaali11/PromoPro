@@ -88,6 +88,11 @@ export function lignesDonnees(liste: Intervalle[], series: Serie[]): LigneDonnee
   });
 }
 
+/** Vrai quand aucune des séries n'a de valeur non nulle sur les lignes : l'état vide remplace alors les axes à zéro. */
+export function seriesVides(lignes: Record<string, number | string>[], cles: string[]) {
+  return lignes.every((l) => cles.every((c) => !Number(l[c])));
+}
+
 export function total(valeurs: number[]) {
   return Math.round(valeurs.reduce((s, v) => s + v, 0) * 100) / 100;
 }

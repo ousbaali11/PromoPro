@@ -73,4 +73,24 @@ test("SAV : demandes traitées sur la période (aujourd'hui ≥ 1, la semaine de
   await page.goto("/dashboard?plage=semaine-derniere");
   expect(await valeur(page, "visites")).toBe(0);
   expect(await totalGraphique(page, "graphique-barres")).toBe(0);
+  // État vide explicite à la place des axes à zéro (un par graphique), totaux conservés
+  await expect(page.getByTestId("graphique-vide")).toHaveCount(2);
+  await expect(page.getByTestId("graphique-vide").first()).toContainText("Aucune donnée sur cette période");
+  await expect(page.getByTestId("graphique-barres").locator("svg")).toHaveCount(0);
+});
+
+test("panne du calcul des graphiques : message localisé à la section, reste du tableau de bord intact, Réessayer", async ({ page }) => {
+  await login(page, "PDG");
+  await page.goto("/dashboard?plage=7j&graphiques=panne");
+  const erreur = page.getByTestId("graphiques-erreur");
+  await expect(erreur).toBeVisible();
+  await expect(erreur).toContainText("Les graphiques n'ont pas pu être calculés");
+  await expect(page.getByTestId("graphiques")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible(); // la page n'est pas tombée sur error.tsx
+  await expect(page.getByTestId("selecteur-plage")).toBeVisible();
+  await expect(page.getByText("Une erreur est survenue")).toHaveCount(0);
+  // Réessayer : la panne est portée par l'URL, on la retire puis la section revient
+  await page.goto("/dashboard?plage=7j");
+  await expect(page.getByTestId("graphiques")).toHaveAttribute("data-plage", "7j");
+  await expect(page.getByTestId("graphiques-erreur")).toHaveCount(0);
 });

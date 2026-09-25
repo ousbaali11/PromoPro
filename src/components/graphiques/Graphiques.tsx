@@ -3,6 +3,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card } from "@/components/ui/Primitives";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { seriesVides } from "@/lib/graphiques";
 
 /*
  * Graphiques des tableaux de bord (recharts, couleurs du système : navy et
@@ -27,7 +28,7 @@ function formatComplet(v: number, unite: Unite) {
   return unite === "mad" ? `${Math.round(v).toLocaleString("fr-FR")} MAD` : v.toLocaleString("fr-FR");
 }
 
-function Cadre({ titre, description, total, unite, testId, children }: { titre: string; description?: string; total: number; unite: Unite; testId: string; children: React.ReactNode }) {
+function Cadre({ titre, description, total, unite, testId, vide, children }: { titre: string; description?: string; total: number; unite: Unite; testId: string; vide: boolean; children: React.ReactNode }) {
   return (
     <Card className="p-5" data-testid={testId} data-total={total}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -39,7 +40,14 @@ function Cadre({ titre, description, total, unite, testId, children }: { titre: 
           {formatComplet(total, unite)}
         </span>
       </div>
-      <div className="h-60 w-full">{children}</div>
+      {vide ? (
+        <div className="flex h-60 w-full flex-col items-center justify-center rounded-md border border-dashed border-navy-100 text-center" data-testid="graphique-vide">
+          <p className="text-small font-medium text-navy-900">Aucune donnée sur cette période</p>
+          <p className="mt-1 text-caption text-navy-400">Élargissez la plage de dates pour voir l’activité.</p>
+        </div>
+      ) : (
+        <div className="h-60 w-full">{children}</div>
+      )}
     </Card>
   );
 }
@@ -80,7 +88,7 @@ export function GraphiqueBarres({
   testId?: string;
 }) {
   return (
-    <Cadre titre={titre} description={description} total={total} unite={unite} testId={testId}>
+    <Cadre titre={titre} description={description} total={total} unite={unite} testId={testId} vide={seriesVides(lignes, series.map((s) => s.cle))}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={lignes} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />
@@ -115,7 +123,7 @@ export function GraphiqueCourbe({
   testId?: string;
 }) {
   return (
-    <Cadre titre={titre} description={description} total={total} unite={unite} testId={testId}>
+    <Cadre titre={titre} description={description} total={total} unite={unite} testId={testId} vide={seriesVides(lignes, series.map((s) => s.cle))}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={lignes} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />

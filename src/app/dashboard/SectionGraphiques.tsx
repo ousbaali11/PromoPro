@@ -7,7 +7,8 @@ import { donneesTableauDeBord } from "@/lib/graphiques-data";
 import { GraphiqueBarres, GraphiqueCourbe } from "@/components/graphiques/Graphiques";
 
 /** Totaux et graphiques du rôle pour la plage choisie (composant serveur, diffusé sous Suspense). */
-export async function SectionGraphiques({ session, plage }: { session: SessionPayload; plage: Plage }) {
+export async function SectionGraphiques({ session, plage, panne = false }: { session: SessionPayload; plage: Plage; panne?: boolean }) {
+  if (panne) throw new Error("Panne simulée de la section graphiques (tests).");
   const d = await donneesTableauDeBord(session, plage);
   return (
     <Section

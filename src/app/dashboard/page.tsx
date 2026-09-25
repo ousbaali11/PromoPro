@@ -14,6 +14,7 @@ import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { decoderPlage } from "@/lib/plage-dates";
 import { SectionGraphiques } from "./SectionGraphiques";
 import { GraphiquesSkeleton } from "@/components/graphiques/Graphiques";
+import { ErreurGraphiques } from "@/components/graphiques/ErreurGraphiques";
 
 async function countBiensByStatut(promoteurId: string, statut: string) {
   const rows = await db
@@ -24,12 +25,14 @@ async function countBiensByStatut(promoteurId: string, statut: string) {
   return rows[0]?.n ?? 0;
 }
 
-export default async function DashboardHome({ searchParams }: { searchParams: Promise<{ plage?: string }> }) {
+export default async function DashboardHome({ searchParams }: { searchParams: Promise<{ plage?: string; graphiques?: string }> }) {
   const session = await requireStaffSession();
   const promoteurId = session.promoteurId!;
   // Plage de dates partagée par les graphiques du tableau de bord (URL ?plage=, dernier choix rappelé côté navigateur)
-  const { plage: codePlage } = await searchParams;
+  const { plage: codePlage, graphiques: modeGraphiques } = await searchParams;
   const plage = decoderPlage(codePlage);
+  // Panne simulée de la section graphiques (tests de la frontière d'erreur) : ignorée en production
+  const panne = process.env.NODE_ENV !== "production" && modeGraphiques === "panne";
   const promoteur = await chargerPromoteur(promoteurId);
 
   const [disponibles, vendus, enProposition] = await Promise.all([
@@ -97,9 +100,11 @@ export default async function DashboardHome({ searchParams }: { searchParams: Pr
       </div>
 
       {/* Totaux et graphiques de la plage choisie : diffusés sous Suspense, squelette pendant le calcul (clé = plage) */}
-      <Suspense key={plage.code} fallback={<GraphiquesSkeleton />}>
-        <SectionGraphiques session={session} plage={plage} />
-      </Suspense>
+      <ErreurGraphiques>
+        <Suspense key={plage.code} fallback={<GraphiquesSkeleton />}>
+          <SectionGraphiques session={session} plage={plage} panne={panne} />
+        </Suspense>
+      </ErreurGraphiques>
 
       {epingles.length > 0 && (
         <Section

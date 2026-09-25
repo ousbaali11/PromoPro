@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agreger, cumul, dansLaPlage, intervalles, lignesDonnees, semaineIso, total } from "@/lib/graphiques";
+import { agreger, cumul, dansLaPlage, intervalles, lignesDonnees, semaineIso, seriesVides, total } from "@/lib/graphiques";
 import { decoderPlage } from "@/lib/plage-dates";
 
 const now = new Date(2026, 8, 24, 15, 30); // jeudi 24 septembre 2026
@@ -62,5 +62,15 @@ describe("graphiques : agrégation", () => {
       { intervalle: "18 sept.", ventes: 2, ca: 150.5 },
       { intervalle: "19 sept.", ventes: 0, ca: 0 },
     ]);
+  });
+});
+
+describe("état vide des graphiques", () => {
+  it("vide quand aucune série n'a de valeur non nulle, y compris sans ligne", () => {
+    expect(seriesVides([], ["ventes"])).toBe(true);
+    expect(seriesVides([{ intervalle: "lun.", ventes: 0, ca: 0 }, { intervalle: "mar.", ventes: 0, ca: 0 }], ["ventes", "ca"])).toBe(true);
+  });
+  it("non vide dès qu'une valeur d'une des séries est différente de zéro", () => {
+    expect(seriesVides([{ intervalle: "lun.", ventes: 0, ca: 0 }, { intervalle: "mar.", ventes: 0, ca: 850000 }], ["ventes", "ca"])).toBe(false);
   });
 });
