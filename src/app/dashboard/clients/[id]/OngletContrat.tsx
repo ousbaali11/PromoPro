@@ -84,7 +84,7 @@ export async function OngletContrat({
             {isRespAdm && detenu && <CreerContratButton bienId={bien.id} clientId={client.id} creer={creerContrat} />}
           </Card>
         ) : (
-          <Card className="space-y-4 p-5" data-testid="carte-contrat" data-statut={contrat.statut}>
+          <Card className="space-y-4 p-5" data-testid="carte-contrat" data-statut={contrat.statut} data-contrat-id={contrat.id}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
                 <Info label="Créé le" value={formatDate(contrat.createdAt)} />
