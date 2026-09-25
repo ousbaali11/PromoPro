@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  peutConsulterDossierClient,
   ROLES_GERABLES_PAR,
   aUneVenteEnCours,
   etatCompte,
@@ -89,5 +90,19 @@ describe("Journal d'activité", () => {
     expect(actionJournalValide("SUPPRESSION")).toBe("SUPPRESSION");
     expect(actionJournalValide("n-importe-quoi")).toBeNull();
     expect(actionJournalValide(undefined)).toBeNull();
+  });
+});
+
+describe("consultation du dossier d'un client par le pôle commercial", () => {
+  const client = { commercialId: "com1" };
+  it("un Commercial voit ses clients suivis, ou ceux à qui il a vendu un bien", () => {
+    expect(peutConsulterDossierClient({ role: "COMMERCIAL", userId: "com1" }, client)).toBe(true);
+    expect(peutConsulterDossierClient({ role: "COMMERCIAL", userId: "com2" }, client)).toBe(false);
+    expect(peutConsulterDossierClient({ role: "COMMERCIAL", userId: "com2" }, client, ["com2", null])).toBe(true);
+  });
+  it("le Responsable Commercial voit tout le pôle, les autres rôles ne sont pas restreints ici", () => {
+    expect(peutConsulterDossierClient({ role: "RESPONSABLE_COMMERCIAL", userId: "rc" }, client)).toBe(true);
+    expect(peutConsulterDossierClient({ role: "RESPONSABLE_ADMINISTRATIF", userId: "ra" }, client)).toBe(true);
+    expect(peutConsulterDossierClient({ role: "COMPTABLE_INTERNE", userId: "ci" }, { commercialId: null })).toBe(true);
   });
 });

@@ -27,6 +27,25 @@ export const POLE_COMMERCIAL: Role[] = [
 ];
 
 /** Un commercial gère ses propres clients ; le directeur et le responsable commercial, tous. */
+/**
+ * Consultation du dossier d'un client par le pôle commercial (fiche client,
+ * liste, recherche) — règle unique, alignée sur les actions (échéancier,
+ * désistement, blocage) qui distinguent déjà les deux rôles :
+ * - le Commercial ne voit que ses clients : ceux qu'il suit (`commercialId`)
+ *   et ceux à qui il a vendu un bien (commercial du bien) ;
+ * - le Responsable Commercial voit tout le pôle (il supervise l'équipe et
+ *   peut agir sur n'importe quel bien du promoteur) ;
+ * - les autres rôles ne sont pas restreints ici (contrôle du promoteur en amont).
+ */
+export function peutConsulterDossierClient(
+  session: { role: string; userId: string },
+  client: { commercialId: string | null },
+  commerciauxDesBiens: (string | null | undefined)[] = [],
+): boolean {
+  if (session.role !== "COMMERCIAL") return true;
+  return client.commercialId === session.userId || commerciauxDesBiens.some((c) => c === session.userId);
+}
+
 export function peutGererClient(
   session: { role: string; userId: string },
   client: { commercialId: string | null },

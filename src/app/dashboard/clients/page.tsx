@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/Primitives";
 import { DataTable } from "@/components/ui/DataTable";
 import { EtatCompte } from "@/components/ui/EtatCompte";
 import { LinkButton } from "@/components/ui/Button";
-import { etatCompte, ETAT_LABELS } from "@/lib/comptes";
+import { etatCompte, ETAT_LABELS, peutConsulterDossierClient } from "@/lib/comptes";
 import { ResetPasswordButton } from "./ResetPasswordButton";
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ supprimes?: string }> }) {
@@ -17,9 +17,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const voirSupprimes = supprimes === "1";
 
   const all = await db.query.clients.findMany({ where: eq(clients.promoteurId, session.promoteurId!) });
-  const visibles = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role)
-    ? all.filter((c) => c.commercialId === session.userId)
-    : all;
+  // Pôle commercial : le Commercial ne liste que ses clients, le Responsable Commercial tout le pôle (règle partagée avec la fiche et la recherche)
+  const visibles = all.filter((c) => peutConsulterDossierClient(session, c));
   // Les comptes supprimés (suppression douce) sortent des listes actives ; ils restent consultables et restaurables
   const rows = visibles.filter((c) => (voirSupprimes ? !!c.deletedAt : !c.deletedAt));
   const nbSupprimes = visibles.filter((c) => !!c.deletedAt).length;

@@ -14,7 +14,7 @@ import { formatDate, formatMoney, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "
 import { ResetPasswordButton } from "../ResetPasswordButton";
 import { EtatCompte, NomCompte } from "@/components/ui/EtatCompte";
 import { ActionsCompte } from "@/components/comptes/ActionsCompte";
-import { etatCompte, peutGererClient, peutModifierClient } from "@/lib/comptes";
+import { etatCompte, peutConsulterDossierClient, peutGererClient, peutModifierClient } from "@/lib/comptes";
 import { clientAUneVenteEnCours } from "@/lib/comptes-service";
 import { biensDuClient, chargerDossierBien, lireOnglet, ONGLETS, ONGLET_LABELS } from "@/lib/dossier-client";
 import { OngletContrat } from "./OngletContrat";
@@ -44,15 +44,13 @@ export default async function ClientDetailPage({
   const client = await db.query.clients.findFirst({ where: eq(clients.id, id) });
   if (!client || client.promoteurId !== session.promoteurId) notFound();
 
-  // Un commercial ne voit que ses propres clients
-  if (["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role) && client.commercialId !== session.userId) {
-    notFound();
-  }
+  const mesBiens = await biensDuClient(client);
+  // Pôle commercial : un Commercial ne voit que ses clients (suivis ou vendus par lui), le Responsable Commercial voit tout le pôle
+  if (!peutConsulterDossierClient(session, client, mesBiens.map((b) => b.bien.commercialId))) notFound();
 
   const commercial = client.commercialId
     ? await db.query.users.findFirst({ where: eq(users.id, client.commercialId) })
     : null;
-  const mesBiens = await biensDuClient(client);
   const selection = mesBiens.find((b) => b.bien.id === bienParam) ?? mesBiens[0];
   const onglet = lireOnglet(ongletParam);
   const dossier = selection ? await chargerDossierBien(client, selection.bien) : null;

@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
   const projetIds = listeProjets.map((p) => p.id);
   const projetNom = new Map(listeProjets.map((p) => [p.id, p.nom]));
   const listeBiens = projetIds.length ? await db.query.biens.findMany({ where: inArray(biens.projetId, projetIds) }) : [];
-  const seulementLesMiens = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role);
+  // Pôle commercial : le Commercial ne cherche que dans ses clients, le Responsable Commercial dans tout le pôle (règle partagée avec la fiche et la liste)
+  const seulementLesMiens = session.role === "COMMERCIAL";
   const listeClients = await db.query.clients.findMany({
     where: seulementLesMiens
       ? and(eq(clients.promoteurId, promoteurId), eq(clients.commercialId, session.userId), isNull(clients.deletedAt))
