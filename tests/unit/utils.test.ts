@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultEcheancier, formatDate, formatMoney, addMonths } from "@/lib/utils";
+import { defaultEcheancier, formatDate, formatMoney, addMonths, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
 
 const espaces = (s: string) => s.replace(/[  ]/g, " ");
 
@@ -55,5 +55,17 @@ describe("formatDate", () => {
   it("formate en français court", () => {
     expect(espaces(formatDate(new Date(2026, 8, 22)))).toBe("22 sept. 2026");
     expect(espaces(formatDate(new Date(2027, 1, 3)))).toBe("03 févr. 2027");
+  });
+});
+
+describe("statuts de paiement", () => {
+  it("libellés par espace et tonalités", () => {
+    expect(libelleStatutPaiement("EN_ATTENTE_COMPTABLE")).toBe("En attente comptable");
+    expect(libelleStatutPaiement("EN_ATTENTE_COMPTABLE", "client")).toBe("En vérification");
+    expect(libelleStatutPaiement("VALIDE", "client")).toBe("Validé");
+    expect(libelleStatutPaiement("ANNULE_DESISTEMENT")).toBe("Annulé (désistement)");
+    expect(toneStatutPaiement("VALIDE")).toBe("success");
+    expect(toneStatutPaiement("EN_ATTENTE_COMPTABLE")).toBe("warning");
+    expect(toneStatutPaiement("ANNULE_DESISTEMENT")).toBe("neutral");
   });
 });

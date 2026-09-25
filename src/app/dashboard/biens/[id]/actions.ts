@@ -8,6 +8,7 @@ import { biens, projets, paiements, desistements, propositions, contrats } from 
 import { requireRole } from "@/lib/session";
 import { parsePublicPath } from "@/lib/storage";
 import { notifyRole } from "@/lib/notifications";
+import { enregistrerActivite } from "@/lib/journal";
 import { creerPaiement, lirePaiementForm, notifierComptable } from "@/lib/paiements";
 import type { PaiementFormState } from "@/components/paiements/PaiementForm";
 
@@ -142,6 +143,13 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
   const montantARembourser = paiementsClient
     .filter((p) => p.statut === "VALIDE")
     .reduce((s, p) => s + (p.montantExact ?? p.montant), 0);
+  // Les opérations saisies mais pas encore validées n'ont plus d'objet : le dossier est clos.
+  // Elles sont annulées (jamais supprimées : preuve et saisie restent consultables) et le comptable est prévenu.
+  const annules = await db
+    .update(paiements)
+    .set({ statut: "ANNULE_DESISTEMENT" })
+    .where(and(eq(paiements.bienId, bien.id), eq(paiements.clientId, bien.clientId), eq(paiements.statut, "EN_ATTENTE_COMPTABLE")))
+    .returning({ id: paiements.id });
 
   await db.insert(desistements).values({
     bienId: bien.id,
@@ -166,6 +174,22 @@ export async function enregistrerDesistement(_prev: { error?: string } | undefin
     titre: "Désistement à traiter",
     message: `${session.prenom} ${session.nom} a enregistré le désistement du client sur ${bien.designation}.`,
     lien: "/dashboard/desistements",
+  });
+  if (annules.length > 0) {
+    await notifyRole(session.promoteurId!, "COMPTABLE_INTERNE", {
+      type: "PAIEMENTS_ANNULES_DESISTEMENT",
+      titre: "Opérations en attente annulées",
+      message: `${annules.length} opération(s) en attente sur ${bien.designation} annulée(s) : le client s'est désisté, aucune validation à faire.`,
+      lien: "/dashboard/paiements",
+    });
+  }
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "bien",
+    cibleId: bien.id,
+    cibleNom: bien.designation,
+    details: `Désistement enregistré${annules.length > 0 ? ` · ${annules.length} paiement(s) en attente annulé(s)` : ""}`,
   });
 
   revalidatePath(`/dashboard/biens/${bien.id}`);

@@ -9,7 +9,7 @@ import { Card, EmptyState, Info, PageHeader, Section, Callout, Breadcrumb } from
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DataTable } from "@/components/ui/DataTable";
 import { LinkButton } from "@/components/ui/Button";
-import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES } from "@/lib/utils";
+import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
 import { NomCompte } from "@/components/ui/EtatCompte";
 import { echeancierDuBien } from "@/lib/paiements";
 import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
@@ -265,8 +265,8 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
                     )}
                     <StatusBadge
                       statut={p.statut}
-                      label={p.statut === "VALIDE" ? "Validé" : "En attente comptable"}
-                      tone={p.statut === "VALIDE" ? "success" : "warning"}
+                      label={libelleStatutPaiement(p.statut)}
+                      tone={toneStatutPaiement(p.statut)}
                     />
                   </div>
                 </div>

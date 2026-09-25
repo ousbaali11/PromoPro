@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { biens, clients, echeances, paiements, projets, propositions, users } from "@/db/schema";
 import { parsePublicPath } from "@/lib/storage";
@@ -215,6 +215,7 @@ export async function validerPaiement(
   const paiement = await db.query.paiements.findFirst({ where: eq(paiements.id, paiementId) });
   if (!paiement) return { error: "Paiement introuvable." };
   if (paiement.statut === "VALIDE") return { error: "Ce paiement est déjà validé." };
+  if (paiement.statut === "ANNULE_DESISTEMENT") return { error: "Ce paiement a été annulé par le désistement du client : il n'y a rien à valider." };
 
   const bien = await db.query.biens.findFirst({ where: eq(biens.id, paiement.bienId) });
   const client = await db.query.clients.findFirst({ where: eq(clients.id, paiement.clientId) });
@@ -248,9 +249,9 @@ export async function validerPaiement(
       valideParId: complement.valideParId,
       validatedAt: new Date(),
     })
-    .where(and(eq(paiements.id, paiementId), ne(paiements.statut, "VALIDE")))
+    .where(and(eq(paiements.id, paiementId), eq(paiements.statut, "EN_ATTENTE_COMPTABLE")))
     .returning();
-  if (!updated) return { error: "Ce paiement est déjà validé." };
+  if (!updated) return { error: "Ce paiement n'est plus en attente : il a déjà été validé ou annulé." };
 
   // Sous le verrou de l'échéancier du bien : une modification concurrente de l'échéancier attend la fin de l'imputation
   const { imputations } = await avecVerrou(`echeancier:${bien.id}`, () => imputerSurEcheancier(bien.id, paiement.echeanceId, complement.montantExact));

@@ -7,7 +7,7 @@ import { biens, projets, users, contrats, paiements, visites, demandesPhotos, ph
 import { Card, Info, PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { addMonths, formatMoney, formatDate, formatDateTime, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS } from "@/lib/utils";
+import { addMonths, formatMoney, formatDate, formatDateTime, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, DELAI_PHOTOS_MOIS, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
 import { echeancierDuBien } from "@/lib/paiements";
 import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
@@ -211,8 +211,8 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
                       ) : null}
                       <StatusBadge
                         statut={p.statut}
-                        label={p.statut === "VALIDE" ? "Validé" : "En vérification"}
-                        tone={p.statut === "VALIDE" ? "success" : "warning"}
+                        label={libelleStatutPaiement(p.statut, "client")}
+                        tone={toneStatutPaiement(p.statut)}
                       />
                     </div>
                   </li>

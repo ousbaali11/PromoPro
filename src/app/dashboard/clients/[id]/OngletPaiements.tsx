@@ -54,7 +54,8 @@ export async function OngletPaiements({
     return u ? <NomCompte compte={u} /> : "—";
   };
   const enAttente = dossier.paiements.filter((p) => p.statut === "EN_ATTENTE_COMPTABLE");
-  const valides = dossier.paiements.filter((p) => p.statut !== "EN_ATTENTE_COMPTABLE");
+  const valides = dossier.paiements.filter((p) => p.statut === "VALIDE");
+  const annules = dossier.paiements.filter((p) => p.statut === "ANNULE_DESISTEMENT");
 
   return (
     <div className="space-y-6">
@@ -145,6 +146,41 @@ export async function OngletPaiements({
           </div>
         )}
       </Section>
+
+      {annules.length > 0 && (
+        <Section
+          title="Annulés par désistement"
+          count={annules.length}
+          description="Opérations saisies avant le désistement du client, annulées automatiquement : rien à référencer ni à valider. Preuve et saisie restent consultables."
+          testId="section-paiements-annules"
+        >
+          <Card className="divide-y divide-navy-50">
+            {annules.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-small" data-testid="paiement-annule">
+                <div>
+                  <p className="font-medium text-navy-900">
+                    <span className="tabular">{formatMoney(p.montant, p.devise)}</span>
+                    {p.trancheNumero && <span className="ml-2 text-caption font-normal text-navy-400">Tranche {p.trancheNumero}</span>}
+                  </p>
+                  <p className="text-caption text-navy-400">
+                    {p.natureOperation} · {p.banque} · {formatDate(p.dateOperation)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {p.preuveUrl && (
+                    <a href={p.preuveUrl} target="_blank" rel="noreferrer" className={lienDoc}>
+                      <Paperclip className="h-3.5 w-3.5" /> Preuve
+                    </a>
+                  )}
+                  <Badge tone="neutral" dot>
+                    Annulé (désistement)
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </Section>
+      )}
 
       <Section title="Paiements validés" count={valides.length > 0 ? valides.length : undefined} testId="section-paiements-valides">
         {valides.length === 0 ? (

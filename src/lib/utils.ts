@@ -72,3 +72,20 @@ export const STATUT_BIEN_COLORS: Record<string, string> = {
   DESISTE: "bg-rose-50 text-rose-700 ring-rose-600/20",
   LIVRE: "bg-slate-100 text-slate-700 ring-slate-600/20",
 };
+
+/**
+ * Statuts d'un paiement : EN_ATTENTE_COMPTABLE (saisi, à référencer et valider),
+ * VALIDE, ANNULE_DESISTEMENT (annulé automatiquement par le désistement du
+ * client avant validation : aucune opération comptable à faire).
+ */
+export function libelleStatutPaiement(statut: string, vue: "client" | "staff" = "staff"): string {
+  if (statut === "VALIDE") return "Validé";
+  if (statut === "ANNULE_DESISTEMENT") return "Annulé (désistement)";
+  return vue === "client" ? "En vérification" : "En attente comptable";
+}
+
+export function toneStatutPaiement(statut: string): "success" | "warning" | "neutral" {
+  if (statut === "VALIDE") return "success";
+  if (statut === "ANNULE_DESISTEMENT") return "neutral";
+  return "warning";
+}

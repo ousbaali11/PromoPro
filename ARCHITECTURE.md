@@ -164,6 +164,23 @@ l'échéancier. Les règles de saisie communes (montant positif à deux décimal
 au plus, dates, pourcentages d'échéancier à 100 %, délai TMA, longueur des
 textes) vivent dans `src/lib/validation.ts`.
 
+### Statuts d'un paiement et désistement
+
+`paiements.statut` vaut `EN_ATTENTE_COMPTABLE` (saisi par le commercial, le
+client ou le recouvrement, à référencer et valider), `VALIDE`, ou
+`ANNULE_DESISTEMENT` : au désistement du client (`enregistrerDesistement`),
+les opérations encore en attente sur le bien sont annulées — jamais
+supprimées, preuve et saisie restent consultables —, le Comptable Interne
+est notifié (`PAIEMENTS_ANNULES_DESISTEMENT`) et le journal porte le nombre
+d'opérations annulées. Un paiement annulé ne peut plus être validé
+(`validerPaiement` : passage à `VALIDE` conditionné au statut
+`EN_ATTENTE_COMPTABLE`). Libellés et tonalités partagés :
+`libelleStatutPaiement` / `toneStatutPaiement` (`src/lib/utils.ts`) ; l'index
+des paiements et l'onglet Échéancier & Paiements de la fiche client
+affichent ces opérations dans une section « Annulés par désistement »
+distincte des opérations en attente et des validées. Seuls les paiements
+`VALIDE` comptent dans la trésorerie, les reçus et le contrat.
+
 ## Fiche client : point d'entrée unique, pages d'index sans action
 
 `/dashboard/clients/[id]?bien=<id>&onglet=<contrat|paiements|tma|documents>`
