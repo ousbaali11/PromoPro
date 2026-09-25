@@ -76,6 +76,9 @@ Copiez `.env.example` vers `.env.local` si vous voulez définir votre propre
 
 ### Comptes de démonstration (mot de passe entre parenthèses)
 
+Ces comptes n'existent que dans le jeu de données local (`npm run db:seed`,
+base de test) ; la page de connexion ne les affiche pas.
+
 Le promoteur de démonstration s'appelle **Résidences Atlas** : tout ce qui est
 adressé à ses clients (espace client, contrats, reçus, autorisations) porte ce
 nom, jamais celui de la plateforme.

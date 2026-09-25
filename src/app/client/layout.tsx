@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { Building2, LogOut } from "lucide-react";
@@ -35,7 +36,12 @@ export default async function ClientLayout({ children }: { children: React.React
     <div className="min-h-screen bg-cream">
       <header className="sticky top-0 z-20 bg-navy text-white shadow-e3">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
+          <Link
+            href="/client"
+            className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-sm py-1 pr-2 transition-colors duration-fast hover:bg-white/5 focus-visible:outline-none focus-visible:shadow-focus"
+            aria-label={`${promoteur?.nom ?? "Espace client"} — retour à l'accueil`}
+            data-testid="lien-accueil"
+          >
             {promoteur?.logoUrl ? (
               // Fichier servi par /api/files avec la session : pas d'optimiseur d'image Next (il n'a pas le cookie)
               // eslint-disable-next-line @next/next/no-img-element
@@ -56,7 +62,7 @@ export default async function ClientLayout({ children }: { children: React.React
               </p>
               <p className="mt-1 text-label uppercase text-navy-200/80">Espace client</p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <NotificationBell notifications={notifs} dark />
             <div className="ml-1 hidden items-center gap-2 sm:flex">

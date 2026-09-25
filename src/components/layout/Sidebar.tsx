@@ -30,7 +30,12 @@ export function Sidebar({
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col overflow-y-auto bg-navy text-white">
-      <div className="flex items-center gap-2.5 px-5 py-5">
+      <Link
+        href="/dashboard"
+        onClick={onNavigate}
+        className="flex cursor-pointer items-center gap-2.5 px-5 py-5 transition-colors duration-fast hover:bg-white/5 focus-visible:outline-none focus-visible:shadow-focus"
+        aria-label="PromoPro — retour au tableau de bord"
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold shadow-e2">
           <Building2 className="h-[18px] w-[18px] text-white" strokeWidth={2} />
         </div>
@@ -38,7 +43,7 @@ export function Sidebar({
           <p className="text-h3 leading-none tracking-tight">PromoPro</p>
           <p className="mt-1 text-label uppercase text-navy-200/80">Plateforme promoteur</p>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-0.5 px-3 py-2" aria-label="Navigation principale">
         {items.map((item) => {

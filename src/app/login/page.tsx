@@ -9,20 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Primitives";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
-const DEMO = [
-  ["Super Admin", "SUPERADMIN / admin1234"],
-  ["PDG", "PDG-DEMO / demo1234"],
-  ["Directeur Commercial", "DIRCOM-DEMO / demo1234"],
-  ["Commercial", "COM1-DEMO / demo1234"],
-  ["Responsable Administratif", "RESPADM-DEMO / demo1234"],
-  ["Directeur Financier", "DIRFIN-DEMO / demo1234"],
-  ["Comptable Interne", "COMPTA-DEMO / demo1234"],
-  ["Assistant Administratif", "ASSIST-DEMO / demo1234"],
-  ["Service Après-Vente", "SAV-DEMO / demo1234"],
-  ["Recouvrement", "RECOUV-DEMO / demo1234"],
-  ["Client", "CL-DEMO / demo1234"],
-];
-
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(login, undefined);
   // Motif de fermeture de session transmis par /api/session/fermer (compte ou promoteur suspendu) ; lu après hydratation
@@ -73,20 +59,6 @@ export default function LoginPage() {
             Se connecter
           </Button>
         </form>
-
-        <details className="group mt-6 rounded-md bg-white/5 p-4 text-caption text-navy-100/70 ring-1 ring-inset ring-white/10">
-          <summary className="cursor-pointer select-none font-medium text-navy-100 transition-colors duration-fast hover:text-white">
-            Comptes de démonstration
-          </summary>
-          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
-            {DEMO.map(([role, acces]) => (
-              <div key={role} className="contents">
-                <dt className="text-navy-200/80">{role}</dt>
-                <dd className="font-mono text-[11px] text-navy-100">{acces}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
 
         <footer className="mt-4 flex flex-wrap justify-center gap-x-4 text-caption text-navy-100/70" data-testid="pied-login">
           <Link href="/mentions-legales" className="inline-block rounded-xs px-1 py-2 underline-offset-2 hover:text-white hover:underline focus-visible:outline-none focus-visible:shadow-focus">

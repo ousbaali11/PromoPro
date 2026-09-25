@@ -498,7 +498,13 @@ générateurs exigent un promoteur (`chargerPromoteur`, `src/lib/promoteurs.ts`,
 lève une erreur si la clé étrangère est rompue) : aucun repli sur un nom
 générique. « PromoPro » reste la marque du logiciel là où il s'adresse à ses
 utilisateurs et non aux clients d'un promoteur : page de connexion, pages
-légales, administration, tableau de bord interne. Le jeu de démonstration
+légales, administration, barre latérale du tableau de bord interne. L'en-tête
+de chaque espace porte l'identité de l'espace en lien vers son accueil
+(`lien-accueil`, curseur pointeur) : nom et logo du promoteur vers
+`/dashboard` pour les rôles internes (`DashboardShell`, promoteur chargé par
+le layout), marque PromoPro vers `/admin` pour le Super Admin, logo et nom du
+promoteur vers `/client` pour un client (`entete.spec.ts`). La page de
+connexion n'affiche aucun compte de démonstration. Le jeu de démonstration
 nomme le promoteur « Résidences Atlas » pour que la présence de « PromoPro »
 dans un document ou l'espace client soit toujours une erreur (tests
 `pdf-marque.test.ts`, `marque.spec.ts`).

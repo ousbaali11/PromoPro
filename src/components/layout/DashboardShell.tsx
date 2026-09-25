@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X, Building2 } from "lucide-react";
@@ -15,6 +16,8 @@ export function DashboardShell({
   nom,
   prenom,
   roleLabel,
+  promoteurNom,
+  promoteurLogoUrl,
   bell,
   recherche,
   children,
@@ -23,6 +26,9 @@ export function DashboardShell({
   nom: string;
   prenom: string;
   roleLabel: string;
+  /** Identité du promoteur dans l'en-tête : nom et logo (s'il existe), cliquables vers l'accueil */
+  promoteurNom: string;
+  promoteurLogoUrl?: string | null;
   bell: React.ReactNode;
   /** Recherche globale (bouton + Ctrl/Cmd+K), à droite de l'en-tête */
   recherche?: React.ReactNode;
@@ -73,7 +79,7 @@ export function DashboardShell({
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-navy-100/80 bg-white/85 px-4 backdrop-blur-md sm:px-6">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
               type="button"
               onClick={() => setOpen(true)}
@@ -83,17 +89,31 @@ export function DashboardShell({
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2 md:hidden">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gold">
-                <Building2 className="h-4 w-4 text-white" />
-              </div>
-            </div>
-            <div>
-              <p className="text-label uppercase text-navy-400">PromoPro</p>
-              <p className="text-small font-medium text-navy-900">{roleLabel}</p>
-            </div>
+            {/* Nom et logo du promoteur : lien vers l'accueil du tableau de bord depuis n'importe quelle page */}
+            <Link
+              href="/dashboard"
+              className="flex min-w-0 cursor-pointer items-center gap-2 rounded-sm py-1 pr-2 transition-colors duration-fast hover:bg-navy-50 focus-visible:outline-none focus-visible:shadow-focus"
+              aria-label={`${promoteurNom} — retour au tableau de bord`}
+              data-testid="lien-accueil"
+            >
+              {promoteurLogoUrl ? (
+                // Fichier servi par /api/files avec la session : pas d'optimiseur d'image Next (il n'a pas le cookie)
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={promoteurLogoUrl} alt="" className="h-7 w-7 shrink-0 rounded-md bg-white object-contain ring-1 ring-navy-100" data-testid="logo-promoteur-entete" />
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gold" aria-hidden>
+                  <Building2 className="h-4 w-4 text-white" />
+                </span>
+              )}
+              <span className="min-w-0">
+                <span className="block truncate text-label uppercase text-navy-400" data-testid="entete-promoteur">
+                  {promoteurNom}
+                </span>
+                <span className="block truncate text-small font-medium text-navy-900">{roleLabel}</span>
+              </span>
+            </Link>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {recherche}
             {bell}
           </div>
