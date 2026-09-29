@@ -62,6 +62,24 @@ export const users = sqliteTable("users", {
   telephone: text("telephone"),
   actif: integer("actif", { mode: "boolean" }).notNull().default(true), // false = suspendu (connexion refusée)
   deletedAt: integer("deleted_at", { mode: "timestamp" }), // suppression douce : historique conservé, connexion refusée
+  // Toute session émise avant cet instant est refusée (réinitialisation du mot de passe : les sessions ouvertes sont fermées)
+  sessionsRevoqueesAvant: integer("sessions_revoquees_avant", { mode: "timestamp" }),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Réinitialisation de mot de passe par e-mail (comptes internes uniquement) :
+// le jeton n'est jamais stocké en clair (empreinte SHA-256), il expire après
+// une heure et ne sert qu'une fois (used_at). Voir src/lib/mot-de-passe-oublie.ts.
+// ---------------------------------------------------------------------------
+export const reinitialisationsMdp = sqliteTable("reinitialisations_mdp", {
+  id: id(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  usedAt: integer("used_at", { mode: "timestamp" }),
   createdAt: createdAt(),
 });
 

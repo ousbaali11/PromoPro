@@ -64,7 +64,24 @@ encore utilisable — ni suspendu, ni supprimé, et promoteur au statut ACTIF
 suspension / suppression / restauration et par tout changement de statut d'un
 promoteur). Un compte révoqué pendant sa session est renvoyé vers
 `/api/session/fermer` (cookie supprimé) puis `/login?motif=compte-inactif` ;
-les routes API répondent 401 (`getSessionActive`).
+les routes API répondent 401 (`getSessionActive`). Pour un compte interne, le
+même contrôle refuse toute session émise avant
+`users.sessions_revoquees_avant` (instant d'émission `iat` du jeton, posé par
+jose) : c'est ainsi qu'une réinitialisation de mot de passe ferme les sessions
+ouvertes ailleurs.
+
+### Mot de passe oublié par e-mail (comptes internes)
+
+Pages publiques `/mot-de-passe-oublie` (identifiant demandé) et
+`/reinitialiser-mot-de-passe?token=…` (nouveau mot de passe + confirmation),
+logique dans `src/lib/mot-de-passe-oublie.ts`, règles pures (jeton, empreinte,
+durée, robustesse du mot de passe, texte de l'e-mail) dans
+`src/lib/reinitialisation-regles.ts`. L'espace client n'est pas concerné : le
+commercial réinitialise le mot de passe d'un client depuis sa fiche. Envoi
+par `src/lib/courriel.ts` (Resend, clé `RESEND_API_KEY`) ; sans clé ou
+pendant la suite e2e, le message est capturé en mémoire et lisible sur
+`/api/dev/courriels` (404 en production), ce qui permet au test de suivre
+le lien réellement produit. Voir SECURITY.md pour les garanties.
 
 **Chaque Server Action qui modifie des données doit commencer par un appel à
 `requireRole` (ou `requireStaffSession`/`requireClientSession`)** — ne fais

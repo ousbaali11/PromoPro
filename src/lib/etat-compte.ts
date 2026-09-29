@@ -16,7 +16,7 @@ import { users, clients, promoteurs } from "@/db/schema";
 
 export const TTL_ETAT_COMPTE_MS = 5_000;
 
-type Entree = { actif: boolean; expire: number };
+type Entree = { actif: boolean; expire: number; revoqueesAvant?: number | null };
 const g = globalThis as unknown as { __promoproEtatComptes?: Map<string, Entree> };
 const cache: Map<string, Entree> = g.__promoproEtatComptes ?? new Map();
 if (process.env.NODE_ENV !== "production") g.__promoproEtatComptes = cache;
@@ -28,7 +28,13 @@ function lireCache(cle: string, now: number) {
     cache.delete(cle);
     return null;
   }
-  return e.actif;
+  return e;
+}
+
+/** Une session émise (iat, secondes) avant la révocation des sessions du compte n'est plus valable. */
+function sessionRevoquee(revoqueesAvant: number | null | undefined, emiseA: number | undefined) {
+  if (!revoqueesAvant || emiseA === undefined) return false;
+  return emiseA * 1000 < revoqueesAvant;
 }
 
 async function promoteurActif(promoteurId: string | null): Promise<boolean> {
@@ -37,22 +43,31 @@ async function promoteurActif(promoteurId: string | null): Promise<boolean> {
   return p?.statut === "ACTIF";
 }
 
-/** Compte interne utilisable ? (existe, ni suspendu ni supprimé, promoteur actif ou Super Admin) */
-export async function compteStaffActif(userId: string, now = Date.now()): Promise<boolean> {
+/**
+ * Compte interne utilisable ? (existe, ni suspendu ni supprimé, promoteur actif
+ * ou Super Admin). `sessionEmiseA` (iat du jeton, en secondes) permet de
+ * refuser une session ouverte avant une réinitialisation du mot de passe
+ * (users.sessions_revoquees_avant).
+ */
+export async function compteStaffActif(userId: string, sessionEmiseA?: number, now = Date.now()): Promise<boolean> {
   const cle = `user:${userId}`;
   const enCache = lireCache(cle, now);
-  if (enCache !== null) return enCache;
-  const u = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { actif: true, deletedAt: true, promoteurId: true, role: true } });
+  if (enCache !== null) return enCache.actif && !sessionRevoquee(enCache.revoqueesAvant, sessionEmiseA);
+  const u = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { actif: true, deletedAt: true, promoteurId: true, role: true, sessionsRevoqueesAvant: true },
+  });
   const actif = !!u && u.actif && !u.deletedAt && (u.role === "SUPER_ADMIN" || (await promoteurActif(u.promoteurId)));
-  cache.set(cle, { actif, expire: now + TTL_ETAT_COMPTE_MS });
-  return actif;
+  const revoqueesAvant = u?.sessionsRevoqueesAvant ? new Date(u.sessionsRevoqueesAvant).getTime() : null;
+  cache.set(cle, { actif, expire: now + TTL_ETAT_COMPTE_MS, revoqueesAvant });
+  return actif && !sessionRevoquee(revoqueesAvant, sessionEmiseA);
 }
 
 /** Compte client utilisable ? (existe, ni suspendu ni supprimé, promoteur actif) */
 export async function compteClientActif(clientId: string, now = Date.now()): Promise<boolean> {
   const cle = `client:${clientId}`;
   const enCache = lireCache(cle, now);
-  if (enCache !== null) return enCache;
+  if (enCache !== null) return enCache.actif;
   const c = await db.query.clients.findFirst({ where: eq(clients.id, clientId), columns: { actif: true, deletedAt: true, promoteurId: true } });
   const actif = !!c && c.actif && !c.deletedAt && (await promoteurActif(c.promoteurId));
   cache.set(cle, { actif, expire: now + TTL_ETAT_COMPTE_MS });

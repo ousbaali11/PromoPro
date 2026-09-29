@@ -26,7 +26,7 @@ export async function getSession() {
 export async function getStaffSessionActive(): Promise<SessionPayload | null> {
   const session = await getSession();
   if (!session || session.kind !== "staff") return null;
-  if (!(await compteStaffActif(session.userId))) return null;
+  if (!(await compteStaffActif(session.userId, session.iat))) return null;
   return session as SessionPayload;
 }
 

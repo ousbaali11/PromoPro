@@ -27,6 +27,7 @@ const s = (usePostgres ? pg : sqlite) as unknown as typeof sqlite;
 
 export const promoteurs = s.promoteurs;
 export const users = s.users;
+export const reinitialisationsMdp = s.reinitialisationsMdp;
 export const projets = s.projets;
 export const biens = s.biens;
 export const epingles = s.epingles;

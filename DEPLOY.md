@@ -58,6 +58,9 @@ Onglet **Variables** du service web :
 | `JWT_SECRET` | sortie de `openssl rand -base64 48` | **Obligatoire** : sans lui l'application refuse toute session en production. |
 | `UPLOAD_DIR` | `/app/storage` | Dossier des fichiers uploadés = point de montage du volume (étape 3). Déjà la valeur par défaut de l'image, mais explicite = plus sûr. |
 | `CRON_SECRET` | sortie de `openssl rand -base64 32` | Requis par `/api/cron/rappels-echeance` (rappel J-7) ; voir étape 6. |
+| `RESEND_API_KEY` | clé d'API Resend (`re_…`) | E-mails de réinitialisation de mot de passe des comptes internes (« Mot de passe oublié ? » sur /login). Sans elle, la demande aboutit à un message générique mais aucun e-mail ne part (motif dans les logs). Jamais dans le code : variable Railway uniquement. |
+| `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
+| `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
 `PORT` est fourni par Railway (l'image écoute sur `PORT`, 3000 par défaut).
@@ -220,33 +223,33 @@ Si vous modifiez `src/db/schema.sqlite.ts` :
    colonne perd ses données).
 
 Changements de schéma en attente sur la base Railway (registre unique, tenu à
-jour à chaque commit qui touche `src/db/schema.sqlite.ts` ; relu et
-consolidé le 25 septembre 2026 à partir de l'historique git depuis le dernier
-`db:push` confirmé, antérieur au commit ac5a973 du 23 septembre). Tous ces
-changements sont additifs : `npm run db:push` ne supprime rien.
+jour à chaque commit qui touche `src/db/schema.sqlite.ts`). **Règle : avant
+d'inscrire ou de retirer une entrée, vérifier l'état réel de la base**
+(`information_schema`, lecture seule) — le registre du 25 septembre 2026,
+reconstitué depuis l'historique git seul, listait comme « en attente » cinq
+tables et onze colonnes qui existaient déjà (`db:push` faits les 23 et
+24 septembre ; `No changes detected` le 30 septembre, état vérifié en base).
 
-Tables nouvelles :
+En attente (30 septembre 2026, mot de passe oublié par e-mail) :
 
-- `epingles` (biens épinglés par utilisateur) — ac5a973 ;
-- `journal_activite` (journal des actions) — d1a9a10 ;
-- `demandes_tma` (travaux modificatifs) — 2774856 ;
-- `contrat_sections` et `contrat_modeles` (éditeur de contrat par sections,
-  modèle par défaut) — 36bb475.
+- table `reinitialisations_mdp` (jetons hachés, expiration une heure, usage
+  unique) ;
+- colonne `users.sessions_revoquees_avant` (révocation des sessions ouvertes
+  après une réinitialisation).
 
-Colonnes nouvelles :
+Tous ces changements sont additifs : `npm run db:push` ne supprime rien.
+Sans eux, la page `/mot-de-passe-oublie` échoue à l'enregistrement du jeton
+et toute page protégée échoue à la lecture de la colonne manquante :
+appliquer le `db:push` **avant** de déployer ce commit, ou immédiatement après.
 
-- `users.deleted_at` ; `clients.actif`, `clients.deleted_at` — d1a9a10 ;
-- `biens.plan_3d_url`, `biens.visite_virtuelle_url` ; `projets.delai_tma_jours`
-  — 2774856 (`biens.plan_url` est inchangée, seulement renommée côté code) ;
-- `promoteurs.logo_url` — 91db585 (sans elle, la création d'un promoteur, la
-  liste `/admin` et l'espace client échouent) ;
-- `contrats.client_id`, `contrats.historique_pdf`, `contrats.pdf_genere_at`,
-  `contrats.deleted_at` — 36bb475.
-
-Aucun commit postérieur à 36bb475 (audit, corrections CI, audit mobile,
-graphiques) ne touche le schéma. Après `db:push`, lancer une fois la
-migration ponctuelle ci-dessous, puis retirer de ce registre les entrées
-appliquées.
+Appliqués (vérifiés en base le 30 septembre 2026) : tables `epingles`,
+`journal_activite`, `demandes_tma`, `contrat_sections`, `contrat_modeles` ;
+colonnes `users.deleted_at`, `clients.actif`, `clients.deleted_at`,
+`biens.plan_3d_url`, `biens.visite_virtuelle_url`, `projets.delai_tma_jours`,
+`promoteurs.logo_url`, `contrats.client_id`, `contrats.historique_pdf`,
+`contrats.pdf_genere_at`, `contrats.deleted_at`. La migration ponctuelle
+ci-dessous n'a rien à convertir en production (aucun jeton hérité, aucun
+modèle) ; elle reste idempotente.
 
 ### Migration ponctuelle : éditeur de contrat par sections (seconde version)
 

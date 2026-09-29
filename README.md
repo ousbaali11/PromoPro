@@ -120,7 +120,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
 - Authentification par identifiant + mot de passe (Super Admin, tous les rôles
   internes, clients), sessions signées, routes protégées par rôle,
   rate-limiting sur la connexion, notifications (cloche) pour le staff **et**
-  les clients
+  les clients ; « Mot de passe oublié ? » sur /login pour les comptes internes
+  (lien envoyé par e-mail via Resend, valable une heure, usage unique, sessions
+  ouvertes fermées ; un compte sans e-mail est invité à contacter son créateur)
 - **Super Admin** : créer un promoteur avec ses trois directions (PDG,
   Directeur Commercial, Directeur Financier), lui associer un logo optionnel
   (PNG / JPG, à la création ou depuis la liste : repris en en-tête des

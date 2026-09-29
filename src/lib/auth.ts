@@ -59,6 +59,9 @@ export type ClientSessionPayload = {
 
 export type AnySession = SessionPayload | ClientSessionPayload;
 
+/** Instant d'émission du jeton (secondes), posé par jose à la signature ; sert à révoquer les sessions antérieures à un instant. */
+export type SessionVerifiee = AnySession & { iat?: number };
+
 export async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 10);
 }
@@ -76,10 +79,10 @@ export async function signSession(payload: AnySession) {
     .sign(getSecret());
 }
 
-export async function verifySession(token: string): Promise<AnySession | null> {
+export async function verifySession(token: string): Promise<SessionVerifiee | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    return payload as unknown as AnySession;
+    return payload as unknown as SessionVerifiee;
   } catch (e) {
     // Un secret manquant en production doit remonter (erreur de configuration), pas être avalé.
     if (e instanceof Error && e.message.startsWith("JWT_SECRET")) throw e;

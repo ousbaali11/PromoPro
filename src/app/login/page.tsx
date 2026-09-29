@@ -48,6 +48,11 @@ export default function LoginPage() {
               {state.error}
             </Callout>
           )}
+          {!state?.error && motif === "mot-de-passe-modifie" && (
+            <Callout tone="success" className="mt-4" testId="mot-de-passe-modifie">
+              Votre mot de passe a été modifié. Connectez-vous avec le nouveau.
+            </Callout>
+          )}
           {!state?.error && motif === "compte-inactif" && (
             <Callout tone="warning" className="mt-4" testId="session-fermee">
               Votre session a été fermée : ce compte n&apos;est plus actif ou l&apos;accès de votre promoteur est suspendu. Contactez votre
@@ -58,6 +63,15 @@ export default function LoginPage() {
           <Button type="submit" loading={pending} className="mt-6 w-full" size="lg">
             Se connecter
           </Button>
+          <p className="mt-4 text-center text-caption">
+            <Link
+              href="/mot-de-passe-oublie"
+              className="rounded-xs px-1 py-2 text-navy-500 underline-offset-2 hover:text-navy-900 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+              data-testid="lien-mot-de-passe-oublie"
+            >
+              Mot de passe oublié ?
+            </Link>
+          </p>
         </form>
 
         <footer className="mt-4 flex flex-wrap justify-center gap-x-4 text-caption text-navy-100/70" data-testid="pied-login">

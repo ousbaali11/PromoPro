@@ -67,6 +67,24 @@ export const users = pgTable("users", {
   telephone: text("telephone"),
   actif: boolean("actif").notNull().default(true), // false = suspendu (connexion refusée)
   deletedAt: timestamp("deleted_at", { withTimezone: true }), // suppression douce : historique conservé, connexion refusée
+  // Toute session émise avant cet instant est refusée (réinitialisation du mot de passe : les sessions ouvertes sont fermées)
+  sessionsRevoqueesAvant: timestamp("sessions_revoquees_avant", { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
+// Réinitialisation de mot de passe par e-mail (comptes internes uniquement) :
+// le jeton n'est jamais stocké en clair (empreinte SHA-256), il expire après
+// une heure et ne sert qu'une fois (used_at). Voir src/lib/mot-de-passe-oublie.ts.
+// ---------------------------------------------------------------------------
+export const reinitialisationsMdp = pgTable("reinitialisations_mdp", {
+  id: id(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

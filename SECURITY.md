@@ -39,6 +39,18 @@ l'exploitation. Les tests cités tournent à chaque `npm run test` /
       `comptes.spec.ts`, `isolation.spec.ts`.
 - [x] L'abonnement du promoteur doit être `ACTIF` pour que ses utilisateurs se
       connectent.
+- [x] **Mot de passe oublié** (comptes internes seulement, `/mot-de-passe-oublie`,
+      `src/lib/mot-de-passe-oublie.ts`) : l'identifiant est demandé, la
+      réponse est la même que le compte existe ou non (« Si ce compte existe,
+      un e-mail a été envoyé. ») ; jeton de 256 bits envoyé par e-mail (Resend),
+      stocké **haché** (SHA-256, table `reinitialisations_mdp`), valable une
+      heure, à usage unique (marquage conditionnel `used_at IS NULL`) ; nouveau
+      mot de passe contrôlé (8 caractères, lettre et chiffre, différent de
+      l'identifiant, confirmation) ; **toutes les sessions ouvertes du compte
+      sont fermées** (`users.sessions_revoquees_avant` comparé à l'instant
+      d'émission du jeton de session, `etat-compte.ts`) ; demande et
+      réinitialisation journalisées. Un compte sans e-mail ne reçoit rien et
+      est invité à contacter son créateur. Test : `mot-de-passe-oublie.spec.ts`.
 
 ## Revue systématique des Server Actions et routes API
 
@@ -140,6 +152,7 @@ suffisant pour une instance ; derrière plusieurs instances, remplacer le
 | Cible | Limite | Réponse | Pourquoi |
 | --- | --- | --- | --- |
 | `/login` | 5 échecs / identifiant, 30 / IP, 15 min | message avec délai | force brute (Phase 12) |
+| `/mot-de-passe-oublie` | 3 demandes / identifiant, 10 / IP, 15 min (chaque demande compte) | message avec délai | envoi d'e-mails à la demande : borne le harcèlement d'un compte et le coût d'envoi |
 | `POST /api/upload` | 30 fichiers / compte / 10 min | 429 | tout compte connecté peut déposer ; borne le remplissage du disque (jusqu'à 50 Mo par modèle 3D) |
 | Import Excel (`analyserImportProspects`) | 10 analyses / assistant / 10 min | message | parsing en mémoire d'un fichier jusqu'à 4 Mo |
 | Demande TMA (`demanderTma`) | 10 demandes / client / heure | message | création libre depuis l'espace client, chaque demande notifie le SAV |
