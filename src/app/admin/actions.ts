@@ -12,6 +12,8 @@ import { parsePublicPath } from "@/lib/storage";
 import { ROLE_LABELS } from "@/lib/roles";
 import { estRoleDirection } from "@/lib/directions";
 import { LONGUEURS, verifierTexte } from "@/lib/validation";
+import { ajouterMois, dureeValide, echeanceProlongee, formulePour } from "@/lib/abonnement";
+import { formatDate } from "@/lib/utils";
 
 /** Chemins à rafraîchir après toute action sur un promoteur (liste et fiche). */
 function rafraichirPromoteur(promoteurId: string) {
@@ -105,11 +107,12 @@ export async function createPromoteur(
   return { success: { promoteur: nom, acces } };
 }
 
-export async function activerAbonnement(promoteurId: string, formule: string, dureeMois: number) {
+export async function activerAbonnement(promoteurId: string, dureeMois: number) {
   const session = await requireRole(["SUPER_ADMIN"]);
+  if (!dureeValide(dureeMois)) return;
+  const formule = formulePour(dureeMois);
   const debut = new Date();
-  const fin = new Date(debut);
-  fin.setMonth(fin.getMonth() + dureeMois);
+  const fin = ajouterMois(debut, dureeMois);
 
   await db
     .update(promoteurs)
@@ -128,6 +131,36 @@ export async function activerAbonnement(promoteurId: string, formule: string, du
   });
 
   rafraichirPromoteur(promoteurId);
+}
+
+export type ResultatProlongation = { ok: true; echeance: string } | { error: string };
+
+/**
+ * Prolonge un abonnement ACTIF sans attendre son échéance : la durée choisie
+ * s'ajoute à l'échéance en cours (ou part d'aujourd'hui si elle est passée),
+ * le statut reste ACTIF, la formule prend celle de la durée. Un promoteur en
+ * attente ou suspendu passe par Activer.
+ */
+export async function prolongerAbonnement(promoteurId: string, dureeMois: number): Promise<ResultatProlongation> {
+  const session = await requireRole(["SUPER_ADMIN"]);
+  if (!dureeValide(dureeMois)) return { error: "Durée de prolongation inconnue." };
+  const p = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
+  if (!p) return { error: "Promoteur introuvable." };
+  if (p.statut !== "ACTIF") return { error: "Seul un abonnement actif peut être prolongé : activez-le d'abord." };
+  const fin = echeanceProlongee(p.abonnementFin, dureeMois);
+  const formule = formulePour(dureeMois);
+  await db.update(promoteurs).set({ abonnementFormule: formule, abonnementFin: fin }).where(eq(promoteurs.id, promoteurId));
+  await enregistrerActivite({
+    acteur: session,
+    action: "MODIFICATION",
+    cibleType: "promoteur",
+    cibleId: promoteurId,
+    cibleNom: p.nom,
+    details: `Abonnement prolongé de ${dureeMois} mois (${formule}) : échéance ${formatDate(p.abonnementFin)} → ${formatDate(fin)}`,
+    promoteurId,
+  });
+  rafraichirPromoteur(promoteurId);
+  return { ok: true, echeance: formatDate(fin) };
 }
 
 export async function suspendrePromoteur(promoteurId: string) {

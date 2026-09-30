@@ -82,6 +82,31 @@ test("grille de fiches sur /admin : plus de tableau plat, chaque fiche porte nom
   await expect(carte.getByTestId("promoteur-echeance")).not.toHaveText("—");
 });
 
+test("prolongation : un abonnement actif est prolongé sans attendre l'échéance, la durée s'ajoute à l'échéance en cours, statut inchangé, journal", async ({ page }) => {
+  await login(page, "SUPERADMIN");
+  await page.goto(P.href);
+  const echeance = page.getByTestId("abonnement-echeance");
+  const avant = await echeance.getAttribute("data-echeance");
+  expect(avant).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  const [a, m, j] = avant!.split("-").map(Number);
+  const attendue = new Date(a, m - 1, j);
+  attendue.setMonth(attendue.getMonth() + 1);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const attendu = `${attendue.getFullYear()}-${p(attendue.getMonth() + 1)}-${p(attendue.getDate())}`;
+
+  await page.getByTestId("duree-abonnement").selectOption("1");
+  await page.getByTestId("bouton-prolonger-abonnement").click();
+  await expect(page.getByText("Abonnement prolongé")).toBeVisible();
+  await expect(echeance).toHaveAttribute("data-echeance", attendu);
+  await expect(page.getByTestId("carte-abonnement").locator('[data-statut="ACTIF"]')).toBeVisible();
+  await expect(page.getByTestId("carte-abonnement")).toContainText("Mensuel");
+  // Le bouton Activer n'est pas proposé pour un abonnement actif ; Suspendre reste disponible
+  await expect(page.getByRole("button", { name: "Activer" })).toHaveCount(0);
+  await expect(page.getByTestId("bouton-suspendre-promoteur")).toBeVisible();
+  await page.goto("/admin/journal?periode=jour");
+  await expect(page.getByTestId("journal-ligne").filter({ hasText: P.nom }).filter({ hasText: "Abonnement prolongé de 1 mois (Mensuel)" })).toHaveCount(1);
+});
+
 test("ajout de directions : un second Directeur Commercial et un second PDG, sans contrainte d'unicité ; identifiants affichés une fois", async ({ page }) => {
   await login(page, "SUPERADMIN");
   await page.goto(P.href);

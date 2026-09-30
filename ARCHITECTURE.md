@@ -46,7 +46,10 @@ le créateur d'un compte : l'appartenance à un pôle se déduit du rôle.
 `/admin` est une grille de fiches (une par promoteur : nom, logo, statut
 d'abonnement et échéance, directions en exercice), chacune ouvrant
 `/admin/promoteurs/[id]` où se font toutes les actions : abonnement
-(`PromoteurActions`), logo (`LogoPromoteurForm`), directions de CE promoteur
+(`PromoteurActions` : Activer ; une fois actif, **Prolonger** sans attendre
+l'échéance — la durée s'ajoute à l'échéance en cours, ou part d'aujourd'hui si
+elle est passée, `src/lib/abonnement.ts` — et Suspendre), logo
+(`LogoPromoteurForm`), directions de CE promoteur
 (suspendre / supprimer / réactiver via `ActionsCompte`, inchangé) et **ajout
 d'une direction** à tout moment (`ajouterDirection`, `AjoutDirectionForm`).
 Un rôle de direction peut avoir **plusieurs titulaires, ou aucun** : aucune

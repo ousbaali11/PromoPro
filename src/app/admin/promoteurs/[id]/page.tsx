@@ -12,6 +12,7 @@ import { ActionsCompte } from "@/components/comptes/ActionsCompte";
 import { ROLE_LABELS } from "@/lib/roles";
 import { etatCompte } from "@/lib/comptes";
 import { formatDate } from "@/lib/utils";
+import { jourIso } from "@/lib/abonnement";
 import { avertissementDernierTitulaire, ROLES_DIRECTION, rolesSansTitulaire, trierDirections } from "@/lib/directions";
 import { PromoteurActions } from "../../PromoteurActions";
 import { LogoPromoteurForm } from "../../LogoPromoteurForm";
@@ -56,13 +57,21 @@ export default async function FichePromoteurPage({ params }: { params: Promise<{
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-4">
             <Info label="Formule" value={promoteur.abonnementFormule ?? "—"} />
-            <Info label="Échéance" value={<span className="tabular">{formatDate(promoteur.abonnementFin)}</span>} />
+            <Info
+              label="Échéance"
+              value={
+                <span className="tabular" data-testid="abonnement-echeance" data-echeance={jourIso(promoteur.abonnementFin)}>
+                  {formatDate(promoteur.abonnementFin)}
+                </span>
+              }
+            />
             <Info label="Début" value={<span className="tabular">{formatDate(promoteur.abonnementDebut)}</span>} />
             <Info label="Créé le" value={<span className="tabular">{formatDate(promoteur.createdAt)}</span>} />
           </dl>
           <p className="mt-4 text-caption text-navy-400">
             Le paiement se fait par virement, hors plateforme. L&apos;activation ouvre l&apos;accès à tous les comptes du promoteur ; la
-            suspension le coupe immédiatement.
+            suspension le coupe immédiatement. Un abonnement actif peut être prolongé à tout moment, sans attendre son échéance : la
+            durée s&apos;ajoute à l&apos;échéance en cours.
           </p>
         </Card>
 
