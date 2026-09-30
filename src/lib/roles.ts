@@ -38,7 +38,10 @@ export const ROLE_LABELS: Record<Role, string> = {
 /**
  * Hiérarchie de création des comptes internes :
  * - le Super Admin crée le promoteur avec ses trois directions (PDG, Directeur
- *   Commercial, Directeur Financier) en un seul geste (`/admin/nouveau`) ;
+ *   Commercial, Directeur Financier) en un seul geste (`/admin/nouveau`), puis
+ *   ajoute ou retire des directions à tout moment depuis la fiche du promoteur
+ *   (`/admin/promoteurs/[id]`) : un rôle de direction peut avoir plusieurs
+ *   titulaires, ou aucun ;
  * - chaque directeur recrute ensuite les rôles de son pôle (`/dashboard/equipe`) ;
  * - le PDG ne crée aucun compte.
  */

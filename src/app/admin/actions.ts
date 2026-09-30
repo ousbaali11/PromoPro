@@ -9,6 +9,16 @@ import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/a
 import { enregistrerActivite } from "@/lib/journal";
 import { invaliderTousLesEtats } from "@/lib/etat-compte";
 import { parsePublicPath } from "@/lib/storage";
+import { ROLE_LABELS } from "@/lib/roles";
+import { estRoleDirection } from "@/lib/directions";
+import { LONGUEURS, verifierTexte } from "@/lib/validation";
+
+/** Chemins à rafraîchir après toute action sur un promoteur (liste et fiche). */
+function rafraichirPromoteur(promoteurId: string) {
+  revalidatePath("/admin");
+  revalidatePath(`/admin/promoteurs/${promoteurId}`);
+  revalidatePath("/admin/journal");
+}
 
 /** Chemin d'un logo déposé via /api/upload (type « logos »), ou null ; toute autre valeur est ignorée. */
 function lireLogo(valeur: FormDataEntryValue | null) {
@@ -117,8 +127,7 @@ export async function activerAbonnement(promoteurId: string, formule: string, du
     promoteurId,
   });
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/journal");
+  rafraichirPromoteur(promoteurId);
 }
 
 export async function suspendrePromoteur(promoteurId: string) {
@@ -135,8 +144,7 @@ export async function suspendrePromoteur(promoteurId: string) {
     details: "Abonnement suspendu : les comptes du promoteur ne peuvent plus se connecter",
     promoteurId,
   });
-  revalidatePath("/admin");
-  revalidatePath("/admin/journal");
+  rafraichirPromoteur(promoteurId);
 }
 
 /**
@@ -161,7 +169,54 @@ export async function definirLogoPromoteur(promoteurId: string, _prev: LogoState
     details: logoUrl ? "Logo déposé" : "Logo retiré",
     promoteurId,
   });
-  revalidatePath("/admin");
+  rafraichirPromoteur(promoteurId);
   revalidatePath("/client", "layout");
   return { success: true };
+}
+
+export type AjoutDirectionState = { error?: string; success?: Acces } | undefined;
+
+const PREFIXE_DIRECTION: Record<string, string> = { PDG: "PDG", DIRECTEUR_COMMERCIAL: "DC", DIRECTEUR_FINANCIER: "DF" };
+
+/**
+ * Ajoute une direction (PDG, Directeur Commercial, Directeur Financier) à un
+ * promoteur existant, à tout moment. Contrairement à la création du promoteur
+ * (trois directions d'un coup), un rôle peut ainsi avoir plusieurs titulaires
+ * — ou n'en avoir aucun après une suppression : aucune contrainte d'unicité.
+ * Identifiant et mot de passe temporaire générés, affichés une seule fois.
+ */
+export async function ajouterDirection(promoteurId: string, _prev: AjoutDirectionState, formData: FormData): Promise<AjoutDirectionState> {
+  const session = await requireRole(["SUPER_ADMIN"]);
+  const promoteur = await db.query.promoteurs.findFirst({ where: eq(promoteurs.id, promoteurId) });
+  if (!promoteur) return { error: "Promoteur introuvable." };
+
+  const role = String(formData.get("role") ?? "");
+  const nom = String(formData.get("nom") ?? "").trim();
+  const prenom = String(formData.get("prenom") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  if (!estRoleDirection(role)) return { error: "Le rôle doit être PDG, Directeur Commercial ou Directeur Financier." };
+  const erreur =
+    verifierTexte(nom, { libelle: "Le nom", max: LONGUEURS.nom, obligatoire: true }) ??
+    verifierTexte(prenom, { libelle: "Le prénom", max: LONGUEURS.nom, obligatoire: true }) ??
+    verifierTexte(email, { libelle: "L'e-mail", max: LONGUEURS.courte });
+  if (erreur) return { error: erreur };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "L'e-mail n'est pas valide." };
+
+  const identifiant = generateIdentifiant(PREFIXE_DIRECTION[role]);
+  const password = generateTempPassword();
+  const [cree] = await db
+    .insert(users)
+    .values({ promoteurId, role, nom, prenom, identifiant, passwordHash: await hashPassword(password), email: email || null })
+    .returning();
+  await enregistrerActivite({
+    acteur: session,
+    action: "CREATION",
+    cibleType: "user",
+    cibleId: cree.id,
+    cibleNom: `${prenom} ${nom}`,
+    details: `Direction ajoutée à ${promoteur.nom} : ${ROLE_LABELS[role]} · identifiant ${identifiant}`,
+    promoteurId,
+  });
+  rafraichirPromoteur(promoteurId);
+  return { success: { role, nom, prenom, identifiant, password } };
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { confirmer, forgerArgumentAction, login, loginAvec, SUFFIXE_RUN, ouvrirFicheClientDepuisListe } from "./helpers";
+import { confirmer, forgerArgumentAction, login, loginAvec, SUFFIXE_RUN, ouvrirFicheClientDepuisListe, activerPromoteur } from "./helpers";
 
 /*
  * Isolation multi-promoteur sur le territoire de la restructuration : fiche
@@ -93,10 +93,7 @@ test("mise en place : promoteur C, vente conclue, contrat en deux versions, mod√
   await expect(blocs).toHaveCount(3);
   C.pdg = await lireAcces(blocs.filter({ hasText: "PDG" }));
   C.dircom = await lireAcces(blocs.filter({ hasText: "Directeur Commercial" }));
-  await page.goto("/admin");
-  const lignePromoteur = page.getByTestId("promoteur-ligne").filter({ hasText: C.nom });
-  await lignePromoteur.getByRole("button", { name: "Activer" }).click();
-  await expect(lignePromoteur.locator('[data-statut="ACTIF"]')).toBeVisible();
+  await activerPromoteur(page, C.nom);
 
   // Directeur Commercial C : projet, bien, commercial, responsable administratif
   await loginAvec(page, C.dircom.identifiant, C.dircom.mdp, /\/dashboard$/);

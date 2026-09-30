@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { login, loginAvec, confirmer, ouvrirFicheClientDepuisListe } from "./helpers";
+import { login, loginAvec, confirmer, ouvrirFicheClientDepuisListe, activerPromoteur, ouvrirFichePromoteur } from "./helpers";
 
 /*
  * Révocation immédiate des sessions (audit, phase 4) : un compte suspendu ou
@@ -88,10 +88,7 @@ test("promoteur suspendu par le Super Admin : ses comptes internes et clients pe
     identifiant: (await blocs.filter({ hasText: "Directeur Commercial" }).locator("dd").nth(0).innerText()).trim(),
     mdp: (await blocs.filter({ hasText: "Directeur Commercial" }).locator("dd").nth(1).innerText()).trim(),
   };
-  await page.goto("/admin");
-  const lignePromoteur = page.getByTestId("promoteur-ligne").filter({ hasText: `Promoteur C ${SUFFIXE}` });
-  await lignePromoteur.getByRole("button", { name: "Activer" }).click();
-  await expect(lignePromoteur.locator('[data-statut="ACTIF"]')).toBeVisible();
+  await activerPromoteur(page, `Promoteur C ${SUFFIXE}`);
 
   const dc = await contexteConnecte(browser, dircom.identifiant, dircom.mdp, /\/dashboard$/);
   await dc.page.goto("/dashboard/clients/nouveau");
@@ -104,9 +101,10 @@ test("promoteur suspendu par le Super Admin : ses comptes internes et clients pe
   const sessionPdg = await contexteConnecte(browser, pdg.identifiant, pdg.mdp, /\/dashboard$/);
   const sessionClient = await contexteConnecte(browser, client.identifiant, client.mdp, /\/client(\/biens\/[^/]+)?$/);
 
-  // Suspension du promoteur
-  await confirmer(page, "bouton-suspendre-promoteur", lignePromoteur);
-  await expect(lignePromoteur.locator('[data-statut="SUSPENDU"]')).toBeVisible();
+  // Suspension du promoteur, depuis sa fiche
+  await ouvrirFichePromoteur(page, `Promoteur C ${SUFFIXE}`);
+  await confirmer(page, "bouton-suspendre-promoteur");
+  await expect(page.getByTestId("carte-abonnement").locator('[data-statut="SUSPENDU"]')).toBeVisible();
 
   for (const [p, url] of [
     [sessionPdg.page, "/dashboard/propositions"],
@@ -132,9 +130,7 @@ test("promoteur suspendu par le Super Admin : ses comptes internes et clients pe
 
   // Réactivation : l'accès revient
   await login(page, "SUPERADMIN");
-  await page.goto("/admin");
-  await page.getByTestId("promoteur-ligne").filter({ hasText: `Promoteur C ${SUFFIXE}` }).getByRole("button", { name: "Activer" }).click();
-  await expect(page.getByTestId("promoteur-ligne").filter({ hasText: `Promoteur C ${SUFFIXE}` }).locator('[data-statut="ACTIF"]')).toBeVisible();
+  await activerPromoteur(page, `Promoteur C ${SUFFIXE}`);
   await loginAvec(sessionPdg.page, pdg.identifiant, pdg.mdp, /\/dashboard$/);
   await loginAvec(sessionClient.page, client.identifiant, client.mdp, /\/client(\/biens\/[^/]+)?$/);
   for (const c of [dc.ctx, sessionPdg.ctx, sessionClient.ctx]) await c.close();

@@ -128,7 +128,11 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   (PNG / JPG, à la création ou depuis la liste : repris en en-tête des
   contrats, reçus, autorisations de visite et de l'espace client, et comme
   icône d'onglet du tableau de bord interne et de l'espace client — sinon
-  en-tête texte au nom du promoteur et icône PromoPro), activer/suspendre son abonnement
+  en-tête texte au nom du promoteur et icône PromoPro), ouvrir sa fiche
+  (grille de fiches sur /admin) pour activer/suspendre son abonnement, gérer
+  ses directions (suspendre, supprimer, réactiver) et **ajouter une direction**
+  à tout moment (plusieurs PDG ou directeurs d'un même rôle possibles, ou aucun ;
+  la confirmation prévient si le promoteur n'aura plus de titulaire d'un rôle)
   (la suspension coupe immédiatement toutes les sessions du promoteur, staff et
   clients ; la date d'échéance de l'abonnement est affichée mais n'est pas
   bloquante : seul le statut compte)

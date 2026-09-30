@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { deposerFichier, login, ouvrirBienClient } from "./helpers";
+import { deposerFichier, login, ouvrirBienClient, ouvrirFichePromoteur } from "./helpers";
 import { texteDuPdf } from "../pdf-texte";
 
 /*
@@ -38,10 +38,12 @@ test("espace client : en-tête et titre au nom du promoteur, aucun « PromoPro �
 
 test("logo du promoteur : déposé par le Super Admin, visible dans la liste et dans l'en-tête de l'espace client", async ({ page }) => {
   await login(page, "SUPERADMIN");
-  await page.goto("/admin");
-  const ligne = page.getByTestId("promoteur-ligne").filter({ hasText: PROMOTEUR });
+  await ouvrirFichePromoteur(page, PROMOTEUR);
+  const ligne = page.getByTestId("carte-identite");
   await ligne.getByTestId("bouton-logo-promoteur").click();
   const form = page.getByTestId("form-logo-promoteur");
+  const retirer = form.getByRole("button", { name: "Retirer le fichier" });
+  if (await retirer.count()) await retirer.click();
   await deposerFichier(form, "logoUrl", [{ name: "logo-atlas.png" }]);
   await form.getByRole("button", { name: "Enregistrer" }).click();
   const vignette = ligne.getByTestId("logo-promoteur-image");

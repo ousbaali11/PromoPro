@@ -40,6 +40,25 @@ Pour ajouter un rôle recrutable, compléter cette constante (et `ROLE_LABELS`) 
 formulaire, liste et contrôle serveur suivent. La table `users` ne trace pas
 le créateur d'un compte : l'appartenance à un pôle se déduit du rôle.
 
+
+### Espace Super Admin : une fiche par promoteur, directions souples
+
+`/admin` est une grille de fiches (une par promoteur : nom, logo, statut
+d'abonnement et échéance, directions en exercice), chacune ouvrant
+`/admin/promoteurs/[id]` où se font toutes les actions : abonnement
+(`PromoteurActions`), logo (`LogoPromoteurForm`), directions de CE promoteur
+(suspendre / supprimer / réactiver via `ActionsCompte`, inchangé) et **ajout
+d'une direction** à tout moment (`ajouterDirection`, `AjoutDirectionForm`).
+Un rôle de direction peut avoir **plusieurs titulaires, ou aucun** : aucune
+contrainte d'unicité. Quand une suspension ou une suppression laisserait le
+promoteur sans titulaire d'un rôle, la confirmation le dit explicitement
+(`avertissementDernierTitulaire`, `src/lib/directions.ts`) sans bloquer.
+Audit du code (30 septembre 2026) : aucune requête ne suppose un titulaire
+unique — les destinataires par rôle sont toujours obtenus par `findMany`
+(`notifyRole`, propositions → PDG, contrats → Responsable Administratif,
+prospects → Assistant) ; les textes « le PDG », « au PDG » désignent la
+fonction, pas une personne. Test : `admin-promoteurs.spec.ts`.
+
 ## Sessions et rôles
 
 Deux types de session, définis dans `src/lib/auth.ts` :

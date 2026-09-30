@@ -172,6 +172,28 @@ export async function ouvrirFicheClientDepuisListe(page: Page, nom: RegExp) {
   return href!;
 }
 
+/**
+ * Ouvre la fiche d'un promoteur depuis la grille de /admin (Super Admin connecté)
+ * par le href de sa carte, et renvoie l'URL de la fiche.
+ */
+export async function ouvrirFichePromoteur(page: Page, nom: string) {
+  await page.goto("/admin");
+  const lien = page.getByTestId("promoteur-ligne").filter({ hasText: nom }).getByTestId("lien-fiche-promoteur");
+  await expect(lien).toBeVisible();
+  const href = await lien.getAttribute("href");
+  expect(href, `fiche du promoteur ${nom}`).toMatch(/^\/admin\/promoteurs\/[^/?]+$/);
+  await page.goto(href!);
+  await expect(page).toHaveURL(/\/admin\/promoteurs\/[^/?]+$/);
+  return href!;
+}
+
+/** Active l'abonnement d'un promoteur (Super Admin connecté) depuis sa fiche et attend le statut ACTIF. */
+export async function activerPromoteur(page: Page, nom: string) {
+  await ouvrirFichePromoteur(page, nom);
+  await page.getByRole("button", { name: "Activer" }).click();
+  await expect(page.getByTestId("carte-abonnement").locator('[data-statut="ACTIF"]')).toBeVisible();
+}
+
 /** Id (uuid) d'un bien depuis la page projet côté staff, par sa désignation. */
 export async function hrefBienStaff(page: Page, designation: string) {
   await page.goto("/dashboard/projets");

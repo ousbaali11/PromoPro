@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, classeurXlsx } from "./helpers";
+import { login, classeurXlsx, ouvrirFichePromoteur } from "./helpers";
 import { verifierA11y } from "./a11y";
 
 /*
@@ -310,7 +310,9 @@ test.describe("Accessibilité — clavier et ARIA", () => {
 
   test("DataTable : aria-sort none → ascending → descending → none", async ({ page }) => {
     await login(page, "SUPERADMIN");
-    const entete = page.locator("th", { hasText: "Promoteur" }).first();
+    // /admin est une grille de fiches : le tableau trié est celui des directions, sur la fiche du promoteur
+    await ouvrirFichePromoteur(page, "Résidences Atlas");
+    const entete = page.locator("th", { hasText: "Nom" }).first();
     await expect(entete).toHaveAttribute("aria-sort", "none");
     const bouton = entete.getByRole("button");
     await bouton.click();
@@ -320,7 +322,7 @@ test.describe("Accessibilité — clavier et ARIA", () => {
     await bouton.click();
     await expect(entete).toHaveAttribute("aria-sort", "none");
     // Une colonne non triable n'annonce aucun tri
-    await expect(page.locator("th", { hasText: "Abonnement" })).not.toHaveAttribute("aria-sort", /.+/);
+    await expect(page.locator("th", { hasText: "Identifiant" })).not.toHaveAttribute("aria-sort", /.+/);
   });
 
   test("toasts : région aria-live polite, jamais assertive", async ({ page }) => {

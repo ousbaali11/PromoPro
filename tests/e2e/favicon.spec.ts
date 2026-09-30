@@ -1,5 +1,5 @@
 import { expect, test, type APIResponse, type Page } from "@playwright/test";
-import { deposerFichier, login } from "./helpers";
+import { deposerFichier, login, ouvrirFichePromoteur } from "./helpers";
 
 /*
  * Icône de favori (favicon) :
@@ -57,8 +57,8 @@ async function lienIconeDynamique(page: Page, prefixe: "/dashboard/icon" | "/cli
 
 async function ouvrirFormulaireLogo(page: Page) {
   await login(page, "SUPERADMIN");
-  await page.goto("/admin");
-  const ligne = page.getByTestId("promoteur-ligne").filter({ hasText: PROMOTEUR });
+  await ouvrirFichePromoteur(page, PROMOTEUR);
+  const ligne = page.getByTestId("carte-identite");
   await ligne.getByTestId("bouton-logo-promoteur").click();
   const form = page.getByTestId("form-logo-promoteur");
   await expect(form).toBeVisible();

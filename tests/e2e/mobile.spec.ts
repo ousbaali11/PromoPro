@@ -162,6 +162,11 @@ test.describe("audit mobile", () => {
       await taille(page, largeur);
       await page.goto("/admin");
       await sansDebordement(page, `admin ${largeur}px`);
+      await dansLaFenetre(page.getByTestId("promoteur-ligne").first(), `fiche promoteur dans la grille ${largeur}px`);
+      await page.getByTestId("lien-fiche-promoteur").first().click();
+      await expect(page).toHaveURL(/\/admin\/promoteurs\/[^/?]+$/);
+      await sansDebordement(page, `fiche promoteur ${largeur}px`);
+      await dansLaFenetre(page.getByTestId("form-ajout-direction").getByRole("button", { name: "Créer le compte" }), `bouton d'ajout de direction ${largeur}px`);
       await page.getByTestId("bouton-logo-promoteur").first().click();
       const modale = page.getByRole("dialog");
       await expect(modale).toBeVisible();

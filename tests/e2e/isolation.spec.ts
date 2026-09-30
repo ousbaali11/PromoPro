@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login, loginAvec, confirmer, forgerArgumentAction, deposerFichier, ouvrirBienClient, classeurXlsx, PNG_1x1 } from "./helpers";
+import { login, loginAvec, confirmer, forgerArgumentAction, deposerFichier, ouvrirBienClient, classeurXlsx, PNG_1x1, activerPromoteur } from "./helpers";
 
 /*
  * Isolation multi-promoteur : un second promoteur « B » est créé par le Super
@@ -54,10 +54,7 @@ test("mise en place : promoteur B, directions, commercial, client, bien vendu, p
   await expect(blocs).toHaveCount(3);
   B.pdg = await lireAcces(blocs.filter({ hasText: "PDG" }));
   B.dircom = await lireAcces(blocs.filter({ hasText: "Directeur Commercial" }));
-  await page.goto("/admin");
-  const lignePromoteur = page.getByTestId("promoteur-ligne").filter({ hasText: B.nom });
-  await lignePromoteur.getByRole("button", { name: "Activer" }).click();
-  await expect(lignePromoteur.locator('[data-statut="ACTIF"]')).toBeVisible();
+  await activerPromoteur(page, B.nom);
 
   // Directeur Commercial B : projet, bien, plan 2D, commercial, client
   await loginAvec(page, B.dircom.identifiant, B.dircom.mdp, /\/dashboard$/);

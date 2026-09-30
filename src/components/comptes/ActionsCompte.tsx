@@ -37,6 +37,7 @@ export function ActionsCompte({
   nom,
   etat,
   venteEnCours = false,
+  avertissement = null,
   compact = false,
 }: {
   type: "client" | "user";
@@ -45,6 +46,12 @@ export function ActionsCompte({
   etat: EtatCompteValeur;
   /** Client avec une vente en cours : suppression refusée, suspension proposée. */
   venteEnCours?: boolean;
+  /**
+   * Mention ajoutée au message de confirmation, sans bloquer l'action (ex. « Ce
+   * promoteur n'aura plus aucun PDG après cette action. ») ; affichée aussi sous
+   * les boutons pour que l'acteur agisse en connaissance de cause.
+   */
+  avertissement?: string | null;
   compact?: boolean;
 }) {
   const router = useRouter();
@@ -125,7 +132,7 @@ export function ActionsCompte({
         <ConfirmButton
           size={taille}
           variant="secondary"
-          confirmLabel="Confirmer la suspension ?"
+          confirmLabel={avertissement ? `Confirmer la suspension ? ${avertissement}` : "Confirmer la suspension ?"}
           loading={enCours === "suspendre"}
           disabled={pending}
           onConfirm={() => lancer("suspendre")}
@@ -141,7 +148,7 @@ export function ActionsCompte({
           <ConfirmButton
             size={taille}
             variant="danger"
-            confirmLabel="Confirmer la suppression ?"
+            confirmLabel={avertissement ? `Confirmer la suppression ? ${avertissement}` : "Confirmer la suppression ?"}
             loading={enCours === "supprimer"}
             disabled={pending}
             onConfirm={() => lancer("supprimer")}
@@ -151,6 +158,11 @@ export function ActionsCompte({
           </ConfirmButton>
         )}
       </div>
+      {avertissement && (
+        <p className="max-w-xs text-right text-caption text-warning-fg" data-testid="avertissement-dernier-titulaire">
+          {avertissement}
+        </p>
+      )}
       {venteEnCours && (
         <p className="text-caption text-navy-400" data-testid="vente-en-cours">
           Vente en cours : la suppression est bloquée, la suspension reste possible.
