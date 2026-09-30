@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Prototype plan 2D → GLB</title>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+<style>
+  body { margin: 0; font-family: Arial, sans-serif; background: #f6f4f0; color: #12283f; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+  section { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.12); overflow: hidden; }
+  h2 { font-size: 15px; margin: 0; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  img { width: 100%; display: block; }
+  model-viewer { width: 100%; height: 420px; background: #eef1f5; }
+</style>
+</head>
+<body>
+<main>
+  <section><h2>villa_plan_2d.png (plan d'entrée)</h2><img src="plans/villa_plan_2d.png" alt="" /></section>
+  <section><h2>villa_plan_2d.glb (extrusion du JSON Gemini)</h2><model-viewer src="plans/villa_plan_2d.glb" camera-controls auto-rotate camera-orbit="35deg 60deg 28m" alt="Villa"></model-viewer></section>
+  <section><h2>appartement_scan.jpg (plan d'entrée, style scanné)</h2><img src="plans/appartement_scan.jpg" alt="" /></section>
+  <section><h2>appartement_scan.glb</h2><model-viewer src="plans/appartement_scan.glb" camera-controls auto-rotate camera-orbit="35deg 60deg 24m" alt="Appartement"></model-viewer></section>
+</main>
+</body>
+</html>

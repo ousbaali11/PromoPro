@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Résumés du test de charge (npm run charge --json)
 perf-resultat*.json
+
+# prototypes IA : plans d'essai, JSON et modèles générés (jamais versionnés)
+scripts/prototypes/plans/

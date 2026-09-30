@@ -3,7 +3,9 @@ import { Breadcrumb, Callout, PageHeader, Section } from "@/components/ui/Primit
 import { chiffrementDisponible, VARIABLE_CLE } from "@/lib/plan3d/chiffrement";
 import { configurationsAffichees } from "@/lib/plan3d/config";
 import { listerEssais, rattraperEssais } from "@/lib/plan3d/labo";
+import { FOURNISSEURS_EN_DEVELOPPEMENT } from "@/lib/plan3d/provider";
 import { CarteFournisseur } from "./CarteFournisseur";
+import { CarteEnDeveloppement } from "./CarteEnDeveloppement";
 import { BacASable, ListeEssais } from "./BacASable";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +47,9 @@ export default async function Plan3dPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {configs.map((c) => (
           <CarteFournisseur key={c.fournisseur} config={c} chiffrement={chiffrement} />
+        ))}
+        {FOURNISSEURS_EN_DEVELOPPEMENT.map((f) => (
+          <CarteEnDeveloppement key={f.code} fournisseur={f} />
         ))}
       </div>
 

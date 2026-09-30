@@ -65,6 +65,14 @@ test("accès : le Super Admin voit le lien et la page ; un rôle interne est red
     await expect(carte(page, f).getByTestId("bouton-actif")).toBeDisabled();
   }
   await expect(page.getByTestId("essais-vides")).toBeVisible();
+
+  // « Solution PromoPro » : carte d'information seulement, tant qu'elle n'est pas validée sur de vrais plans
+  const interne = page.getByTestId("carte-fournisseur-PROMOPRO");
+  await expect(interne).toContainText("Solution PromoPro");
+  await expect(interne.getByTestId("badge-en-developpement")).toHaveText("En développement — pas encore activable");
+  await expect(interne.getByTestId("form-cle")).toHaveCount(0);
+  await expect(interne.getByTestId("bouton-actif")).toHaveCount(0);
+  await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO"]')).toHaveCount(0);
 });
 
 test("clés d'API : enregistrées chiffrées, réaffichées masquées (quatre derniers caractères), jamais en clair dans la page ; journal", async ({ page }) => {

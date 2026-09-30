@@ -18,6 +18,22 @@ export const FOURNISSEURS: readonly { code: Fournisseur; libelle: string; site: 
   { code: "NEURAL4D", libelle: "Neural4D", site: "https://docs.neural4d.com" },
 ];
 
+/**
+ * Fournisseurs en développement : une carte d'information dans /admin/plan3d,
+ * hors du type Fournisseur — donc ni clé, ni activation, ni bac à sable —
+ * tant qu'ils n'ont pas été validés sur de vrais plans. Voir IA-INTERNE.md.
+ */
+export const FOURNISSEURS_EN_DEVELOPPEMENT: readonly { code: string; libelle: string; etat: string; description: string; suivi: string }[] = [
+  {
+    code: "PROMOPRO",
+    libelle: "Solution PromoPro",
+    etat: "En développement — pas encore activable",
+    description:
+      "IA interne de reconstruction 3D à partir du plan 2D (segmentation des murs, portes et fenêtres, puis extrusion), sans service tiers payant. Sera proposée ici une fois validée sur de vrais plans.",
+    suivi: "IA-INTERNE.md",
+  },
+];
+
 export function estFournisseur(valeur: string): valeur is Fournisseur {
   return FOURNISSEURS.some((f) => f.code === valeur);
 }
