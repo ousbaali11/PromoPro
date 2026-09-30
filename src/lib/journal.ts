@@ -30,6 +30,7 @@ export const CIBLE_LABELS: Record<string, string> = {
   echeancier: "Échéancier",
   tma: "Travaux modificatifs",
   prospects: "Prospects",
+  plan3d: "Génération 3D",
 };
 
 type Acteur = { userId: string; nom: string; prenom: string; promoteurId: string | null };

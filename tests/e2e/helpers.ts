@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { inflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 import * as XLSX from "xlsx";
 
 export const MDP = "demo1234";
@@ -269,4 +269,34 @@ export function classeurXlsx(lignes: Record<string, string>[], name = "prospects
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lignes), "Prospects");
   const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
   return { name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer };
+}
+
+/** PNG valide de largeur 2 px : le simulateur y répond par un échec de conversion. */
+export function pngEchec(): Buffer {
+  const largeur = 2;
+  const hauteur = 1;
+  const ligne = Buffer.concat([Buffer.from([0]), Buffer.alloc(largeur * 3, 0x80)]);
+  const idat = deflateSync(ligne);
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(td) >>> 0);
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(largeur, 0);
+  ihdr.writeUInt32BE(hauteur, 4);
+  ihdr[8] = 8; // profondeur
+  ihdr[9] = 2; // RGB
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
+}
+function crc32(buf: Buffer) {
+  let c = -1;
+  for (const octet of buf) {
+    c ^= octet;
+    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1;
+  }
+  return ~c;
 }

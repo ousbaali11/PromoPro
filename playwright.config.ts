@@ -45,6 +45,12 @@ export default defineConfig({
       // Retire le badge de l'overlay de développement Next.js (voir next.config.ts)
       E2E_TESTS: "1",
       JWT_SECRET: "secret-de-test-e2e-promopro-0123456789",
+      // Génération 3D : clés chiffrées avec un secret de test, fournisseurs simulés par /api/dev/plan3d-stub, suivi rapide
+      SECRETS_ENCRYPTION_KEY: "secret-de-chiffrement-e2e-0123456789",
+      MELTFLEX_API_URL: `http://localhost:${PORT}/api/dev/plan3d-stub/meltflex`,
+      NEURAL4D_API_URL: `http://localhost:${PORT}/api/dev/plan3d-stub/neural4d`,
+      PLAN3D_INTERVALLE_MS: "500",
+      PLAN3D_DELAI_MAX_MS: "20000",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

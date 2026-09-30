@@ -61,6 +61,7 @@ Onglet **Variables** du service web :
 | `RESEND_API_KEY` | clé d'API Resend (`re_…`) | E-mails de réinitialisation de mot de passe des comptes internes (« Mot de passe oublié ? » sur /login). Sans elle, la demande aboutit à un message générique mais aucun e-mail ne part (motif dans les logs). Jamais dans le code : variable Railway uniquement. |
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
+| `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
 `PORT` est fourni par Railway (l'image écoute sur `PORT`, 3000 par défaut).
@@ -230,19 +231,20 @@ reconstitué depuis l'historique git seul, listait comme « en attente » cinq
 tables et onze colonnes qui existaient déjà (`db:push` faits les 23 et
 24 septembre ; `No changes detected` le 30 septembre, état vérifié en base).
 
-En attente (30 septembre 2026, mot de passe oublié par e-mail) :
+En attente (1er octobre 2026, génération de modèles 3D) :
 
-- table `reinitialisations_mdp` (jetons hachés, expiration une heure, usage
-  unique) ;
-- colonne `users.sessions_revoquees_avant` (révocation des sessions ouvertes
-  après une réinitialisation).
+- tables `fournisseurs_plan3d_config` (clés d'API chiffrées, fournisseur
+  actif), `essais_plan3d_labo` (bac à sable du Super Admin) et
+  `generations_plan3d` (une ligne par génération sur un bien).
 
 Tous ces changements sont additifs : `npm run db:push` ne supprime rien.
-Sans eux, la page `/mot-de-passe-oublie` échoue à l'enregistrement du jeton
-et toute page protégée échoue à la lecture de la colonne manquante :
-appliquer le `db:push` **avant** de déployer ce commit, ou immédiatement après.
+Sans eux, /admin/plan3d échoue et la fiche d'un bien échoue pour le Directeur
+Commercial (lecture des générations) : appliquer le `db:push` **avant** de
+déployer ce commit, ou immédiatement après.
 
-Appliqués (vérifiés en base le 30 septembre 2026) : tables `epingles`,
+Appliqués (vérifiés en base le 30 septembre 2026) : table
+`reinitialisations_mdp` et colonne `users.sessions_revoquees_avant`
+(mot de passe oublié) ; tables `epingles`,
 `journal_activite`, `demandes_tma`, `contrat_sections`, `contrat_modeles` ;
 colonnes `users.deleted_at`, `clients.actif`, `clients.deleted_at`,
 `biens.plan_3d_url`, `biens.visite_virtuelle_url`, `projets.delai_tma_jours`,
@@ -488,6 +490,45 @@ puis `curl -i http://localhost:3000/api/test-erreur` (route API → 500) et
 `http://localhost:3000/dev/test-erreur` (Server Action et erreur client).
 L'événement doit apparaître dans Sentry avec `environment: development`, et
 toutes les fausses données de test sous la forme `[masqué]`.
+
+## 12. Génération de modèles 3D (fournisseurs externes)
+
+Le Super Admin configure tout dans **/admin/plan3d** : clé d'API par
+fournisseur (chiffrée au repos avec `SECRETS_ENCRYPTION_KEY`, seuls les
+quatre derniers caractères sont réaffichés), fournisseur **actif** (un seul)
+pour les générations réelles, et un bac à sable pour comparer les fournisseurs
+sur un même plan sans toucher aux biens. Sans fournisseur actif, rien ne se
+déclenche : le dépôt manuel d'un modèle 3D fonctionne comme avant.
+
+Obtenir une clé :
+
+- **MeltFlex** (`https://www.meltflexai.com`) : abonnement Pro ou Enterprise
+  (l'usage commercial n'est pas inclus dans le plan Standard), puis clé
+  `mf_sk_…` dans les réglages du compte. Un modèle .glb coûte 100 crédits
+  (Pro : 2 250 crédits/mois, soit environ 22 modèles ; au-delà, Enterprise sur
+  devis). Génération en 2 à 3 minutes.
+- **Neural4D** (`https://www.neural4d.com/api`) : plan Go (19,90 $/mois,
+  environ 150 modèles) ou paiement à l'usage (environ 0,15 $ par appel) ;
+  l'API est réservée aux plans payants (le plan gratuit interdit l'usage
+  commercial). Clé Bearer dans le tableau de bord. Génération en 1,5 à
+  2 minutes.
+
+Coût approximatif à 50 générations par mois : MeltFlex ≈ devis Enterprise
+(ou 22 modèles pour 9,90 $ en Pro) ; Neural4D ≈ 19,90 $/mois (plan Go).
+
+Fonctionnement sur les biens : un plan 2D (PNG/JPEG) déposé sur un bien sans
+modèle 3D crée une génération (au plus une par bien et par 24 h), exécutée
+après la réponse et suivie toutes les 5 s pendant 10 min au plus ; le
+Directeur Commercial est notifié, prévisualise et **valide** avant que le
+modèle n'apparaisse dans l'espace client. Les échecs (clé refusée, crédits,
+image refusée, délai) sont visibles sur la fiche et notifiés, sans effet sur
+le reste. Un redémarrage du serveur pendant une génération n'est pas grave :
+l'état est revérifié chez le fournisseur à l'ouverture de la fiche.
+
+Désactiver entièrement : dans /admin/plan3d, « Désactiver » le fournisseur
+actif (ou retirer `SECRETS_ENCRYPTION_KEY`, ce qui rend toutes les clés
+inutilisables). Remplacer le fournisseur : voir ARCHITECTURE.md, « Génération
+de modèles 3D » — un adaptateur par fournisseur derrière une interface unique.
 
 ## Dépannage
 

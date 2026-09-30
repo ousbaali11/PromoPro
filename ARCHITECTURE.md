@@ -572,6 +572,55 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   clics enchaînés sans vérifier `data-armed` n'arment alors que le bouton.
   Le helper clique jusqu'à constater l'armement, puis confirme.
 
+## Génération de modèles 3D à partir du plan 2D
+
+`src/lib/plan3d/` :
+
+- `provider.ts` — le contrat : `FournisseurPlan3d` avec deux méthodes,
+  `demarrerGeneration(image, cleApi)` (→ prêt avec `modelUrl`, ou en cours
+  avec une `reference`) et `verifierStatut(reference, cleApi)` (→ en cours /
+  prêt / échec), la liste `FOURNISSEURS` (code, libellé, site) et
+  `ErreurFournisseur` (message déjà lisible) ;
+- `meltflex.ts`, `neural4d.ts` — un adaptateur par fournisseur, qui traduit
+  son API documentée vers le contrat ; les fonctions `lireReponse…` sont pures
+  et testées sans réseau (`tests/unit/plan3d.test.ts`) ; la base d'URL est
+  surchargeable (`MELTFLEX_API_URL`, `NEURAL4D_API_URL`) pour le simulateur
+  des tests (`/api/dev/plan3d-stub`, 404 en production) ;
+- `registre.ts` — code → adaptateur ;
+- `chiffrement.ts` — AES-256-GCM des clés d'API (clé dérivée de
+  `SECRETS_ENCRYPTION_KEY`), `masquerCle` ;
+- `config.ts` — clés chiffrées et fournisseur actif (table
+  `fournisseurs_plan3d_config`), journalisation de chaque changement ;
+- `generation.ts` — exécution commune : lecture de l'image (PNG/JPEG
+  seulement), démarrage, suivi périodique borné (`PLAN3D_INTERVALLE_MS`,
+  `PLAN3D_DELAI_MAX_MS`), téléchargement du .glb et enregistrement comme
+  fichier `plans-3d` de l'application (signature vérifiée, 50 Mo max),
+  reprise d'une génération connue après redémarrage, règle des 24 h ;
+- `labo.ts` — bac à sable du Super Admin (table `essais_plan3d_labo`, jamais
+  rattachée à un bien) ; `biens.ts` — générations sur les biens (table
+  `generations_plan3d`), notification du Directeur Commercial, validation qui
+  copie le modèle vers `biens.plan_3d_url`.
+
+Le travail long s'exécute **après la réponse** de la Server Action
+(`after()` de `next/server`) : le dépôt du plan n'attend jamais le
+fournisseur. Les pages qui affichent des générations en attente les
+revérifient d'abord chez le fournisseur (référence stockée), puis se
+rafraîchissent d'elles-mêmes tant qu'une génération est en cours.
+
+**Règle absolue** : un modèle généré n'est jamais visible du client avant
+validation. Son fichier n'est référencé que par `generations_plan3d` :
+`file-access.ts` le sert au staff du promoteur seulement ; à la validation il
+devient aussi `biens.plan_3d_url`, donc lisible par le client comme un
+modèle déposé à la main. Les fichiers du bac à sable ne sont référencés que
+par `essais_plan3d_labo` : seul le Super Admin (qui lit tout) les ouvre.
+
+**Ajouter un troisième fournisseur** : créer `src/lib/plan3d/<nom>.ts` qui
+exporte un objet `FournisseurPlan3d` (deux méthodes), ajouter son code dans
+`FOURNISSEURS` (provider.ts) et dans le registre (registre.ts), écrire les
+tests de ses `lireReponse…` et, si les tests e2e doivent l'exercer, ses
+routes dans le simulateur. Le Super Admin le voit aussitôt dans /admin/plan3d
+(carte, liste déroulante du bac à sable). Aucune autre modification.
+
 ## Fichiers uploadés
 
 `src/lib/storage.ts` centralise le stockage local (`storage/uploads/<type>/`,

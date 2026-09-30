@@ -48,6 +48,9 @@ export const syndics = s.syndics;
 export const notifications = s.notifications;
 export const journalActivite = s.journalActivite;
 export const demandesTma = s.demandesTma;
+export const fournisseursPlan3dConfig = s.fournisseursPlan3dConfig;
+export const essaisPlan3dLabo = s.essaisPlan3dLabo;
+export const generationsPlan3d = s.generationsPlan3d;
 
 export const ROLES = sqlite.ROLES;
 export type Role = sqlite.Role;

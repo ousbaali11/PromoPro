@@ -494,3 +494,52 @@ export const demandesTma = pgTable("demandes_tma", {
   signatureClientAt: timestamp("signature_client_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
+
+// ---------------------------------------------------------------------------
+// Génération de modèles 3D à partir des plans 2D (fournisseurs externes).
+// - fournisseurs_plan3d_config : clé d'API de chaque fournisseur, chiffrée au
+//   repos (AES-256-GCM, clé dérivée de SECRETS_ENCRYPTION_KEY), et fournisseur
+//   actif pour les générations réelles (un seul à la fois) ;
+// - essais_plan3d_labo : bac à sable du Super Admin (/admin/plan3d), jamais
+//   rattaché à un bien ni visible ailleurs ;
+// - generations_plan3d : une ligne par tentative sur un bien, publiée vers
+//   biens.plan_3d_url seulement après validation du Directeur Commercial.
+// Voir src/lib/plan3d/ et ARCHITECTURE.md.
+// ---------------------------------------------------------------------------
+export const fournisseursPlan3dConfig = pgTable("fournisseurs_plan3d_config", {
+  id: id(),
+  fournisseur: text("fournisseur").notNull().unique(), // MELTFLEX | NEURAL4D
+  cleApiChiffree: text("cle_api_chiffree").notNull(),
+  actif: boolean("actif").notNull().default(false),
+  modifieParId: text("modifie_par_id").references(() => users.id),
+  modifieAt: timestamp("modifie_at", { withTimezone: true }).$defaultFn(() => new Date()),
+});
+
+export const essaisPlan3dLabo = pgTable("essais_plan3d_labo", {
+  id: id(),
+  fournisseur: text("fournisseur").notNull(),
+  planUrl: text("plan_url").notNull(),
+  // EN_ATTENTE | PRET | ECHEC
+  statut: text("statut").notNull().default("EN_ATTENTE"),
+  referenceFournisseur: text("reference_fournisseur"), // identifiant de tâche chez le fournisseur (reprise après redémarrage)
+  resultatUrl: text("resultat_url"),
+  erreurMessage: text("erreur_message"),
+  dureeMs: integer("duree_ms"),
+  createdAt: createdAt(),
+});
+
+export const generationsPlan3d = pgTable("generations_plan3d", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  fournisseur: text("fournisseur").notNull(),
+  // EN_ATTENTE | PRET | ECHEC
+  statut: text("statut").notNull().default("EN_ATTENTE"),
+  referenceFournisseur: text("reference_fournisseur"),
+  modelUrl: text("model_url"),
+  erreurMessage: text("erreur_message"),
+  createdAt: createdAt(),
+  valideAt: timestamp("valide_at", { withTimezone: true }),
+  valideParId: text("valide_par_id").references(() => users.id),
+});

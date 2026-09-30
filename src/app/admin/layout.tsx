@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, LogOut, ScrollText } from "lucide-react";
+import { Box, Building2, LogOut, ScrollText } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { logout } from "@/app/login/actions";
 
@@ -24,6 +24,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </Link>
         <div className="flex flex-wrap items-center gap-1">
+          <Link
+            href="/admin/plan3d"
+            className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-caption text-navy-100/70 transition-colors duration-fast hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:shadow-focus"
+            data-testid="lien-plan3d"
+          >
+            <Box className="h-3.5 w-3.5" />
+            Génération 3D
+          </Link>
           <Link
             href="/admin/journal"
             className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-caption text-navy-100/70 transition-colors duration-fast hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:shadow-focus"
