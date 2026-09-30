@@ -137,6 +137,9 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   (la suspension coupe immédiatement toutes les sessions du promoteur, staff et
   clients ; la date d'échéance de l'abonnement est affichée mais n'est pas
   bloquante : seul le statut compte)
+- Cartes de synthèse des tableaux de bord en montants compacts (« 2,14 Md MAD »
+  dès le million, montant exact en info-bulle), lisibles quelle que soit la
+  croissance des chiffres
 - **Directeur Commercial** : projets (dont le délai des travaux modificatifs)
   et tableau de contenance (bouton « Dupliquer » sur une fiche bien : nouveau
   lot du même projet avec nature, prix et surface repris), plans de chaque bien (2D PDF/image, modèle 3D

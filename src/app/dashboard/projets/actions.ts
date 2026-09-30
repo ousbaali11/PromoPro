@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { MESSAGE_NATURE_INVALIDE, NATURE_PAR_DEFAUT, natureValide } from "@/lib/natures-biens";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db/client";
@@ -54,7 +55,7 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
 
   const projetId = String(formData.get("projetId") ?? "");
   const designation = String(formData.get("designation") ?? "").trim();
-  const nature = String(formData.get("nature") ?? "Appartement");
+  const nature = String(formData.get("nature") ?? NATURE_PAR_DEFAUT).trim();
   const prix = lireNombre(formData.get("prix"));
   const surface = lireNombre(formData.get("surface"));
 
@@ -64,7 +65,8 @@ export async function addBien(_prev: { error?: string } | undefined, formData: F
   const invalide =
     verifierTexte(designation, { libelle: "La désignation", max: LONGUEURS.designation }) ??
     verifierMontant(prix, { libelle: "Le prix" }) ??
-    verifierMontant(surface, { libelle: "La surface" });
+    verifierMontant(surface, { libelle: "La surface" }) ??
+    (natureValide(nature) ? null : MESSAGE_NATURE_INVALIDE);
   if (invalide) return { error: invalide };
   if (!(await projetDuPromoteur(projetId, session.promoteurId))) return { error: "Projet introuvable." };
 
@@ -182,6 +184,8 @@ export async function modifierBien(_prev: ModifState, formData: FormData): Promi
   if (!apres.designation || !apres.nature) {
     return { error: "Merci de compléter la désignation, la nature, le prix et la surface." };
   }
+  // Une nature historique hors liste peut être conservée telle quelle, jamais remplacée par une valeur hors liste
+  if (!natureValide(apres.nature) && apres.nature !== bien.nature) return { error: MESSAGE_NATURE_INVALIDE };
   const invalide =
     verifierTexte(apres.designation, { libelle: "La désignation", max: LONGUEURS.designation }) ??
     verifierMontant(apres.prix, { libelle: "Le prix" }) ??

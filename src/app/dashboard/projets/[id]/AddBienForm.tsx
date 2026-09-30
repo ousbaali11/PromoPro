@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useEffect } from "react";
+import { GROUPES_NATURES, NATURE_PAR_DEFAUT } from "@/lib/natures-biens";
 import { addBien } from "../actions";
 import { Card, Field, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
@@ -42,11 +43,14 @@ export function AddBienForm({ projetId, modele }: { projetId: string; modele?: M
           <Input id="designation" name="designation" placeholder="ex. Appartement C03" required autoFocus={!!modele} />
         </Field>
         <Field label="Nature" htmlFor="nature">
-          <Select id="nature" name="nature" defaultValue={modele?.nature ?? "Appartement"}>
-            <option>Appartement</option>
-            <option>Parking</option>
-            <option>Local commercial</option>
-            <option>Villa</option>
+          <Select id="nature" name="nature" defaultValue={modele?.nature ?? NATURE_PAR_DEFAUT} data-testid="select-nature">
+            {GROUPES_NATURES.map((g) => (
+              <optgroup key={g.groupe} label={g.groupe}>
+                {g.natures.map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </optgroup>
+            ))}
           </Select>
         </Field>
         <Field label="Prix (MAD)" htmlFor="prix">

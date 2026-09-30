@@ -1,13 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
+import { GROUPES_NATURES, natureValide } from "@/lib/natures-biens";
 import { Save } from "lucide-react";
 import { modifierBien } from "@/app/dashboard/projets/actions";
 import { Card, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 
-const NATURES = ["Appartement", "Parking", "Local commercial", "Villa"];
 
 export function ModifierBienForm({
   bien,
@@ -15,15 +15,21 @@ export function ModifierBienForm({
   bien: { id: string; designation: string; nature: string; prix: number; surface: number };
 }) {
   const [state, formAction, pending] = useActionState(modifierBien, undefined);
-  const natures = NATURES.includes(bien.nature) ? NATURES : [bien.nature, ...NATURES];
+  // Une nature historique hors liste reste sélectionnable telle quelle (jamais modifiée à l'insu de l'utilisateur)
+  const horsListe = natureValide(bien.nature) ? null : bien.nature;
   return (
     <Card className="p-6">
       <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="form-modifier-bien">
         <input type="hidden" name="bienId" value={bien.id} />
         <Input id="designation" name="designation" label="Désignation" defaultValue={bien.designation} required containerClassName="sm:col-span-2" />
-        <Select id="nature" name="nature" label="Nature" defaultValue={bien.nature}>
-          {natures.map((n) => (
-            <option key={n}>{n}</option>
+        <Select id="nature" name="nature" label="Nature" defaultValue={bien.nature} data-testid="select-nature">
+          {horsListe && <option>{horsListe}</option>}
+          {GROUPES_NATURES.map((g) => (
+            <optgroup key={g.groupe} label={g.groupe}>
+              {g.natures.map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </optgroup>
           ))}
         </Select>
         <Input id="prix" name="prix" type="number" label="Prix (MAD)" min={0} step={1000} defaultValue={bien.prix} clearable={false} required />

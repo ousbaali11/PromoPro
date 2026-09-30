@@ -477,6 +477,23 @@ pagination, export CSV via `ExportCsv`), `SegmentedControl`, `Dropdown`,
 classes Tailwind `bg-navy`, `text-gold-600`, etc. (Tailwind v4, configuration
 CSS-first via `@theme`).
 
+**Montants des cartes de synthèse** : `MontantCompact` (`src/components/ui/`)
+affiche `formatMoneyCompact` (`src/lib/utils.ts`) — forme complète sous le
+million, puis trois chiffres significatifs avec l'échelon français M / Md /
+Bn / Bd (« 2,14 Md MAD ») ; au-delà du dernier échelon le nombre d'unités
+s'affiche avec ses séparateurs, la longueur reste donc bornée quelle que soit
+la croissance des montants. Le montant exact est en info-bulle (`title`) et
+en `data-montant`. Utilisé sur toutes les cartes `Stat` en dirhams
+(tableaux de bord, trésorerie, paiements, recouvrement) ; les listes, fiches
+et documents gardent `formatMoney` (montant complet).
+
+**Natures de biens** : liste par groupes dans `src/lib/natures-biens.ts`
+(résidentiel, terrain, professionnel, stationnement et annexes, immeuble),
+proposée à la création et à la modification d'un bien et exigée par les
+Server Actions (`natureValide`) ; `biens.nature` reste un texte en base, une
+valeur historique hors liste est conservée telle quelle à la modification.
+Ajoute une nature ici, jamais dans un formulaire.
+
 `src/lib/roles.ts` centralise le libellé de chaque rôle (`ROLE_LABELS`) et la
 navigation de la sidebar par rôle (`NAV_BY_ROLE`) — ajoute une entrée ici
 quand un nouveau module a sa propre page de menu.
