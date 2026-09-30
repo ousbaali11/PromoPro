@@ -17,6 +17,8 @@ import { DesistementForm } from "./DesistementForm";
 import { saisirPaiementCommercial } from "./actions";
 import { PlansBien } from "@/components/biens/PlansBien";
 import { PaiementForm } from "@/components/paiements/PaiementForm";
+import { GenerationsPlan3d } from "./GenerationsPlan3d";
+import { generationsDuBien, rattraperGenerations } from "@/lib/plan3d/biens";
 
 const ECH_LABEL: Record<string, string> = { EN_ATTENTE: "En attente", PARTIELLE: "Partielle", PAYEE: "Payée" };
 const ECH_TONE = { EN_ATTENTE: "warning", PARTIELLE: "info", PAYEE: "success" } as const;
@@ -47,6 +49,13 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
   const isCommercialDuBien =
     (session.role === "COMMERCIAL" && bien.commercialId === session.userId) || session.role === "RESPONSABLE_COMMERCIAL";
   const canSaisirPaiement = vendu && isCommercialDuBien;
+
+  // Modèles 3D générés (Directeur Commercial) : les générations en attente sont d'abord vérifiées chez le fournisseur
+  let generations: Awaited<ReturnType<typeof generationsDuBien>> = [];
+  if (session.role === "DIRECTEUR_COMMERCIAL") {
+    await rattraperGenerations(bien.id);
+    generations = await generationsDuBien(bien.id);
+  }
 
   const totalPaye = echeancier.reduce((s, e) => s + e.montantPaye, 0);
   const avancement = bien.prix > 0 ? Math.min(100, Math.round((totalPaye / bien.prix) * 100)) : 0;
@@ -104,6 +113,12 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
             <Card className="p-4">
               <PlanUploadForm bienId={bien.id} plans={{ plan2dUrl: bien.plan2dUrl, plan3dUrl: bien.plan3dUrl, visiteVirtuelleUrl: bien.visiteVirtuelleUrl }} />
             </Card>
+          )}
+          {session.role === "DIRECTEUR_COMMERCIAL" && (
+            <GenerationsPlan3d
+              generations={generations.map((g) => ({ id: g.id, fournisseur: g.fournisseur, statut: g.statut, modelUrl: g.modelUrl, erreurMessage: g.erreurMessage, createdAt: g.createdAt, valideAt: g.valideAt }))}
+              plan3dPublie={bien.plan3dUrl}
+            />
           )}
         </div>
 

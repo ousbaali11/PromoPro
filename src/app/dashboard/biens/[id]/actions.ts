@@ -3,6 +3,8 @@
 import { eq, and, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { preparerGenerationPourBien, validerGeneration } from "@/lib/plan3d/biens";
 import { db } from "@/db/client";
 import { biens, projets, paiements, desistements, propositions, contrats } from "@/db/schema";
 import { requireRole } from "@/lib/session";
@@ -69,10 +71,29 @@ export async function setPlanBien(_prev: { error?: string } | undefined, formDat
       visiteVirtuelleUrl: visiteVirtuelleUrl || null,
     })
     .where(eq(biens.id, bienId));
+  // Plan 2D déposé sur un bien sans modèle 3D : génération automatique par le fournisseur actif
+  // (aucun fournisseur actif → rien ; au plus une par bien et par 24 h), exécutée après la réponse
+  if (plan2dUrl) {
+    const preparation = await preparerGenerationPourBien(bienId, plan2dUrl, !!(plan3dUrl || bien.plan3dUrl));
+    if (preparation.executer) after(preparation.executer);
+  }
   revalidatePath(`/dashboard/biens/${bienId}`);
   revalidatePath("/dashboard/clients/[id]", "page");
   revalidatePath(`/client/biens/${bienId}`);
   return { error: undefined };
+}
+
+/** Le Directeur Commercial valide un modèle 3D généré : il devient le plan 3D du bien, visible du client. */
+export async function validerGenerationPlan3d(generationId: string) {
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const r = await validerGeneration(session, generationId);
+  if ("ok" in r) {
+    revalidatePath(`/dashboard/biens/${r.bienId}`);
+    revalidatePath("/dashboard/clients/[id]", "page");
+    revalidatePath(`/client/biens/${r.bienId}`);
+    revalidatePath("/dashboard/journal");
+  }
+  return r;
 }
 
 /**

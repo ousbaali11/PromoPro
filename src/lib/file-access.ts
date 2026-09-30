@@ -1,6 +1,6 @@
 import { eq, like, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, demandesTma, desistements, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
+import { biens, clients, contrats, demandesTma, desistements, generationsPlan3d, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
 
 /**
  * Retrouve à quel promoteur et à quel client appartient un fichier stocké, à
@@ -43,6 +43,14 @@ export async function proprietaireDuFichier(
 
   const bienPlan = await db.query.biens.findFirst({ where: or(eq(biens.plan2dUrl, url), eq(biens.plan3dUrl, url)) });
   if (bienPlan) return viaBien(bienPlan.id);
+
+  // Modèle 3D généré mais pas encore validé : staff du promoteur seulement, jamais le client
+  // (une fois validé, il est aussi biens.plan_3d_url et retrouvé juste au-dessus avec le client)
+  const generation = await db.query.generationsPlan3d.findFirst({ where: eq(generationsPlan3d.modelUrl, url) });
+  if (generation) {
+    const p = await viaBien(generation.bienId);
+    return p ? { promoteurId: p.promoteurId, clientId: null } : null;
+  }
 
   const tma = await db.query.demandesTma.findFirst({ where: or(eq(demandesTma.croquisUrl, url), eq(demandesTma.devisUrl, url)) });
   if (tma) return viaClient(tma.clientId);
