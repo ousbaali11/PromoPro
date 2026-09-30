@@ -16,6 +16,26 @@ async function totalGraphique(page: Page, testId: string) {
   return Number(await page.getByTestId(testId).getAttribute("data-total"));
 }
 
+test("cartes de montant : forme compacte bornée (« 2,14 Md MAD ») dès le million, montant exact en info-bulle, jamais un nombre à dix chiffres", async ({ page }) => {
+  await login(page, "PDG");
+  await page.goto("/dashboard?plage=annee");
+  await expect(page.getByTestId("graphiques")).toHaveAttribute("data-plage", "annee");
+  for (const cle of ["ca", "panier"]) {
+    const carte = page.getByTestId(`stat-periode-${cle}`);
+    const montant = Number(await carte.getAttribute("data-valeur"));
+    const texte = (await carte.innerText()).replace(/\s/g, " ");
+    expect(texte, cle).toMatch(/^-?[\d ]+(,\d+)?( (M|Md|Bn|Bd))? MAD$/);
+    expect(texte.length, `${cle} : ${texte}`).toBeLessThanOrEqual(16);
+    const exact = await carte.locator("[data-montant]").getAttribute("title");
+    if (montant >= 1_000_000) {
+      expect(texte, cle).toMatch(/ (M|Md|Bn|Bd) MAD$/);
+      expect(exact?.replace(/\s/g, " "), cle).toBe(new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(montant).replace(/\s/g, " ") + " MAD");
+    } else {
+      expect(exact, cle).toBeNull();
+    }
+  }
+});
+
 test("PDG : ventes et chiffre d'affaires suivent la plage (la semaine dernière → cette année)", async ({ page }) => {
   await login(page, "PDG");
   // La vente du seed est datée du jour : « la semaine dernière » n'en contient aucune

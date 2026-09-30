@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MontantCompact } from "@/components/ui/MontantCompact";
 import { eq, inArray } from "drizzle-orm";
 import { Banknote, CalendarClock, Landmark, Receipt, Wallet } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -96,10 +97,10 @@ export default async function FinancePage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total du jour" value={formatMoney(t.totalDuJour)} hint="Réceptions et encaissements datés d'aujourd'hui" accent icon={<Wallet />} />
-        <Stat label="Total à 7 jours" value={formatMoney(t.totalA7Jours)} hint="D'aujourd'hui à J+7 (paiements validés)" accent icon={<CalendarClock />} />
-        <Stat label="Chèques encaissés" value={formatMoney(t.totalChequesEncaisses)} hint={`${t.chequesEncaisses.length} chèque(s)`} icon={<Receipt />} />
-        <Stat label="Chèques à venir" value={formatMoney(t.totalChequesAVenir)} hint={`${t.chequesAVenir.length} chèque(s) à encaisser`} icon={<Landmark />} />
+        <Stat label="Total du jour" value={<MontantCompact montant={t.totalDuJour} />} hint="Réceptions et encaissements datés d'aujourd'hui" accent icon={<Wallet />} />
+        <Stat label="Total à 7 jours" value={<MontantCompact montant={t.totalA7Jours} />} hint="D'aujourd'hui à J+7 (paiements validés)" accent icon={<CalendarClock />} />
+        <Stat label="Chèques encaissés" value={<MontantCompact montant={t.totalChequesEncaisses} />} hint={`${t.chequesEncaisses.length} chèque(s)`} icon={<Receipt />} />
+        <Stat label="Chèques à venir" value={<MontantCompact montant={t.totalChequesAVenir} />} hint={`${t.chequesAVenir.length} chèque(s) à encaisser`} icon={<Landmark />} />
       </div>
 
       <Section

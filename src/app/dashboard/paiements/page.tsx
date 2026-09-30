@@ -1,4 +1,5 @@
 import { NomCompte } from "@/components/ui/EtatCompte";
+import { MontantCompact } from "@/components/ui/MontantCompact";
 import { desc, eq } from "drizzle-orm";
 import { FileDown, Paperclip, Receipt, Building, Wallet, HandCoins } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -59,7 +60,7 @@ export default async function PaiementsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="En attente" value={enAttente.length} tone={enAttente.length > 0 ? "warning" : undefined} icon={<Wallet />} hint="Référence et validation à saisir" />
-        <Stat label="Validés" value={formatMoney(totalValide)} icon={<Receipt />} hint={`${valides.length} opération${valides.length > 1 ? "s" : ""}`} />
+        <Stat label="Validés" value={<MontantCompact montant={totalValide} />} icon={<Receipt />} hint={`${valides.length} opération${valides.length > 1 ? "s" : ""}`} />
         <Stat label="Syndic à valider" value={syndicsEnAttente.length} tone={syndicsEnAttente.length > 0 ? "warning" : undefined} icon={<Building />} />
       </div>
 

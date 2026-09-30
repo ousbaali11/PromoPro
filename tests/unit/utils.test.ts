@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultEcheancier, formatDate, formatMoney, addMonths, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
+import { defaultEcheancier, formatDate, formatMoney, formatMoneyCompact, SEUIL_MONTANT_COMPACT, addMonths, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
 
 const espaces = (s: string) => s.replace(/[  ]/g, " ");
 
@@ -44,6 +44,29 @@ describe("formatMoney", () => {
   it("accepte une autre devise et n'affiche pas de décimales", () => {
     expect(espaces(formatMoney(1500.6, "EUR"))).toBe("1 501 EUR");
     expect(espaces(formatMoney(0))).toBe("0 MAD");
+  });
+});
+
+describe("formatMoneyCompact", () => {
+  it("garde la forme complète sous le million", () => {
+    expect(SEUIL_MONTANT_COMPACT).toBe(1_000_000);
+    expect(espaces(formatMoneyCompact(0))).toBe("0 MAD");
+    expect(espaces(formatMoneyCompact(850_000))).toBe("850 000 MAD");
+    expect(espaces(formatMoneyCompact(999_999))).toBe("999 999 MAD");
+  });
+  it("compacte à trois chiffres significatifs : millions, milliards, billions, billiards", () => {
+    expect(espaces(formatMoneyCompact(1_000_000))).toBe("1 M MAD");
+    expect(espaces(formatMoneyCompact(1_067_789_000))).toBe("1,07 Md MAD");
+    expect(espaces(formatMoneyCompact(2_135_578_000))).toBe("2,14 Md MAD");
+    expect(espaces(formatMoneyCompact(12_500_000))).toBe("12,5 M MAD");
+    expect(espaces(formatMoneyCompact(999_400_000))).toBe("999 M MAD");
+    expect(espaces(formatMoneyCompact(3.2e12))).toBe("3,2 Bn MAD");
+    expect(espaces(formatMoneyCompact(7.25e15, "EUR"))).toBe("7,25 Bd EUR");
+  });
+  it("reste borné au-delà du dernier échelon et respecte le signe", () => {
+    expect(espaces(formatMoneyCompact(2.1357e18))).toBe("2 136 Bd MAD");
+    expect(espaces(formatMoneyCompact(-2_135_578_000))).toBe("-2,14 Md MAD");
+    for (const n of [1e6, 1e9, 1e12, 1e15, 1e18, 1e21]) expect(formatMoneyCompact(n).length).toBeLessThanOrEqual(16);
   });
 });
 

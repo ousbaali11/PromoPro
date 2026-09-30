@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MontantCompact } from "@/components/ui/MontantCompact";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { CalendarClock, AlertTriangle, Wallet } from "lucide-react";
 import { requireRole } from "@/lib/session";
@@ -90,7 +91,7 @@ export default async function RecouvrementPage({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat label={`${bornes ? bornes.label : "Toutes périodes"} · échéances`} value={rows.length} icon={<CalendarClock />} />
-          <Stat label="Restant dû sur la période" value={formatMoney(totalDu)} icon={<Wallet />} />
+          <Stat label="Restant dû sur la période" value={<MontantCompact montant={totalDu} />} icon={<Wallet />} />
           <Stat
             label="En retard"
             value={enRetard.length}

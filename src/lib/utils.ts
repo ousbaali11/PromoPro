@@ -8,6 +8,37 @@ export function formatMoney(amount: number, devise = "MAD") {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(amount) + " " + devise;
 }
 
+/** À partir d'un million, les cartes de synthèse passent en forme compacte. */
+export const SEUIL_MONTANT_COMPACT = 1_000_000;
+
+// Échelons français : million, milliard, billion (10^12), billiard (10^15). Au-delà, le nombre
+// d'unités du dernier échelon s'affiche avec ses séparateurs de milliers : la longueur reste bornée.
+const ECHELONS_MONTANT: [number, string][] = [
+  [1e15, "Bd"],
+  [1e12, "Bn"],
+  [1e9, "Md"],
+  [1e6, "M"],
+];
+
+/**
+ * Forme compacte d'un montant pour les tableaux de bord : « 850 000 MAD » en
+ * dessous du million, puis « 2,14 M MAD », « 1,07 Md MAD », « 12,5 Bn MAD »…
+ * avec trois chiffres significatifs. L'affichage garde donc une longueur
+ * bornée quelle que soit la croissance des montants ; la valeur exacte est
+ * donnée à côté (info-bulle, attribut) par le composant MontantCompact.
+ */
+export function formatMoneyCompact(amount: number, devise = "MAD") {
+  const absolu = Math.abs(amount);
+  if (!Number.isFinite(amount) || absolu < SEUIL_MONTANT_COMPACT) return formatMoney(amount, devise);
+  const [echelon, suffixe] = ECHELONS_MONTANT.find(([e]) => absolu >= e) ?? ECHELONS_MONTANT[ECHELONS_MONTANT.length - 1];
+  const unites = amount / echelon;
+  const nombre =
+    Math.abs(unites) < 1000
+      ? new Intl.NumberFormat("fr-FR", { maximumSignificantDigits: 3 }).format(unites)
+      : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(unites);
+  return `${nombre} ${suffixe} ${devise}`;
+}
+
 export function formatDate(date: Date | number | string | null | undefined) {
   if (!date) return "—";
   const d = new Date(date);

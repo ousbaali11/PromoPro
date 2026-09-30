@@ -2,7 +2,7 @@ import { BarChart3 } from "lucide-react";
 import type { SessionPayload } from "@/lib/auth";
 import type { Plage } from "@/lib/plage-dates";
 import { Section, Stat } from "@/components/ui/Primitives";
-import { formatMoney } from "@/lib/utils";
+import { MontantCompact } from "@/components/ui/MontantCompact";
 import { donneesTableauDeBord } from "@/lib/graphiques-data";
 import { GraphiqueBarres, GraphiqueCourbe } from "@/components/graphiques/Graphiques";
 
@@ -23,7 +23,11 @@ export async function SectionGraphiques({ session, plage, panne = false }: { ses
             <Stat
               key={s.cle}
               label={s.label}
-              value={<span data-testid={`stat-periode-${s.cle}`} data-valeur={s.valeur}>{s.unite === "mad" ? formatMoney(s.valeur) : s.valeur.toLocaleString("fr-FR")}</span>}
+              value={
+                <span data-testid={`stat-periode-${s.cle}`} data-valeur={s.valeur}>
+                  {s.unite === "mad" ? <MontantCompact montant={s.valeur} /> : s.valeur.toLocaleString("fr-FR")}
+                </span>
+              }
               hint={s.hint}
               icon={<BarChart3 />}
             />
