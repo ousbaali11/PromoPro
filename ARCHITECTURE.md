@@ -586,11 +586,14 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   et testées sans réseau (`tests/unit/plan3d.test.ts`) ; la base d'URL est
   surchargeable (`MELTFLEX_API_URL`, `NEURAL4D_API_URL`) pour le simulateur
   des tests (`/api/dev/plan3d-stub`, 404 en production) ;
-- `promopro.ts` — adaptateur **interne** « Solution PromoPro », synchrone et
-  sans clé : `inference.ts` (modèle ONNX U-Net ResNet-34 exécuté par
-  `onnxruntime-node` sur CPU, prétraitement letterbox identique à
-  l'entraînement, modèle lu dans `storage/modeles/` ou téléchargé depuis
-  `PLAN3D_MODELE_URL`), `segmentation.ts` (`ajouterEncre` : les traits
+- `promopro.ts` — adaptateurs **internes**, synchrones et sans clé,
+  produits par une même fabrique : « Solution PromoPro » (variante
+  `principal`) et « PromoPro — variante B » (variante `b`, second
+  entraînement, bac à sable seulement) ; `inference.ts` (modèle ONNX U-Net
+  ResNet-34 exécuté par `onnxruntime-node` sur CPU, prétraitement letterbox
+  identique à l'entraînement, un fichier par variante dans `storage/modeles/`
+  ou téléchargé depuis `PLAN3D_MODELE_URL` / `PLAN3D_MODELE_B_URL`, session
+  gardée en mémoire par variante), `segmentation.ts` (`ajouterEncre` : les traits
   sombres de l'image — murs fins, fenêtres en double trait — complètent le
   masque du modèle, hors des murs déjà reconnus et après avoir écarté le
   texte, les cotes, les arcs de porte et les équipements courbes, et les

@@ -62,6 +62,7 @@ Onglet **Variables** du service web :
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
 | `PLAN3D_MODELE_URL` | adresse directe du fichier `promopro-plan3d.onnx` | Facultatif : téléchargement automatique du modèle interne « Solution PromoPro » dans le volume au premier usage (section 12). Sans modèle, la carte reste « non installé ». |
+| `PLAN3D_MODELE_B_URL` | adresse directe du fichier `promopro-variante-b.onnx` | Facultatif : même mécanisme pour « PromoPro — variante B » (second entraînement, bac à sable seulement, section 12). |
 | `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
@@ -553,6 +554,18 @@ sur le serveur » ou « Modèle non installé ». Tant qu'elle n'est pas validé
 de vrais plans, elle reste **testable dans le bac à sable seulement** : le
 bouton « Utiliser pour les biens » est désactivé et le serveur refuse son
 activation. Aucun coût par génération.
+
+### PromoPro — variante B (second modèle, bac à sable seulement)
+
+Second entraînement (`best.safetensors`, epoch 26) converti en ONNX sans
+Python par `scripts/prototypes/safetensors-vers-onnx.mjs` (IA-INTERNE.md,
+section 11). Même chaîne et mêmes règles que la Solution PromoPro, avec son
+propre fichier : `storage/modeles/promopro-variante-b.onnx` (ou
+`PLAN3D_MODELE_B_CHEMIN`), téléchargeable au premier usage depuis
+`PLAN3D_MODELE_B_URL`. Sa carte porte le résultat déjà mesuré (murs plus
+nets, mais plus de fausses portes sur les plans avec du texte) ; elle n'est
+proposée que dans le bac à sable, pour comparaison, et le serveur refuse son
+activation pour les biens.
 
 ## Dépannage
 

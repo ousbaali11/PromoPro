@@ -11,7 +11,10 @@
  * fournisseurPlan3d(). Rien d'autre à toucher (voir ARCHITECTURE.md).
  */
 
-export type Fournisseur = "MELTFLEX" | "NEURAL4D" | "PROMOPRO";
+export type Fournisseur = "MELTFLEX" | "NEURAL4D" | "PROMOPRO" | "PROMOPRO_B";
+
+/** Variantes du modèle interne (un fichier ONNX chacune, voir inference.ts). */
+export type VarianteModele = "principal" | "b";
 
 export type DescriptionFournisseur = {
   code: Fournisseur;
@@ -25,6 +28,8 @@ export type DescriptionFournisseur = {
   etat?: string;
   /** Vrai si le modèle rendu arrive sans couleur : la palette commune (palette.ts) lui est appliquée au téléchargement. */
   recolorer?: boolean;
+  /** Fournisseur interne : variante du modèle ONNX exécutée sur le serveur. */
+  modeleInterne?: VarianteModele;
   description?: string;
 };
 
@@ -37,9 +42,21 @@ export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
     site: "IA-INTERNE.md",
     necessiteCle: false,
     activable: false,
+    modeleInterne: "principal",
     etat: "En développement — testable dans le bac à sable, pas encore activable pour les biens",
     description:
       "Modèle interne (segmentation des murs, portes et fenêtres, puis extrusion), exécuté sur le serveur sans service tiers ni clé. Activable pour les biens une fois validé sur de vrais plans.",
+  },
+  {
+    code: "PROMOPRO_B",
+    libelle: "PromoPro — variante B (epoch 26)",
+    site: "IA-INTERNE.md",
+    necessiteCle: false,
+    activable: false,
+    modeleInterne: "b",
+    etat: "Bac à sable seulement — pas activable pour les biens",
+    description:
+      "Second entraînement (best.safetensors, epoch 26) converti en ONNX, même post-traitement que la Solution PromoPro. Mesure déjà faite (IA-INTERNE.md, section 11) : murs plus nets, mais plus de fausses portes sur les plans avec du texte — 26 contre 0 sur l'appartement réel, 6 pièces sur 9 contre 8 sur la villa. Comparaison dans le bac à sable seulement, tant qu'elle n'a pas dépassé le modèle en place sur 5 à 10 vrais plans.",
   },
 ];
 

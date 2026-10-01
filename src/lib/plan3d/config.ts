@@ -34,14 +34,14 @@ export type ConfigAffichee = {
 
 export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
   const lignes = await db.query.fournisseursPlan3dConfig.findMany();
-  const modele = await modeleDisponible();
-  return FOURNISSEURS.map((f) => {
+  const modeles = await Promise.all(FOURNISSEURS.map((f) => (f.modeleInterne ? modeleDisponible(f.modeleInterne) : Promise.resolve(false))));
+  return FOURNISSEURS.map((f, i) => {
     const ligne = lignes.find((l) => l.fournisseur === f.code);
     let cleMasquee: string | null = null;
     let configure = false;
     if (!f.necessiteCle) {
-      configure = modele;
-      cleMasquee = modele ? "Modèle installé sur le serveur" : "Modèle non installé (voir DEPLOY.md)";
+      configure = modeles[i];
+      cleMasquee = modeles[i] ? "Modèle installé sur le serveur" : "Modèle non installé (voir DEPLOY.md)";
     } else if (ligne && chiffrementDisponible()) {
       try {
         cleMasquee = masquerCle(dechiffrer(ligne.cleApiChiffree));
@@ -72,7 +72,7 @@ export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
 export async function cleApiPour(fournisseur: Fournisseur): Promise<string | null> {
   const description = descriptionFournisseur(fournisseur);
   if (!description) return null;
-  if (!description.necessiteCle) return (await modeleDisponible()) ? "" : null;
+  if (!description.necessiteCle) return description.modeleInterne && (await modeleDisponible(description.modeleInterne)) ? "" : null;
   if (!chiffrementDisponible()) return null;
   const ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
   if (!ligne) return null;

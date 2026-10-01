@@ -275,10 +275,14 @@ post-traitement pour tout modèle à venir : les classes porte / fenêtre posée
 sur du texte sont effacées (`ajouterEncre`), et une ouverture n'est gardée
 que si du mur la borde aux deux bouts (`ouverturesDansLesMurs`). Même avec
 eux, le second modèle reste en dessous ou à égalité sur la structure des
-pièces et introduit de fausses portes : **il n'est pas intégré**, ni comme
-remplaçant ni comme « PromoPro Avancée ». Le fichier converti
-(`storage/modeles/promopro-avance.onnx`, hors git) peut être essayé dans le
-bac à sable en pointant `PLAN3D_MODELE_CHEMIN` dessus ; pour qu'il devienne
-une solution distincte sur le site, il faudrait d'abord qu'il dépasse le
-modèle en place sur ces deux plans et sur 5 à 10 autres vrais plans.
+pièces et introduit de fausses portes : **il ne remplace pas le modèle en
+place**. À la demande du promoteur, il est proposé dans le bac à sable de
+/admin/plan3d sous le nom neutre « PromoPro — variante B (epoch 26) »
+(fournisseur `PROMOPRO_B`, fichier `storage/modeles/promopro-variante-b.onnx`
+ou `PLAN3D_MODELE_B_CHEMIN` / `PLAN3D_MODELE_B_URL`, hors git), côte à côte
+avec la Solution PromoPro pour les comparaisons à venir, sa carte rappelant le
+résultat mesuré. Comme la Solution PromoPro, il n'est pas activable pour les
+biens (`activable: false`, refus côté serveur) et ne le deviendra pas tant
+qu'il n'a pas dépassé le modèle en place sur ces deux plans et sur 5 à 10
+autres vrais plans, avec confirmation explicite du promoteur.
 

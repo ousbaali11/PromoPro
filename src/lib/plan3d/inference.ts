@@ -3,6 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import * as ort from "onnxruntime-node";
 import type { Masque } from "./segmentation";
+import type { VarianteModele } from "./provider";
 
 /*
  * Inférence locale du modèle « Solution PromoPro » (U-Net ResNet-34 exporté
@@ -10,41 +11,51 @@ import type { Masque } from "./segmentation";
  * image du plan → masque de classes (0 fond, 1 mur, 2 porte, 3 fenêtre), sur
  * CPU, sans Python. Prétraitement identique à l'entraînement : letterbox
  * (proportions conservées, complément blanc) vers le carré d'entrée du
- * modèle, normalisation ImageNet. Le modèle est lu depuis
- * PLAN3D_MODELE_CHEMIN (défaut : storage/modeles/promopro-plan3d.onnx, hors
- * dépôt git — 97 Mo) et gardé en mémoire après le premier chargement.
+ * modèle, normalisation ImageNet. Deux variantes du modèle, un fichier
+ * chacune (hors dépôt git — 97 Mo), gardées en mémoire après le premier
+ * chargement : « principal » (Solution PromoPro, PLAN3D_MODELE_CHEMIN /
+ * PLAN3D_MODELE_URL, défaut storage/modeles/promopro-plan3d.onnx) et « b »
+ * (PromoPro — variante B, PLAN3D_MODELE_B_CHEMIN / PLAN3D_MODELE_B_URL,
+ * défaut storage/modeles/promopro-variante-b.onnx).
  */
 
-export const CHEMIN_MODELE_PAR_DEFAUT = path.join("storage", "modeles", "promopro-plan3d.onnx");
+export const VARIANTES: Record<VarianteModele, { libelle: string; fichier: string; envChemin: string; envUrl: string }> = {
+  principal: { libelle: "Solution PromoPro", fichier: "promopro-plan3d.onnx", envChemin: "PLAN3D_MODELE_CHEMIN", envUrl: "PLAN3D_MODELE_URL" },
+  b: { libelle: "PromoPro — variante B", fichier: "promopro-variante-b.onnx", envChemin: "PLAN3D_MODELE_B_CHEMIN", envUrl: "PLAN3D_MODELE_B_URL" },
+};
+export const CHEMIN_MODELE_PAR_DEFAUT = path.join("storage", "modeles", VARIANTES.principal.fichier);
+const cheminParDefaut = (variante: VarianteModele) => path.join("storage", "modeles", VARIANTES[variante].fichier);
 const TAILLE_ENTREE = 512;
 const MOYENNE = [0.485, 0.456, 0.406];
 const ECART = [0.229, 0.224, 0.225];
 
-export function cheminModele() {
-  return path.resolve(process.env.PLAN3D_MODELE_CHEMIN ?? CHEMIN_MODELE_PAR_DEFAUT);
+export function cheminModele(variante: VarianteModele = "principal") {
+  return path.resolve(process.env[VARIANTES[variante].envChemin] ?? cheminParDefaut(variante));
 }
 
-export async function modeleDisponible(): Promise<boolean> {
+export async function modeleDisponible(variante: VarianteModele = "principal"): Promise<boolean> {
   try {
-    await access(cheminModele());
+    await access(cheminModele(variante));
     return true;
   } catch {
-    return telechargerModeleSiConfigure();
+    return telechargerModeleSiConfigure(variante);
   }
 }
 
-const g2 = globalThis as unknown as { __promoproTelechargementModele?: Promise<boolean> };
+const g2 = globalThis as unknown as { __promoproTelechargementModele?: Partial<Record<VarianteModele, Promise<boolean>>> };
 /**
  * Sans fichier local, le modèle est téléchargé une fois depuis PLAN3D_MODELE_URL
  * (adresse directe, ex. une « release » GitHub) vers le chemin du modèle — sur
  * Railway, dans le volume persistant. Un échec laisse le fournisseur « non installé ».
  */
-function telechargerModeleSiConfigure(): Promise<boolean> {
-  const url = process.env.PLAN3D_MODELE_URL?.trim();
+function telechargerModeleSiConfigure(variante: VarianteModele): Promise<boolean> {
+  const { libelle, envUrl } = VARIANTES[variante];
+  const url = process.env[envUrl]?.trim();
   if (!url) return Promise.resolve(false);
-  g2.__promoproTelechargementModele ??= (async () => {
+  const cache = (g2.__promoproTelechargementModele ??= {});
+  cache[variante] ??= (async () => {
     try {
-      const chemin = cheminModele();
+      const chemin = cheminModele(variante);
       await mkdir(path.dirname(chemin), { recursive: true });
       const reponse = await fetch(url);
       if (!reponse.ok) throw new Error(`réponse ${reponse.status}`);
@@ -52,29 +63,33 @@ function telechargerModeleSiConfigure(): Promise<boolean> {
       if (octets.length < 1_000_000) throw new Error("fichier trop petit pour être un modèle");
       await writeFile(`${chemin}.partiel`, octets);
       await rename(`${chemin}.partiel`, chemin);
-      console.log(`[plan3d] modèle Solution PromoPro téléchargé (${Math.round(octets.length / 1_000_000)} Mo) vers ${chemin}`);
+      console.log(`[plan3d] modèle ${libelle} téléchargé (${Math.round(octets.length / 1_000_000)} Mo) vers ${chemin}`);
       return true;
     } catch (e) {
-      console.error("[plan3d] téléchargement du modèle Solution PromoPro impossible :", e);
-      g2.__promoproTelechargementModele = undefined; // nouvelle tentative au prochain appel
+      console.error(`[plan3d] téléchargement du modèle ${libelle} impossible :`, e);
+      cache[variante] = undefined; // nouvelle tentative au prochain appel
       return false;
     }
   })();
-  return g2.__promoproTelechargementModele;
+  return cache[variante]!;
 }
 
-export const MESSAGE_MODELE_ABSENT = `Le modèle de la Solution PromoPro n'est pas installé (${CHEMIN_MODELE_PAR_DEFAUT}, ou PLAN3D_MODELE_CHEMIN). Voir DEPLOY.md.`;
+export function messageModeleAbsent(variante: VarianteModele = "principal") {
+  const { libelle, envChemin } = VARIANTES[variante];
+  return `Le modèle « ${libelle} » n'est pas installé (${cheminParDefaut(variante)}, ou ${envChemin}). Voir DEPLOY.md.`;
+}
+export const MESSAGE_MODELE_ABSENT = messageModeleAbsent("principal");
 
-const g = globalThis as unknown as { __promoproSessionOnnx?: Promise<ort.InferenceSession> };
-function session(): Promise<ort.InferenceSession> {
-  g.__promoproSessionOnnx ??= ort.InferenceSession.create(cheminModele(), { executionProviders: ["cpu"], graphOptimizationLevel: "all" }).catch((e) => {
-    g.__promoproSessionOnnx = undefined;
+const g = globalThis as unknown as { __promoproSessionOnnx?: Partial<Record<VarianteModele, Promise<ort.InferenceSession>>> };
+function session(variante: VarianteModele): Promise<ort.InferenceSession> {
+  const cache = (g.__promoproSessionOnnx ??= {});
+  cache[variante] ??= ort.InferenceSession.create(cheminModele(variante), { executionProviders: ["cpu"], graphOptimizationLevel: "all" }).catch((e) => {
+    cache[variante] = undefined;
     throw e;
   });
-  return g.__promoproSessionOnnx;
+  return cache[variante]!;
 }
 
-/** Segmente une image (PNG ou JPEG) et rend le masque à la taille de l'image d'origine. */
 /** Image du plan en niveaux de gris (un octet par pixel), aux dimensions demandées — pour `ajouterEncre`. */
 export async function grisDuPlan(octets: Uint8Array, largeur: number, hauteur: number): Promise<Uint8Array> {
   const { data } = await sharp(Buffer.from(octets))
@@ -87,7 +102,8 @@ export async function grisDuPlan(octets: Uint8Array, largeur: number, hauteur: n
   return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 }
 
-export async function segmenterPlan(octets: Uint8Array): Promise<Masque> {
+/** Segmente une image (PNG ou JPEG) avec la variante demandée et rend le masque à la taille de l'image d'origine. */
+export async function segmenterPlan(octets: Uint8Array, variante: VarianteModele = "principal"): Promise<Masque> {
   const image = sharp(Buffer.from(octets)).removeAlpha().flatten({ background: "#ffffff" });
   const meta = await image.metadata();
   const W = meta.width ?? 0;
@@ -109,7 +125,7 @@ export async function segmenterPlan(octets: Uint8Array): Promise<Masque> {
   for (let i = 0; i < n; i++)
     for (let c = 0; c < 3; c++) entree[c * n + i] = (data[i * 3 + c] / 255 - MOYENNE[c]) / ECART[c];
 
-  const s = await session();
+  const s = await session(variante);
   const nomEntree = s.inputNames[0];
   const sortie = await s.run({ [nomEntree]: new ort.Tensor("float32", entree, [1, 3, TAILLE_ENTREE, TAILLE_ENTREE]) });
   const logits = sortie[s.outputNames[0]];

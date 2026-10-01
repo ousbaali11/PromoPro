@@ -208,4 +208,15 @@ describe("fournisseurs", () => {
     expect(fournisseurPlan3d("PROMOPRO").code).toBe("PROMOPRO");
     expect(FOURNISSEURS.filter((f) => f.activable).map((f) => f.code)).toEqual(["MELTFLEX", "NEURAL4D"]);
   });
+
+  it("la variante B est un second fournisseur interne, sans clé, non activable, au nom neutre et à la note de mesure visible", () => {
+    const d = descriptionFournisseur("PROMOPRO_B");
+    expect(d?.necessiteCle).toBe(false);
+    expect(d?.activable).toBe(false);
+    expect(d?.modeleInterne).toBe("b");
+    expect(d?.libelle).not.toMatch(/avanc/i);
+    expect(d?.description).toMatch(/fausses portes/);
+    expect(fournisseurPlan3d("PROMOPRO_B").code).toBe("PROMOPRO_B");
+    expect(FOURNISSEURS.filter((f) => f.modeleInterne).map((f) => f.code)).toEqual(["PROMOPRO", "PROMOPRO_B"]);
+  });
 });

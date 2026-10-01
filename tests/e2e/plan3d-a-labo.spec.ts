@@ -39,7 +39,7 @@ async function enregistrerCle(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D", 
   await expect(c.getByTestId("cle-enregistree")).toBeVisible();
 }
 
-async function lancerEssai(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D" | "PROMOPRO", fichier: { name: string; buffer?: Buffer }) {
+async function lancerEssai(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D" | "PROMOPRO" | "PROMOPRO_B", fichier: { name: string; buffer?: Buffer }) {
   const form = page.getByTestId("form-essai");
   await page.locator('[data-testid="form-essai"][data-hydrated="true"]').waitFor();
   await deposerFichier(form, "planUrl", [fichier]);
@@ -73,6 +73,15 @@ test("accès : le Super Admin voit le lien et la page ; un rôle interne est red
   await expect(interne.getByTestId("form-cle")).toHaveCount(0);
   await expect(interne.getByTestId("bouton-actif")).toBeDisabled();
   await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO"]')).toHaveCount(1);
+  // « PromoPro — variante B » : second modèle interne, côte à côte, nom neutre, note de mesure visible, bac à sable seulement
+  const varianteB = page.getByTestId("carte-fournisseur-PROMOPRO_B");
+  await expect(varianteB).toContainText("PromoPro — variante B");
+  await expect(varianteB).not.toContainText(/avanc/i);
+  await expect(varianteB).toContainText("fausses portes");
+  await expect(varianteB.getByTestId("badge-en-developpement")).toContainText("Bac à sable seulement");
+  await expect(varianteB.getByTestId("form-cle")).toHaveCount(0);
+  await expect(varianteB.getByTestId("bouton-actif")).toBeDisabled();
+  await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO_B"]')).toHaveCount(1);
 });
 
 test("clés d'API : enregistrées chiffrées, réaffichées masquées (quatre derniers caractères), jamais en clair dans la page ; journal", async ({ page }) => {
@@ -169,28 +178,31 @@ test("échecs : image refusée par le fournisseur (MeltFlex 502, Neural4D échec
   await expect(form.locator('input[type="hidden"][name="planUrl"]')).toHaveValue("");
 });
 
-test("Solution PromoPro : génération locale dans le bac à sable (modèle installé → .glb servi ; sinon échec explicite), jamais activable pour les biens", async ({ page }) => {
-  test.setTimeout(120_000);
-  await login(page, "SUPERADMIN");
-  await page.goto("/admin/plan3d");
-  const carte = page.getByTestId("carte-fournisseur-PROMOPRO");
-  const installe = (await carte.getByTestId("cle-masquee").innerText()).includes("installé sur le serveur");
-  const option = page.getByTestId("form-essai").locator('option[value="PROMOPRO"]');
-  if (!installe) {
-    test.info().annotations.push({ type: "note", description: "modèle ONNX absent : seule l'indisponibilité est vérifiée" });
-    await expect(option).toBeDisabled();
-    await expect(carte.getByTestId("cle-masquee")).toContainText("non installé");
-    return;
-  }
-  await expect(option).toBeEnabled();
-  const ligne = await lancerEssai(page, "PROMOPRO", { name: "plan-interne.png", buffer: planSynthetique() });
-  await expect(ligne.getByTestId("essai-statut")).toHaveText("Prêt", { timeout: 60_000 });
-  await ligne.getByTestId("voir-modele").click();
-  const src = await srcModele(ligne);
-  const reponse = await lireUrl(page, src);
-  expect(reponse.status()).toBe(200);
-  expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
-  expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");
-  // Toujours pas activable pour les biens, même modèle installé
-  await expect(carte.getByTestId("bouton-actif")).toBeDisabled();
-});
+for (const interne of ["PROMOPRO", "PROMOPRO_B"] as const) {
+  test(`${interne} : génération locale dans le bac à sable (modèle installé → .glb servi ; sinon échec explicite), jamais activable pour les biens`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await login(page, "SUPERADMIN");
+    await page.goto("/admin/plan3d");
+    const carte = page.getByTestId(`carte-fournisseur-${interne}`);
+    const installe = (await carte.getByTestId("cle-masquee").innerText()).includes("installé sur le serveur");
+    const option = page.getByTestId("form-essai").locator(`option[value="${interne}"]`);
+    if (!installe) {
+      test.info().annotations.push({ type: "note", description: "modèle ONNX absent : seule l'indisponibilité est vérifiée" });
+      await expect(option).toBeDisabled();
+      await expect(carte.getByTestId("cle-masquee")).toContainText("non installé");
+      await expect(carte.getByTestId("bouton-actif")).toBeDisabled();
+      return;
+    }
+    await expect(option).toBeEnabled();
+    const ligne = await lancerEssai(page, interne, { name: "plan-interne.png", buffer: planSynthetique() });
+    await expect(ligne.getByTestId("essai-statut")).toHaveText("Prêt", { timeout: 60_000 });
+    await ligne.getByTestId("voir-modele").click();
+    const src = await srcModele(ligne);
+    const reponse = await lireUrl(page, src);
+    expect(reponse.status()).toBe(200);
+    expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
+    expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");
+    // Toujours pas activable pour les biens, même modèle installé
+    await expect(carte.getByTestId("bouton-actif")).toBeDisabled();
+  });
+}
