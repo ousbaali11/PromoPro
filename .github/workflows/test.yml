@@ -11,8 +11,11 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    # Build + unitaires + ~19 min de bout en bout : marge sur un runner partagé.
-    timeout-minutes: 35
+    # Lint + build + unitaires (~4 min) puis 213 tests de bout en bout en série (~34 min en local,
+    # davantage sur un runner partagé à 2 cœurs) : la limite de 35 min a annulé le run du 1er octobre
+    # 2026 au milieu de la suite (eeb3036). Marge large ; la suite reste à un seul worker car des specs
+    # dépendent des données laissées par les précédents (ordre alphabétique).
+    timeout-minutes: 75
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       # Aucune DATABASE_URL : mode SQLite local, garanti hors production.
