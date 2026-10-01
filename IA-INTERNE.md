@@ -192,3 +192,48 @@ dans le bac à sable 5 à 10 vrais plans de projets et comparer avec MeltFlex ou
 Neural4D sur les mêmes plans ; puis, si l'écart est acceptable, annoter 30 à
 50 plans réels pour un cycle d'ajustement (cycle 3 du plan) avant toute
 activation.
+
+## 10. Premier vrai plan dans le bac à sable (2 octobre 2026)
+
+Le promoteur a déposé un plan d'appartement réel (1240 × 800, murs épais en
+noir, fenêtres en double trait fin, arcs de porte, noms des pièces en
+capitales, treize pièces : séjour, deux terrasses, trois chambres dont un
+bureau, hall de nuit, hall d'entrée, hall commun, cuisine, WC, salle de bains,
+buanderie). Résultat de la version précédente : neuf fragments sans rapport
+avec le plan, la moitié gauche absente.
+
+Diagnostic sur le masque du modèle : les murs épais sont reconnus, mais **ni
+les fenêtres en double trait, ni les murs fins** (classés fond) ; les pièces
+se déversent donc les unes dans les autres et dans l'extérieur, et la
+fermeture morphologique de 8 % du grand côté, conçue pour reboucher les
+portes, remplissait aussi tout espace plus étroit que 100 px (terrasses, WC,
+halls) tout en reliant le texte aux murs.
+
+Deux corrections de post-traitement, sans réentraînement :
+
+1. **Encre de l'image** (`ajouterEncre`) : sur un plan au trait à fond
+   clair, les pixels sombres hors des murs déjà reconnus deviennent des
+   barrières, après filtrage des composantes trop petites (texte, cotes) et
+   non droites (arcs de porte, cuvette, lavabo). Garde-fous : fond clair exigé
+   (médiane presque blanche), rien n'est ajouté si l'encre gardée dépasse un
+   quart de l'image (photo, scan sombre).
+2. **Rebouchage des portes** (`reboucherSelonAxe`) : une coupure n'est
+   rebouchée, jusqu'à 8 % du grand côté, que si un tronçon de mur d'au moins
+   la moitié de cette largeur la borde dans la direction de l'axe (une porte
+   interrompt un mur) ; les petites cassures (un quart) le sont toujours. Un
+   espace entre deux murs parallèles n'est plus rempli.
+
+| Plan | Avant | Après |
+|---|---|---|
+| Appartement réel (13 pièces) | 9 fragments, moitié gauche absente | 15 pièces : les 13 retrouvées, le hall de nuit coupé en deux par la porte du WC, la baignoire comptée comme une pièce |
+| villa_plan_2d.png (référence Gemini, 9 pièces) | 8 / 9 (couloir IoU 0,15) | 8 / 9 (couloir IoU 0,54) |
+| Temps | 0,8 s | 0,9 à 1,4 s |
+
+Limites qui restent : les portes ne sont toujours pas reconnues (0 porte sur
+les deux plans, les murs du modèle 3D sont pleins), un équipement rectangulaire
+(baignoire) peut devenir une pièce, les noms de pièces ne sont pas lus. Le
+verdict ne change pas : Gemini reste la référence ; la Solution PromoPro est
+désormais utilisable pour juger la structure d'un plan au trait propre dans le
+bac à sable, et le cycle d'ajustement sur 30 à 50 plans réels annotés reste
+nécessaire avant toute activation.
+

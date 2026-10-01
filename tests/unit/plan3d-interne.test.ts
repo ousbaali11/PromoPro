@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLASSE, extraireStructure, iouRectangles, type Masque } from "@/lib/plan3d/segmentation";
+import { ajouterEncre, CLASSE, extraireStructure, iouRectangles, type Masque } from "@/lib/plan3d/segmentation";
 import { dimensionsParDefaut, extruderEnGlb, GRAND_COTE_PAR_DEFAUT_M } from "@/lib/plan3d/extrusion";
 import { descriptionFournisseur, FOURNISSEURS } from "@/lib/plan3d/provider";
 import { fournisseurPlan3d } from "@/lib/plan3d/registre";
@@ -48,6 +48,78 @@ describe("segmentation : pièces et portes depuis un masque", () => {
     expect(extraireStructure(m, { fermeturePx: 0 }).pieces).toHaveLength(2);
     const vide: Masque = { largeur: 50, hauteur: 50, classes: new Uint8Array(2500) };
     expect(extraireStructure(vide).pieces).toHaveLength(0);
+  });
+});
+
+/** Masque 300 × 200 : contour épais ; un couloir horizontal étroit (y 80..110) entre deux murs ; une porte dans le mur bas du couloir, contre le mur de droite. */
+function masqueCouloir(): Masque {
+  const W = 300, H = 200;
+  const classes = new Uint8Array(W * H);
+  const mur = (x0: number, x1: number, y0: number, y1: number) => {
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) classes[y * W + x] = CLASSE.MUR;
+  };
+  mur(0, W, 0, 6); mur(0, W, H - 6, H); mur(0, 6, 0, H); mur(W - 6, W, 0, H);
+  mur(6, W - 6, 74, 80); // mur haut du couloir
+  mur(6, W - 36, 110, 116); // mur bas du couloir, interrompu par une porte de 30 px contre le mur de droite
+  return { largeur: W, hauteur: H, classes };
+}
+
+describe("segmentation : rebouchage des portes sans remplir les pièces étroites", () => {
+  it("un couloir de 30 px entre deux murs parallèles reste une pièce ; la porte au bout d'un mur est rebouchée", () => {
+    // Rebouchage jusqu'à 40 px : l'ouverture de 30 px est rebouchée car le mur bas (long) la borde ;
+    // le couloir (30 px entre deux murs dont les tronçons verticaux font 6 px) n'est pas rempli
+    const { pieces } = extraireStructure(masqueCouloir(), { fermeturePx: 40, aireMin: 0.001 });
+    expect(pieces).toHaveLength(3);
+    const couloir = pieces.find((p) => Math.abs(p.y * 200 - 80) < 5);
+    expect(couloir).toBeTruthy();
+    expect(couloir!.hauteur * 200).toBeLessThan(40);
+    expect(couloir!.largeur * 300).toBeGreaterThan(250);
+  });
+
+  it("sans rebouchage, la porte fait communiquer le couloir et la pièce du bas", () => {
+    const { pieces } = extraireStructure(masqueCouloir(), { fermeturePx: 0, aireMin: 0.001 });
+    expect(pieces).toHaveLength(2);
+  });
+});
+
+describe("segmentation : traits sombres de l'image ajoutés au masque", () => {
+  /** Image 300 × 200 à fond blanc : un trait vertical fin et long (mur fin), un arc de porte, des lettres. */
+  function imageTraits(fond = 255) {
+    const W = 300, H = 200;
+    const gris = new Uint8Array(W * H).fill(fond);
+    for (let y = 20; y < 180; y++) gris[y * W + 150] = gris[y * W + 151] = 0; // mur fin : 2 px de large, 160 px de long
+    for (let t = 0; t < 400; t++) {
+      // arc de porte : quart de cercle de rayon 30
+      const a = (t / 400) * (Math.PI / 2);
+      const x = Math.round(60 + 30 * Math.cos(a)), y = Math.round(60 + 30 * Math.sin(a));
+      gris[y * W + x] = 0;
+    }
+    for (let k = 0; k < 6; k++) for (let y = 100; y < 110; y++) for (let x = 200 + k * 9; x < 206 + k * 9; x++) if ((x + y) % 3) gris[y * W + x] = 0; // « texte » : six lettres de 6 × 10 px
+    return { W, H, gris };
+  }
+  const masqueVide = (W: number, H: number): Masque => ({ largeur: W, hauteur: H, classes: new Uint8Array(W * H) });
+
+  it("garde le mur fin, écarte l'arc de porte et le texte", () => {
+    const { W, H, gris } = imageTraits();
+    const masque = masqueVide(W, H);
+    const ajoutes = ajouterEncre(masque, gris);
+    expect(ajoutes).toBe(160 * 2);
+    expect(masque.classes[100 * W + 150]).toBe(CLASSE.MUR);
+    expect(masque.classes[60 * W + 90]).toBe(CLASSE.FOND); // point de l'arc
+    expect(masque.classes[105 * W + 202]).toBe(CLASSE.FOND); // lettre
+  });
+
+  it("n'ajoute rien sur une image sans fond clair, ni sous les barrières déjà reconnues", () => {
+    const { W, H, gris } = imageTraits(180);
+    expect(ajouterEncre(masqueVide(W, H), gris)).toBe(0);
+    const clair = imageTraits();
+    const masque = masqueVide(W, H);
+    for (let y = 0; y < H; y++) masque.classes[y * W + 150] = CLASSE.MUR; // le modèle a déjà ce mur
+    expect(ajouterEncre(masque, clair.gris)).toBe(0);
+  });
+
+  it("refuse une image en gris d'une autre taille que le masque", () => {
+    expect(() => ajouterEncre(masqueVide(10, 10), new Uint8Array(5))).toThrow();
   });
 });
 

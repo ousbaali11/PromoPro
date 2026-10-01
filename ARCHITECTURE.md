@@ -590,9 +590,14 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   sans clé : `inference.ts` (modèle ONNX U-Net ResNet-34 exécuté par
   `onnxruntime-node` sur CPU, prétraitement letterbox identique à
   l'entraînement, modèle lu dans `storage/modeles/` ou téléchargé depuis
-  `PLAN3D_MODELE_URL`), `segmentation.ts` (pièces par composantes connexes,
-  murs / portes / fenêtres comme barrières, ouvertures de porte refermées par
-  une fermeture morphologique selon chaque axe), `extrusion.ts` (bords des
+  `PLAN3D_MODELE_URL`), `segmentation.ts` (`ajouterEncre` : les traits
+  sombres de l'image — murs fins, fenêtres en double trait — complètent le
+  masque du modèle, hors des murs déjà reconnus et après avoir écarté le
+  texte, les cotes, les arcs de porte et les équipements courbes ; pièces par
+  composantes connexes, murs / portes / fenêtres comme barrières ; coupures de
+  mur rebouchées le long de chaque axe seulement quand elles prolongent un
+  mur, jamais entre deux murs parallèles, pour garder couloirs, WC et
+  terrasses étroits), `extrusion.ts` (bords des
   pièces alignés sur des lignes de murs communes, un seul mur entre deux
   pièces voisines, murs percés aux portes, couleurs de `palette.ts`,
   encodeur glTF binaire partagé `glb.ts`) ; le `.glb` est enregistré

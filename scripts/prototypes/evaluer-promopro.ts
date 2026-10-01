@@ -6,8 +6,8 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
-import { segmenterPlan } from "@/lib/plan3d/inference";
-import { extraireStructure, iouRectangles } from "@/lib/plan3d/segmentation";
+import { grisDuPlan, segmenterPlan } from "@/lib/plan3d/inference";
+import { ajouterEncre, extraireStructure, iouRectangles } from "@/lib/plan3d/segmentation";
 import { dimensionsParDefaut, extruderEnGlb } from "@/lib/plan3d/extrusion";
 
 async function main() {
@@ -18,7 +18,9 @@ if (/modèle|Yytsi/i.test(String(ref.remarques ?? ""))) throw new Error("Référ
 
 const debut = Date.now();
 const masque = await segmenterPlan(readFileSync(plan));
+const encre = ajouterEncre(masque, await grisDuPlan(readFileSync(plan), masque.largeur, masque.hauteur));
 const dureeInference = Date.now() - debut;
+console.log(`pixels de mur ajoutés depuis les traits de l'image : ${encre}`);
 const { largeur: W, hauteur: H, classes } = masque;
 const compte = [0, 0, 0, 0];
 for (const c of classes) compte[c]++;

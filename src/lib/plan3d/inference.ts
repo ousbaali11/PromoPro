@@ -75,6 +75,18 @@ function session(): Promise<ort.InferenceSession> {
 }
 
 /** Segmente une image (PNG ou JPEG) et rend le masque à la taille de l'image d'origine. */
+/** Image du plan en niveaux de gris (un octet par pixel), aux dimensions demandées — pour `ajouterEncre`. */
+export async function grisDuPlan(octets: Uint8Array, largeur: number, hauteur: number): Promise<Uint8Array> {
+  const { data } = await sharp(Buffer.from(octets))
+    .removeAlpha()
+    .flatten({ background: "#ffffff" })
+    .resize(largeur, hauteur, { fit: "fill" })
+    .greyscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+}
+
 export async function segmenterPlan(octets: Uint8Array): Promise<Masque> {
   const image = sharp(Buffer.from(octets)).removeAlpha().flatten({ background: "#ffffff" });
   const meta = await image.metadata();

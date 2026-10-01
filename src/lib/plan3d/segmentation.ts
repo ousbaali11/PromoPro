@@ -2,10 +2,14 @@
  * Post-traitement pur d'un masque de segmentation (0 fond, 1 mur, 2 porte,
  * 3 fenêtre) : pièces par composantes connexes du sol — murs, portes et
  * fenêtres font barrière et les ouvertures de porte non reconnues sont
- * refermées par une fermeture morphologique le long de chaque axe (jamais en
- * 2D, pour ne pas remplir un couloir étroit) —, portes par composantes de la
- * classe porte de taille plausible. Sortie au format partagé avec Gemini
- * (coordonnées relatives). Testé dans tests/unit/plan3d-segmentation.test.ts.
+ * rebouchées le long de chaque axe, uniquement quand la coupure prolonge un
+ * mur (jamais entre deux murs parallèles : un couloir, un WC ou une terrasse
+ * étroits restent des pièces) —, portes par composantes de la classe porte de
+ * taille plausible. `ajouterEncre` complète le masque du modèle avec les
+ * traits sombres de l'image elle-même (murs fins, fenêtres en double trait),
+ * après avoir écarté les petites composantes (texte, cotes). Sortie au format
+ * partagé avec Gemini (coordonnées relatives). Testé dans
+ * tests/unit/plan3d-interne.test.ts.
  */
 
 export type Masque = { largeur: number; hauteur: number; classes: Uint8Array };
@@ -40,30 +44,175 @@ function dilater(src: Uint8Array, W: number, H: number, rayon: number): Uint8Arr
   return out;
 }
 
-/** Dilatation puis érosion le long d'un seul axe : rebouche les coupures d'un mur sans remplir les pièces étroites. */
-function fermerSelonAxe(src: Uint8Array, W: number, H: number, rayon: number, horizontal: boolean): Uint8Array {
+/**
+ * Rebouche, le long d'un axe, les coupures entre deux tronçons de mur :
+ * toujours quand elles font au plus `ecartMin` pixels (cassures du masque,
+ * angles mal joints), et jusqu'à `ecartMax` pixels quand l'un des tronçons
+ * mesure au moins `tronconMin` pixels dans cette direction — une porte
+ * interrompt un mur qui se prolonge de part et d'autre (ou qui bute sur un
+ * mur perpendiculaire). Un couloir, un WC ou une terrasse étroits, bordés de
+ * murs perpendiculaires à l'axe (tronçons courts, de l'épaisseur du mur), ne
+ * sont pas remplis.
+ */
+function reboucherSelonAxe(src: Uint8Array, W: number, H: number, ecartMin: number, ecartMax: number, tronconMin: number, horizontal: boolean): Uint8Array {
   const out = new Uint8Array(W * H);
   const longueur = horizontal ? W : H;
   const lignes = horizontal ? H : W;
-  const ligne = new Uint8Array(longueur);
-  const dil = new Uint8Array(longueur);
+  const indice = (l: number, i: number) => (horizontal ? l * W + i : i * W + l);
   for (let l = 0; l < lignes; l++) {
-    for (let i = 0; i < longueur; i++) ligne[i] = horizontal ? src[l * W + i] : src[i * W + l];
-    for (let i = 0; i < longueur; i++) {
-      let v = 0;
-      for (let k = -rayon; k <= rayon && !v; k++) if (i + k >= 0 && i + k < longueur && ligne[i + k]) v = 1;
-      dil[i] = v;
-    }
-    for (let i = 0; i < longueur; i++) {
-      let v = 1;
-      for (let k = -rayon; k <= rayon && v; k++) if (i + k >= 0 && i + k < longueur && !dil[i + k]) v = 0;
-      if (v) {
-        if (horizontal) out[l * W + i] = 1;
-        else out[i * W + l] = 1;
+    // Tronçons [debut, fin] de mur sur la ligne
+    const troncons: [number, number][] = [];
+    let i = 0;
+    while (i < longueur) {
+      if (!src[indice(l, i)]) {
+        i++;
+        continue;
       }
+      const debut = i;
+      while (i < longueur && src[indice(l, i)]) i++;
+      troncons.push([debut, i - 1]);
+    }
+    for (let t = 0; t + 1 < troncons.length; t++) {
+      const [a0, a1] = troncons[t];
+      const [b0, b1] = troncons[t + 1];
+      const ecart = b0 - a1 - 1;
+      if (ecart > ecartMax) continue;
+      if (ecart > ecartMin && a1 - a0 + 1 < tronconMin && b1 - b0 + 1 < tronconMin) continue;
+      for (let k = a1 + 1; k < b0; k++) out[indice(l, k)] = 1;
     }
   }
   return out;
+}
+
+/** Étiquetage des composantes connexes (8-connexité) d'un masque binaire : étiquette par pixel et boîte de chaque composante. */
+function etiqueter(binaire: Uint8Array, W: number, H: number) {
+  const etiquette = new Int32Array(W * H).fill(-1);
+  const boites: { x0: number; y0: number; x1: number; y1: number; aire: number }[] = [];
+  const pile = new Int32Array(W * H);
+  for (let s = 0; s < W * H; s++) {
+    if (!binaire[s] || etiquette[s] >= 0) continue;
+    const id = boites.length;
+    const b = { x0: W, y0: H, x1: 0, y1: 0, aire: 0 };
+    boites.push(b);
+    etiquette[s] = id;
+    let top = 0;
+    pile[top++] = s;
+    while (top) {
+      const p = pile[--top];
+      const x = p % W;
+      const y = (p - x) / W;
+      b.aire++;
+      if (x < b.x0) b.x0 = x;
+      if (x > b.x1) b.x1 = x;
+      if (y < b.y0) b.y0 = y;
+      if (y > b.y1) b.y1 = y;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const q = ny * W + nx;
+          if (binaire[q] && etiquette[q] < 0) {
+            etiquette[q] = id;
+            pile[top++] = q;
+          }
+        }
+    }
+  }
+  return { etiquette, boites };
+}
+
+export type OptionsEncre = {
+  /** Niveau de gris (0 à 255) en dessous duquel un pixel est de l'encre. */
+  seuil?: number;
+  /** Fraction du grand côté : une composante d'encre plus petite dans ses deux dimensions est du texte ou une cote, ignorée. */
+  coteMin?: number;
+  /** Part minimale des pixels d'une composante situés sur des traits droits (horizontaux ou verticaux) pour qu'elle soit un mur ou une fenêtre, et non un arc de porte ou un équipement. */
+  droitureMin?: number;
+  /** Au-delà de cette fraction de pixels d'encre gardés, l'image n'est pas un plan au trait (photo, scan sombre) : rien n'est ajouté. */
+  fractionMax?: number;
+};
+
+/** Longueur minimale d'un trait droit (en pixels) pour compter dans la droiture d'une composante. */
+const TRAIT_DROIT_PX = 8;
+
+/**
+ * Complète le masque du modèle avec les traits sombres de l'image du plan
+ * (`gris` : un octet par pixel, mêmes dimensions que le masque). Le modèle
+ * entraîné sur ResPlan ne reconnaît ni les murs fins ni les fenêtres en
+ * double trait des plans réels ; sur un plan au trait, ces pixels sombres
+ * sont des barrières fiables. Ne sont gardés que les traits situés hors des
+ * murs déjà reconnus (légèrement dilatés, ce qui détache des murs les arcs de
+ * porte et les équipements qui les touchent), assez grands (le texte et les
+ * cotes sont écartés) et droits (un arc de porte, un lavabo ou une cuvette
+ * sont écartés ; une baignoire rectangulaire ne l'est pas). Rend le nombre
+ * de pixels ajoutés ; ne touche pas au masque si l'image n'a pas un fond
+ * clair ou si l'encre gardée couvre trop de surface (photo, scan sombre).
+ */
+export function ajouterEncre(masque: Masque, gris: Uint8Array, options: OptionsEncre = {}): number {
+  const { largeur: W, hauteur: H, classes } = masque;
+  if (gris.length !== W * H) throw new Error("ajouterEncre : l'image en gris n'a pas les dimensions du masque.");
+  const seuil = options.seuil ?? 200;
+  const coteMin = (options.coteMin ?? 0.03) * Math.max(W, H);
+  const droitureMin = options.droitureMin ?? 0.6;
+  const fractionMax = options.fractionMax ?? 0.25;
+  // Fond clair : la médiane des pixels doit être presque blanche
+  const histogramme = new Uint32Array(256);
+  for (let i = 0; i < W * H; i++) histogramme[gris[i]]++;
+  let cumul = 0, mediane = 0;
+  for (let v = 0; v < 256; v++) {
+    cumul += histogramme[v];
+    if (cumul * 2 >= W * H) {
+      mediane = v;
+      break;
+    }
+  }
+  if (mediane < 225) return 0;
+  // Encre hors des barrières déjà reconnues (dilatées)
+  const barriere = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) if (classes[i] !== CLASSE.FOND) barriere[i] = 1;
+  const barriereDilatee = dilater(barriere, W, H, 4);
+  const encre = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) if (gris[i] < seuil && !barriereDilatee[i]) encre[i] = 1;
+  const { etiquette, boites } = etiqueter(encre, W, H);
+  // Droiture : pixels appartenant à un trait horizontal ou vertical d'au moins TRAIT_DROIT_PX pixels
+  const droit = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    let x = 0;
+    while (x < W) {
+      if (!encre[y * W + x]) {
+        x++;
+        continue;
+      }
+      const debut = x;
+      while (x < W && encre[y * W + x]) x++;
+      if (x - debut >= TRAIT_DROIT_PX) for (let k = debut; k < x; k++) droit[y * W + k] = 1;
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    let y = 0;
+    while (y < H) {
+      if (!encre[y * W + x]) {
+        y++;
+        continue;
+      }
+      const debut = y;
+      while (y < H && encre[y * W + x]) y++;
+      if (y - debut >= TRAIT_DROIT_PX) for (let k = debut; k < y; k++) droit[k * W + x] = 1;
+    }
+  }
+  const droits = new Uint32Array(boites.length);
+  for (let i = 0; i < W * H; i++) if (encre[i] && droit[i]) droits[etiquette[i]]++;
+  const gardee = boites.map((b, id) => Math.max(b.x1 - b.x0 + 1, b.y1 - b.y0 + 1) >= coteMin && droits[id] >= droitureMin * b.aire);
+  let total = 0;
+  for (let i = 0; i < W * H; i++) if (encre[i] && gardee[etiquette[i]]) total++;
+  if (total > fractionMax * W * H) return 0;
+  let ajoutes = 0;
+  for (let i = 0; i < W * H; i++) {
+    if (!encre[i] || !gardee[etiquette[i]]) continue;
+    classes[i] = CLASSE.MUR;
+    ajoutes++;
+  }
+  return ajoutes;
 }
 
 type Composante = { x0: number; y0: number; x1: number; y1: number; aire: number; cx: number; cy: number };
@@ -105,10 +254,11 @@ function composantes(binaire: Uint8Array, W: number, H: number, connexite4: bool
 }
 
 /**
- * Pièces et portes d'un masque. `fermeturePx` : taille de la fermeture qui
- * rebouche les ouvertures de porte (par défaut 8 % du grand côté, soit une
- * ouverture de porte et sa marge) ; `aireMin` : fraction de l'image en dessous
- * de laquelle une composante est ignorée (miettes).
+ * Pièces et portes d'un masque. `fermeturePx` : largeur maximale d'une coupure
+ * de mur rebouchée (par défaut 8 % du grand côté, soit une ouverture de porte
+ * et sa marge ; un tronçon de mur d'au moins la moitié de cette largeur doit
+ * la border, sauf pour les coupures d'au plus un quart, toujours rebouchées) ; `aireMin` : fraction de l'image en dessous de laquelle une
+ * composante est ignorée (miettes).
  */
 export function extraireStructure(masque: Masque, options: { fermeturePx?: number; aireMin?: number } = {}): Structure {
   const { largeur: W, hauteur: H, classes } = masque;
@@ -125,9 +275,10 @@ export function extraireStructure(masque: Masque, options: { fermeturePx?: numbe
   }
   let fermee: Uint8Array = barriere;
   if (fermeture > 0) {
-    const r = Math.max(1, Math.round(fermeture / 2));
-    const fermesH = fermerSelonAxe(murs, W, H, r, true);
-    const fermesV = fermerSelonAxe(murs, W, H, r, false);
+    const tronconMin = Math.max(1, Math.round(fermeture / 2));
+    const ecartMin = Math.max(1, Math.round(fermeture / 4));
+    const fermesH = reboucherSelonAxe(murs, W, H, ecartMin, fermeture, tronconMin, true);
+    const fermesV = reboucherSelonAxe(murs, W, H, ecartMin, fermeture, tronconMin, false);
     fermee = barriere.map((v, i) => (v || fermesH[i] || fermesV[i] ? 1 : 0));
   }
   fermee = dilater(fermee, W, H, 3);
