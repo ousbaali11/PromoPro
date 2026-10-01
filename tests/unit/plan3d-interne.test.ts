@@ -71,6 +71,25 @@ describe("extrusion .glb", () => {
     const sansPorte = extruderEnGlb(pieces, [], largeurM, hauteurM);
     expect(glb.length).toBeGreaterThan(sansPorte.length);
   });
+
+  it("deux pièces voisines partagent un seul mur (bords alignés, tronçons fusionnés) et les murs sont colorés autrement que le sol", () => {
+    const { pieces } = extraireStructure(masqueDeuxPieces(true), { fermeturePx: 0 });
+    const { largeurM, hauteurM } = dimensionsParDefaut(200, 120);
+    const sommets = (glb: Buffer) => JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString("utf8")).accessors[0].count;
+    // Une pièce seule : une dalle et quatre murs, soit 5 boîtes de 24 sommets
+    expect(sommets(extruderEnGlb([pieces[0]], [], largeurM, hauteurM))).toBe(5 * 24);
+    // Deux pièces côte à côte : deux dalles, le contour en quatre tronçons fusionnés et une seule cloison, soit 7 boîtes (et non 10)
+    expect(sommets(extruderEnGlb(pieces, [], largeurM, hauteurM))).toBe(7 * 24);
+    const glb = extruderEnGlb(pieces, [], largeurM, hauteurM);
+    const json = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString("utf8"));
+    const bin = glb.subarray(20 + glb.readUInt32LE(12) + 8);
+    const vue = json.bufferViews[json.accessors[2].bufferView];
+    const couleurs = new Float32Array(bin.buffer.slice(bin.byteOffset + vue.byteOffset, bin.byteOffset + vue.byteOffset + vue.byteLength));
+    const distinctes = new Set<string>();
+    for (let i = 0; i < couleurs.length; i += 4) distinctes.add(Array.from(couleurs.subarray(i, i + 3)).map((v) => v.toFixed(2)).join(","));
+    // Deux teintes de sol, une teinte de mur, une teinte de dessus de mur
+    expect(distinctes.size).toBe(4);
+  });
 });
 
 describe("fournisseurs", () => {

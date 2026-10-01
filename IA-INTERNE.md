@@ -171,6 +171,17 @@ serveur en une seconde, mais `activable: false` : le Super Admin peut le
 comparer aux autres dans le bac à sable, le serveur refuse de l'activer pour
 les biens. Installation du modèle : DEPLOY.md, section 12.
 
+Rendu du `.glb` (retour du promoteur sur le bac à sable, 1er octobre 2026) :
+la première version construisait quatre murs par pièce, dans un gris presque
+blanc identique au sol — les cloisons apparaissaient doublées et le modèle
+semblait un bloc blanc. Désormais les bords des pièces sont alignés sur des
+lignes de murs communes (le jour laissé par la segmentation entre deux pièces
+voisines est refermé), chaque mur n'est construit qu'une fois, le sol est beige
+en deux teintes alternées, les murs gris avec un dessus sombre : le plan reste
+lisible vu de dessus comme de trois quarts. Cela ne change rien à la
+reconnaissance elle-même : le couloir manqué et les portes absentes viennent du
+modèle, pas de l'extrusion.
+
 **Validation sur de vrais plans toujours attendue.** Tant qu'elle n'a pas eu
 lieu, le verdict ne change pas : Gemini reste la référence (noms de pièces
 compris), la Solution PromoPro est un candidat prometteur sur plans propres et

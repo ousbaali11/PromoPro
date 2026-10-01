@@ -592,8 +592,11 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   l'entraînement, modèle lu dans `storage/modeles/` ou téléchargé depuis
   `PLAN3D_MODELE_URL`), `segmentation.ts` (pièces par composantes connexes,
   murs / portes / fenêtres comme barrières, ouvertures de porte refermées par
-  une fermeture morphologique selon chaque axe), `extrusion.ts` (dalles et
-  murs percés aux portes, encodeur glTF binaire) ; le `.glb` est enregistré
+  une fermeture morphologique selon chaque axe), `extrusion.ts` (bords des
+  pièces alignés sur des lignes de murs communes, un seul mur entre deux
+  pièces voisines, murs percés aux portes, sol beige en deux teintes, murs
+  gris à dessus sombre pour rester lisibles vus de dessus, encodeur glTF
+  binaire) ; le `.glb` est enregistré
   directement comme fichier `plans-3d`. Déclaré `activable: false` dans
   `FOURNISSEURS` tant qu'il n'est pas validé sur de vrais plans : testable
   dans le bac à sable, refusé par `definirFournisseurActif`. Les modules
