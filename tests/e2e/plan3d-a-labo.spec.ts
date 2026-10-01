@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, login, planSynthetique, pngEchec } from "./helpers";
+import { deposerFichier, lireUrl, login, planSynthetique, pngEchec } from "./helpers";
 
 /*
  * Laboratoire de génération 3D (/admin/plan3d, Super Admin) : clés d'API
@@ -127,7 +127,7 @@ test("bac à sable : le même plan chez MeltFlex puis Neural4D → deux modèles
     await ligne.getByTestId("voir-modele").click();
     const src = await srcModele(ligne);
     expect(src).toMatch(/^\/api\/files\/plans-3d\/[0-9a-f-]+\.glb$/);
-    const reponse = await page.request.get(src);
+    const reponse = await lireUrl(page, src);
     expect(reponse.status()).toBe(200);
     expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
     expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");
@@ -139,7 +139,7 @@ test("bac à sable : le même plan chez MeltFlex puis Neural4D → deux modèles
   // Les fichiers du laboratoire ne sont servis à aucun compte de promoteur
   const src = await srcModele(page.getByTestId("essai-ligne").first());
   await login(page, "PDG");
-  expect((await page.request.get(src)).status()).toBe(403);
+  expect((await lireUrl(page, src)).status()).toBe(403);
 });
 
 test("échecs : image refusée par le fournisseur (MeltFlex 502, Neural4D échec au suivi) et clé invalide → statut Échec avec message, sans effet ailleurs", async ({ page }) => {
@@ -187,7 +187,7 @@ test("Solution PromoPro : génération locale dans le bac à sable (modèle inst
   await expect(ligne.getByTestId("essai-statut")).toHaveText("Prêt", { timeout: 60_000 });
   await ligne.getByTestId("voir-modele").click();
   const src = await srcModele(ligne);
-  const reponse = await page.request.get(src);
+  const reponse = await lireUrl(page, src);
   expect(reponse.status()).toBe(200);
   expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
   expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");

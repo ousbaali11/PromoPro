@@ -102,6 +102,23 @@ export const PDF_MIN = Buffer.from(
 );
 
 /** Type MIME et contenu par défaut selon l'extension (le serveur vérifie la signature du contenu). */
+/**
+ * GET par le contexte de requêtes de la page (cookies de session compris). Le
+ * serveur de développement ferme une connexion keep-alive restée inactive
+ * environ 5 s ; si le client la réutilise juste à ce moment, Node rend
+ * ECONNRESET avant toute réponse (vu en CI sur plan3d-a-labo, entre deux
+ * lectures de fichiers séparées par une génération). Un GET est idempotent :
+ * la requête est rejouée une fois sur une connexion neuve.
+ */
+export async function lireUrl(page: Page, url: string) {
+  try {
+    return await page.request.get(url);
+  } catch (e) {
+    if (!/ECONNRESET|socket hang up/.test(String(e))) throw e;
+    return page.request.get(url);
+  }
+}
+
 export function fichierDeTest(name: string, buffer?: Buffer) {
   const ext = name.split(".").pop()?.toLowerCase();
   if (ext === "pdf") return { name, mimeType: "application/pdf", buffer: buffer ?? PDF_MIN };

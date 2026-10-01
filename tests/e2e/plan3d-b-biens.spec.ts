@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, hrefBienStaff, login, loginAvec, ouvrirBienClient, pngEchec, SUFFIXE_RUN } from "./helpers";
+import { deposerFichier, hrefBienStaff, lireUrl, login, loginAvec, ouvrirBienClient, pngEchec, SUFFIXE_RUN } from "./helpers";
 
 /*
  * Génération automatique du modèle 3D d'un bien à partir de son plan 2D
@@ -89,11 +89,11 @@ test("MeltFlex actif : le dépôt d'un plan 2D déclenche une génération, visi
   await ligne.getByTestId("voir-generation").click();
   const src = await ligne.locator("model-viewer").evaluate((el) => el.getAttribute("src") || String((el as unknown as { src?: string }).src ?? ""));
   expect(src).toMatch(/^\/api\/files\/plans-3d\/[0-9a-f-]+\.glb$/);
-  expect((await page.request.get(src)).status()).toBe(200);
+  expect((await lireUrl(page, src)).status()).toBe(200);
   const ctx = await browser.newContext();
   const client = await ctx.newPage();
   await loginAvec(client, "CL-DEMO", "demo1234", /\/client(\/biens\/[^/]+)?$/);
-  expect((await client.request.get(src)).status()).toBe(403);
+  expect((await lireUrl(client, src)).status()).toBe(403);
   await ctx.close();
 
   // Le bien n'a toujours pas de modèle 3D publié : un seul onglet (plan 2D) sur la fiche
@@ -126,7 +126,7 @@ test("validation : « Valider et publier » copie le modèle vers le plan 3D du 
   await page.getByTestId("onglets-plans").getByRole("tab", { name: "Modèle 3D" }).click();
   const viewer = page.locator("model-viewer");
   await expect(viewer).toHaveAttribute("src", /^\/api\/files\/plans-3d\/[0-9a-f-]+\.glb$/);
-  const reponse = await page.request.get((await viewer.getAttribute("src"))!);
+  const reponse = await lireUrl(page, (await viewer.getAttribute("src"))!);
   expect(reponse.status()).toBe(200);
   expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
 });
@@ -169,7 +169,7 @@ test("espace client : un bien vendu dont le modèle généré est validé montre
   await page.getByRole("tab", { name: "Modèle 3D" }).click();
   const viewer = page.locator("model-viewer");
   await expect(viewer).toHaveAttribute("src", /^\/api\/files\/plans-3d\/[0-9a-f-]+\.glb$/);
-  expect((await page.request.get((await viewer.getAttribute("src"))!)).status()).toBe(200);
+  expect((await lireUrl(page, (await viewer.getAttribute("src"))!)).status()).toBe(200);
 });
 
 test("échec du fournisseur : statut Échec avec message, notification discrète, fiche intacte, dépôt manuel toujours possible", async ({ page }) => {
