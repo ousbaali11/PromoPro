@@ -176,9 +176,11 @@ la première version construisait quatre murs par pièce, dans un gris presque
 blanc identique au sol — les cloisons apparaissaient doublées et le modèle
 semblait un bloc blanc. Désormais les bords des pièces sont alignés sur des
 lignes de murs communes (le jour laissé par la segmentation entre deux pièces
-voisines est refermé), chaque mur n'est construit qu'une fois, le sol est beige
-en deux teintes alternées, les murs gris avec un dessus sombre : le plan reste
-lisible vu de dessus comme de trois quarts. Cela ne change rien à la
+voisines est refermé), chaque mur n'est construit qu'une fois, et une palette commune
+(`src/lib/plan3d/palette.ts`) donne un sol en bois clair en deux teintes
+alternées, des murs crème et un dessus de mur brun moyen : le plan reste
+lisible vu de dessus comme de trois quarts. La même palette est appliquée aux
+maillages de Neural4D au téléchargement (ils arrivent sans couleur). Cela ne change rien à la
 reconnaissance elle-même : le couloir manqué et les portes absentes viennent du
 modèle, pas de l'extrusion.
 

@@ -1,3 +1,5 @@
+import { ecrireGlb } from "./glb";
+import { enLineaire, PALETTE, type Couleur } from "./palette";
 import type { Piece, Porte } from "./segmentation";
 
 /*
@@ -7,9 +9,9 @@ import type { Piece, Porte } from "./segmentation";
  * alignés (les rectangles issus de la segmentation ne se touchent pas : la
  * dilatation des barrières laisse l'épaisseur du mur entre eux) ; chaque ligne
  * de mur n'est construite qu'une fois, les tronçons qui se recouvrent étant
- * fusionnés. Couleurs : sol clair (deux teintes alternées), murs gris plus
- * sombres, dessus des murs encore plus sombre pour que le plan reste lisible
- * vu de dessus. Encodeur glTF 2.0 binaire minimal, sans dépendance ; sortie
+ * fusionnés. Couleurs : la palette commune de palette.ts (sol en bois clair
+ * en deux teintes alternées, murs crème, dessus des murs brun moyen pour que
+ * le plan reste lisible vu de dessus). Encodeur glTF 2.0 binaire minimal ; sortie
  * lue par <model-viewer>. Fonction pure, testée dans tests/unit/plan3d-interne.test.ts.
  */
 
@@ -24,11 +26,11 @@ export const TOLERANCE_ALIGNEMENT_M = 0.5;
 /** Jour maximal entre deux pièces qui se font face pour n'être qu'un seul mur, en fraction du grand côté du plan. */
 export const ECART_MUR_RELATIF = 0.07;
 
-type Couleur = [number, number, number];
-const SOL_A: Couleur = [0.87, 0.8, 0.68];
-const SOL_B: Couleur = [0.78, 0.71, 0.59];
-const MUR: Couleur = [0.6, 0.59, 0.57];
-const DESSUS_MUR: Couleur = [0.3, 0.31, 0.34];
+// Couleurs de sommets écrites en linéaire (voir palette.ts)
+const SOL_A = enLineaire(PALETTE.solA);
+const SOL_B = enLineaire(PALETTE.solB);
+const MUR = enLineaire(PALETTE.mur);
+const DESSUS_MUR = enLineaire(PALETTE.dessusMur);
 
 class Geometrie {
   positions: number[] = [];
@@ -232,17 +234,5 @@ function encoderGlb(g: Geometrie): Buffer {
     bufferViews: vues,
     buffers: [{ byteLength: bin.length }],
   };
-  let jsonBuf = Buffer.from(JSON.stringify(json), "utf8");
-  if (jsonBuf.length % 4) jsonBuf = Buffer.concat([jsonBuf, Buffer.alloc(4 - (jsonBuf.length % 4), 0x20)]);
-  const entete = Buffer.alloc(12);
-  entete.write("glTF", 0, "ascii");
-  entete.writeUInt32LE(2, 4);
-  entete.writeUInt32LE(12 + 8 + jsonBuf.length + 8 + bin.length, 8);
-  const cJson = Buffer.alloc(8);
-  cJson.writeUInt32LE(jsonBuf.length, 0);
-  cJson.writeUInt32LE(0x4e4f534a, 4);
-  const cBin = Buffer.alloc(8);
-  cBin.writeUInt32LE(bin.length, 0);
-  cBin.writeUInt32LE(0x004e4942, 4);
-  return Buffer.concat([entete, cJson, jsonBuf, cBin, bin]);
+  return ecrireGlb(json, bin);
 }

@@ -1,6 +1,7 @@
 import { extensionOf, mimeFor, parsePublicPath, readUpload, saveUpload } from "@/lib/storage";
+import { appliquerPalette } from "./palette";
 import { fournisseurPlan3d } from "./registre";
-import { ErreurFournisseur, type Fournisseur, type ImagePlan, type StatutGeneration } from "./provider";
+import { descriptionFournisseur, ErreurFournisseur, type Fournisseur, type ImagePlan, type StatutGeneration } from "./provider";
 
 /*
  * Exécution d'une génération, commune au bac à sable et aux biens :
@@ -44,15 +45,21 @@ function attendre(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Télécharge le modèle chez le fournisseur et l'enregistre comme fichier « plans-3d » de l'application. */
-export async function rapatrierModele(modelUrl: string): Promise<string> {
+/**
+ * Télécharge le modèle chez le fournisseur et l'enregistre comme fichier
+ * « plans-3d » de l'application ; la palette commune est appliquée aux .glb
+ * des fournisseurs qui le demandent (drapeau `recolorer`).
+ */
+export async function rapatrierModele(modelUrl: string, fournisseur?: Fournisseur): Promise<string> {
   if (modelUrl.startsWith("/api/files/")) return modelUrl; // déjà enregistré par un fournisseur interne
   const reponse = await fetch(modelUrl);
   if (!reponse.ok) throw new ErreurFournisseur(`Le fichier du modèle n'a pas pu être téléchargé (${reponse.status}).`, reponse.status);
-  const octets = Buffer.from(await reponse.arrayBuffer());
+  let octets = Buffer.from(await reponse.arrayBuffer());
   if (octets.length === 0) throw new ErreurFournisseur("Le fichier du modèle est vide.");
   if (octets.length > TAILLE_MAX_MODELE) throw new ErreurFournisseur("Le modèle dépasse 50 Mo.");
-  const nom = octets.subarray(0, 4).toString("ascii") === "glTF" ? "modele.glb" : "modele.gltf";
+  const estGlb = octets.subarray(0, 4).toString("ascii") === "glTF";
+  if (estGlb && fournisseur && descriptionFournisseur(fournisseur)?.recolorer) octets = appliquerPalette(octets);
+  const nom = estGlb ? "modele.glb" : "modele.gltf";
   return saveUpload("plans-3d", nom, octets); // contenuCoherent vérifie la signature du fichier
 }
 
@@ -72,10 +79,10 @@ export async function executerGeneration(
   try {
     const adaptateur = fournisseurPlan3d(fournisseur);
     const demarrage = await adaptateur.demarrerGeneration(image, cleApi);
-    if (demarrage.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(demarrage.modelUrl), dureeMs: duree() };
+    if (demarrage.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(demarrage.modelUrl, fournisseur), dureeMs: duree() };
     await onReference?.(demarrage.reference);
     const suivi = await suivreJusquAuResultat(fournisseur, cleApi, demarrage.reference, debut);
-    if (suivi.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(suivi.modelUrl), dureeMs: duree() };
+    if (suivi.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(suivi.modelUrl, fournisseur), dureeMs: duree() };
     return { etat: "echec", message: suivi.message, dureeMs: duree() };
   } catch (e) {
     return { etat: "echec", message: messageErreur(e), dureeMs: duree() };
@@ -87,7 +94,7 @@ export async function reprendreGeneration(fournisseur: Fournisseur, cleApi: stri
   const debut = new Date(demarreeA).getTime();
   try {
     const statut = await fournisseurPlan3d(fournisseur).verifierStatut(reference, cleApi);
-    if (statut.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(statut.modelUrl), dureeMs: Date.now() - debut };
+    if (statut.etat === "pret") return { etat: "pret", modelUrl: await rapatrierModele(statut.modelUrl, fournisseur), dureeMs: Date.now() - debut };
     if (statut.etat === "echec") return { etat: "echec", message: statut.message, dureeMs: Date.now() - debut };
     if (Date.now() - debut > DELAI_MAX_MS) return { etat: "echec", message: MESSAGE_DELAI, dureeMs: Date.now() - debut };
     return null; // toujours en cours

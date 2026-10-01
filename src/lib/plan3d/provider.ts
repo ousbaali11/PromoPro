@@ -23,12 +23,14 @@ export type DescriptionFournisseur = {
   activable: boolean;
   /** État affiché quand le fournisseur n'est pas activable. */
   etat?: string;
+  /** Vrai si le modèle rendu arrive sans couleur : la palette commune (palette.ts) lui est appliquée au téléchargement. */
+  recolorer?: boolean;
   description?: string;
 };
 
 export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
   { code: "MELTFLEX", libelle: "MeltFlex", site: "https://www.meltflexai.com/api", necessiteCle: true, activable: true },
-  { code: "NEURAL4D", libelle: "Neural4D", site: "https://docs.neural4d.com", necessiteCle: true, activable: true },
+  { code: "NEURAL4D", libelle: "Neural4D", site: "https://docs.neural4d.com", necessiteCle: true, activable: true, recolorer: true },
   {
     code: "PROMOPRO",
     libelle: "Solution PromoPro",

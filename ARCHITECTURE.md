@@ -594,14 +594,25 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   murs / portes / fenêtres comme barrières, ouvertures de porte refermées par
   une fermeture morphologique selon chaque axe), `extrusion.ts` (bords des
   pièces alignés sur des lignes de murs communes, un seul mur entre deux
-  pièces voisines, murs percés aux portes, sol beige en deux teintes, murs
-  gris à dessus sombre pour rester lisibles vus de dessus, encodeur glTF
-  binaire) ; le `.glb` est enregistré
+  pièces voisines, murs percés aux portes, couleurs de `palette.ts`,
+  encodeur glTF binaire partagé `glb.ts`) ; le `.glb` est enregistré
   directement comme fichier `plans-3d`. Déclaré `activable: false` dans
   `FOURNISSEURS` tant qu'il n'est pas validé sur de vrais plans : testable
   dans le bac à sable, refusé par `definirFournisseurActif`. Les modules
   natifs (`onnxruntime-node`, `sharp`) sont déclarés dans
   `serverExternalPackages` (next.config.ts) ;
+- `palette.ts` — palette commune des modèles générés (sol en bois clair en
+  deux teintes, murs crème, dessus de mur brun moyen ; teintes sRGB converties
+  en linéaire à l'écriture, comme glTF l'exige pour `COLOR_0`). Utilisée par
+  l'extrusion interne et appliquée par `appliquerPalette` aux `.glb` des
+  fournisseurs déclarés `recolorer: true` dans `FOURNISSEURS` (Neural4D,
+  dont le maillage arrive sans couleur) au moment du téléchargement
+  (`rapatrierModele`) : chaque sommet reçoit sa teinte selon sa normale et sa
+  hauteur (vers le haut au niveau du sol → sol ; vers le haut plus haut →
+  dessus de mur ; sinon → mur), le matériau devient neutre. Un maillage
+  texturé n'est pas touché ; tout imprévu rend le fichier d'origine, la
+  couleur ne fait jamais échouer une génération ;
+- `glb.ts` — lecture et écriture du conteneur glTF binaire ;
 - `registre.ts` — code → adaptateur ;
 - `chiffrement.ts` — AES-256-GCM des clés d'API (clé dérivée de
   `SECRETS_ENCRYPTION_KEY`), `masquerCle` ;
