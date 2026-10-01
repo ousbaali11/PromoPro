@@ -593,8 +593,11 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   `PLAN3D_MODELE_URL`), `segmentation.ts` (`ajouterEncre` : les traits
   sombres de l'image — murs fins, fenêtres en double trait — complètent le
   masque du modèle, hors des murs déjà reconnus et après avoir écarté le
-  texte, les cotes, les arcs de porte et les équipements courbes ; pièces par
-  composantes connexes, murs / portes / fenêtres comme barrières ; coupures de
+  texte, les cotes, les arcs de porte et les équipements courbes, et les
+  classes porte / fenêtre posées par le modèle sur du texte sont effacées ;
+  `ouverturesDansLesMurs` : une porte ou une fenêtre n'est gardée que si du
+  mur la borde aux deux bouts ; pièces par composantes connexes, murs /
+  portes / fenêtres comme barrières ; coupures de
   mur rebouchées le long de chaque axe seulement quand elles prolongent un
   mur, jamais entre deux murs parallèles, pour garder couloirs, WC et
   terrasses étroits), `extrusion.ts` (bords des

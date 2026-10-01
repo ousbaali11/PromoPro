@@ -134,6 +134,8 @@ export type OptionsEncre = {
 
 /** Longueur minimale d'un trait droit (en pixels) pour compter dans la droiture d'une composante. */
 const TRAIT_DROIT_PX = 8;
+/** Rayon (en pixels) autour du texte où les classes porte et fenêtre du modèle sont effacées. */
+const HALO_TEXTE_PX = 5;
 
 /**
  * Complète le masque du modèle avec les traits sombres de l'image du plan
@@ -173,6 +175,9 @@ export function ajouterEncre(masque: Masque, gris: Uint8Array, options: OptionsE
   const barriereDilatee = dilater(barriere, W, H, 4);
   const encre = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) if (gris[i] < seuil && !barriereDilatee[i]) encre[i] = 1;
+  // Les lettres que le modèle a classées porte ou fenêtre sont sous une barrière : elles sont réintégrées à l'encre
+  // pour être reconnues comme texte (elles restent exclues des murs ajoutés, n'étant ni grandes ni droites)
+  for (let i = 0; i < W * H; i++) if (gris[i] < seuil && (classes[i] === CLASSE.PORTE || classes[i] === CLASSE.FENETRE)) encre[i] = 1;
   const { etiquette, boites } = etiqueter(encre, W, H);
   // Droiture : pixels appartenant à un trait horizontal ou vertical d'au moins TRAIT_DROIT_PX pixels
   const droit = new Uint8Array(W * H);
@@ -203,6 +208,12 @@ export function ajouterEncre(masque: Masque, gris: Uint8Array, options: OptionsE
   const droits = new Uint32Array(boites.length);
   for (let i = 0; i < W * H; i++) if (encre[i] && droit[i]) droits[etiquette[i]]++;
   const gardee = boites.map((b, id) => Math.max(b.x1 - b.x0 + 1, b.y1 - b.y0 + 1) >= coteMin && droits[id] >= droitureMin * b.aire);
+  // Texte et cotes (petites composantes d'encre) : le modèle les prend souvent pour des portes ou des fenêtres ;
+  // ces classes sont effacées autour d'eux (le halo du modèle déborde de quelques pixels des lettres)
+  const texte = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) if (encre[i] && Math.max(boites[etiquette[i]].x1 - boites[etiquette[i]].x0 + 1, boites[etiquette[i]].y1 - boites[etiquette[i]].y0 + 1) < coteMin) texte[i] = 1;
+  const texteDilate = dilater(texte, W, H, HALO_TEXTE_PX);
+  for (let i = 0; i < W * H; i++) if (texteDilate[i] && (classes[i] === CLASSE.PORTE || classes[i] === CLASSE.FENETRE)) classes[i] = CLASSE.FOND;
   let total = 0;
   for (let i = 0; i < W * H; i++) if (encre[i] && gardee[etiquette[i]]) total++;
   if (total > fractionMax * W * H) return 0;
@@ -253,6 +264,40 @@ function composantes(binaire: Uint8Array, W: number, H: number, connexite4: bool
   return res;
 }
 
+/** Marge, en pixels, au-delà de chaque extrémité d'une ouverture où un mur doit être trouvé. */
+const MARGE_OUVERTURE_PX = 6;
+
+/**
+ * Ne garde des classes porte et fenêtre que les composantes posées dans un
+ * mur : du mur doit se trouver aux deux extrémités de leur grand axe. Un
+ * nom de pièce ou une cote pris pour une porte (le modèle confond le texte
+ * avec les ouvertures) flotte au milieu d'une pièce ou ne touche un mur que
+ * d'un côté : il redevient du fond, et ne coupe plus la pièce en deux ni ne
+ * crée de fausse porte. Rend une copie des classes.
+ */
+export function ouverturesDansLesMurs(masque: Masque): Uint8Array {
+  const { largeur: W, hauteur: H } = masque;
+  const classes = new Uint8Array(masque.classes);
+  const ouvertures = new Uint8Array(W * H);
+  let n = 0;
+  for (let i = 0; i < W * H; i++) if (classes[i] === CLASSE.PORTE || classes[i] === CLASSE.FENETRE) ouvertures[i] = n++ ? 1 : 1;
+  if (!n) return classes;
+  const { etiquette, boites } = etiqueter(ouvertures, W, H);
+  const murA = (x0: number, x1: number, y0: number, y1: number) => {
+    for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) if (classes[y * W + x] === CLASSE.MUR) return true;
+    return false;
+  };
+  const gardee = boites.map((b) => {
+    const horizontale = b.x1 - b.x0 >= b.y1 - b.y0;
+    const m = MARGE_OUVERTURE_PX;
+    return horizontale
+      ? murA(b.x0 - m, b.x0 - 1, b.y0 - 1, b.y1 + 1) && murA(b.x1 + 1, b.x1 + m, b.y0 - 1, b.y1 + 1)
+      : murA(b.x0 - 1, b.x1 + 1, b.y0 - m, b.y0 - 1) && murA(b.x0 - 1, b.x1 + 1, b.y1 + 1, b.y1 + m);
+  });
+  for (let i = 0; i < W * H; i++) if (ouvertures[i] && !gardee[etiquette[i]]) classes[i] = CLASSE.FOND;
+  return classes;
+}
+
 /**
  * Pièces et portes d'un masque. `fermeturePx` : largeur maximale d'une coupure
  * de mur rebouchée (par défaut 8 % du grand côté, soit une ouverture de porte
@@ -261,7 +306,8 @@ function composantes(binaire: Uint8Array, W: number, H: number, connexite4: bool
  * composante est ignorée (miettes).
  */
 export function extraireStructure(masque: Masque, options: { fermeturePx?: number; aireMin?: number } = {}): Structure {
-  const { largeur: W, hauteur: H, classes } = masque;
+  const { largeur: W, hauteur: H } = masque;
+  const classes = ouverturesDansLesMurs(masque);
   const fermeture = options.fermeturePx ?? Math.round(0.08 * Math.max(W, H));
   const aireMin = (options.aireMin ?? 0.004) * W * H;
 

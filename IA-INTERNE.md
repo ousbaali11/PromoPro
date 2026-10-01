@@ -237,3 +237,48 @@ désormais utilisable pour juger la structure d'un plan au trait propre dans le
 bac à sable, et le cycle d'ajustement sur 30 à 50 plans réels annotés reste
 nécessaire avant toute activation.
 
+## 11. Second modèle reçu (best.safetensors, 2 octobre 2026) : mesuré, non retenu
+
+Le promoteur a remis un second entraînement, `best.safetensors` (poids
+PyTorch, même architecture U-Net ResNet-34 à 4 classes, 278 tenseurs,
+24,5 M de paramètres, métadonnées `best_miou 0,983` à l'époque 26 — mesure
+sur son propre jeu de validation, pas sur de vrais plans). Le site n'exécute
+que de l'ONNX et la machine de développement n'a pas Python : le fichier a
+été converti **sans Python** par `scripts/prototypes/safetensors-vers-onnx.mjs`
+(lecture de l'en-tête safetensors, fusion de chaque BatchNorm dans la
+convolution qui la précède, écriture des 94 initialisateurs dans une copie du
+graphe de `promopro-plan3d.onnx`, formes vérifiées une à une ; le décodeur
+protobuf minimal est dans `onnx-proto.mjs`). Usage :
+
+```bash
+node scripts/prototypes/safetensors-vers-onnx.mjs best.safetensors storage/modeles/promopro-plan3d.onnx storage/modeles/promopro-avance.onnx
+```
+
+Mesure avec la chaîne exacte du site (inférence, encre, rebouchage,
+extraction), `PLAN3D_MODELE_CHEMIN` pointant sur l'un ou l'autre fichier :
+
+| | Modèle en place (promopro-plan3d.onnx) | best.safetensors converti |
+|---|---|---|
+| villa_plan_2d.png, pièces retrouvées (IoU ≥ 0,7) sur 9 | **8** (couloir 0,54) | 6 (cuisine et terrasse fusionnées, couloir 0,56) |
+| villa, portes (référence 2) | 0 | 0 |
+| Appartement réel, 13 pièces | **15** (13 + hall de nuit coupé + baignoire) | 16 (idem + hall d'entrée coupé) |
+| Appartement, « portes » rendues | 0 | 26 (fenêtres classées portes, restes de texte) |
+| Inférence | 0,8 à 1,2 s | 0,9 à 1,2 s |
+
+Observations sur les masques : les murs épais du second modèle sont plus
+nets et plus continus (le progrès vu par le promoteur est réel), mais le mur
+fin entre cuisine et terrasse de la villa est rendu en pointillé, d'où la
+fusion ; les noms de pièces sont classés porte ou fenêtre (comme le modèle
+pré-entraîné du carnet 01) ; les fenêtres sont classées porte ; les arcs de
+porte ne sont pas reconnus. Deux garde-fous ont été ajoutés au
+post-traitement pour tout modèle à venir : les classes porte / fenêtre posées
+sur du texte sont effacées (`ajouterEncre`), et une ouverture n'est gardée
+que si du mur la borde aux deux bouts (`ouverturesDansLesMurs`). Même avec
+eux, le second modèle reste en dessous ou à égalité sur la structure des
+pièces et introduit de fausses portes : **il n'est pas intégré**, ni comme
+remplaçant ni comme « PromoPro Avancée ». Le fichier converti
+(`storage/modeles/promopro-avance.onnx`, hors git) peut être essayé dans le
+bac à sable en pointant `PLAN3D_MODELE_CHEMIN` dessus ; pour qu'il devienne
+une solution distincte sur le site, il faudrait d'abord qu'il dépasse le
+modèle en place sur ces deux plans et sur 5 à 10 autres vrais plans.
+

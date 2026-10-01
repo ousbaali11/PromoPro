@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ajouterEncre, CLASSE, extraireStructure, iouRectangles, type Masque } from "@/lib/plan3d/segmentation";
+import { ajouterEncre, CLASSE, extraireStructure, iouRectangles, ouverturesDansLesMurs, type Masque } from "@/lib/plan3d/segmentation";
 import { dimensionsParDefaut, extruderEnGlb, GRAND_COTE_PAR_DEFAUT_M } from "@/lib/plan3d/extrusion";
 import { descriptionFournisseur, FOURNISSEURS } from "@/lib/plan3d/provider";
 import { fournisseurPlan3d } from "@/lib/plan3d/registre";
@@ -94,7 +94,7 @@ describe("segmentation : traits sombres de l'image ajoutés au masque", () => {
       const x = Math.round(60 + 30 * Math.cos(a)), y = Math.round(60 + 30 * Math.sin(a));
       gris[y * W + x] = 0;
     }
-    for (let k = 0; k < 6; k++) for (let y = 100; y < 110; y++) for (let x = 200 + k * 9; x < 206 + k * 9; x++) if ((x + y) % 3) gris[y * W + x] = 0; // « texte » : six lettres de 6 × 10 px
+    for (let k = 0; k < 6; k++) for (let y = 100; y < 107; y++) for (let x = 200 + k * 9; x < 206 + k * 9; x++) if ((x + y) % 3) gris[y * W + x] = 0; // « texte » : six lettres de 6 × 7 px (plus petites que 3 % du grand côté)
     return { W, H, gris };
   }
   const masqueVide = (W: number, H: number): Masque => ({ largeur: W, hauteur: H, classes: new Uint8Array(W * H) });
@@ -120,6 +120,42 @@ describe("segmentation : traits sombres de l'image ajoutés au masque", () => {
 
   it("refuse une image en gris d'une autre taille que le masque", () => {
     expect(() => ajouterEncre(masqueVide(10, 10), new Uint8Array(5))).toThrow();
+  });
+
+  it("efface les classes porte et fenêtre que le modèle a posées sur du texte, sans toucher à une fenêtre dans un mur", () => {
+    const { W, H, gris } = imageTraits();
+    const masque = masqueVide(W, H);
+    // Le modèle a pris les lettres (x 200..254, y 100..110) pour une porte, avec un halo de 3 px
+    for (let y = 97; y < 113; y++) for (let x = 197; x < 257; x++) masque.classes[y * W + x] = CLASSE.PORTE;
+    // Une fenêtre réelle dans le mur haut (y 0..5), loin du texte
+    for (let y = 0; y < 6; y++) for (let x = 20; x < 80; x++) masque.classes[y * W + x] = CLASSE.FENETRE;
+    ajouterEncre(masque, gris);
+    expect(masque.classes[105 * W + 225]).toBe(CLASSE.FOND);
+    expect(masque.classes[98 * W + 198]).toBe(CLASSE.FOND);
+    expect(masque.classes[2 * W + 50]).toBe(CLASSE.FENETRE);
+  });
+});
+
+describe("segmentation : ouvertures gardées seulement dans les murs", () => {
+  it("une fenêtre bordée de mur aux deux bouts est gardée ; une « porte » qui flotte dans la pièce ou ne touche qu'un mur redevient du fond", () => {
+    const W = 200, H = 100;
+    const classes = new Uint8Array(W * H);
+    const poser = (x0: number, x1: number, y0: number, y1: number, c: number) => {
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) classes[y * W + x] = c;
+    };
+    poser(0, W, 0, 6, CLASSE.MUR); // mur haut
+    poser(60, 100, 0, 6, CLASSE.FENETRE); // fenêtre dans le mur haut : mur à gauche (x < 60) et à droite (x ≥ 100)
+    poser(0, 6, 0, H, CLASSE.MUR); // mur gauche
+    poser(6, 60, 50, 56, CLASSE.PORTE); // « porte » collée au mur gauche seulement (texte le long d'un mur)
+    poser(120, 160, 70, 76, CLASSE.PORTE); // « porte » au milieu de la pièce (texte)
+    const filtre = ouverturesDansLesMurs({ largeur: W, hauteur: H, classes });
+    expect(filtre[2 * W + 80]).toBe(CLASSE.FENETRE);
+    expect(filtre[52 * W + 30]).toBe(CLASSE.FOND);
+    expect(filtre[72 * W + 140]).toBe(CLASSE.FOND);
+    expect(classes[52 * W + 30]).toBe(CLASSE.PORTE); // le masque d'origine n'est pas modifié
+    // Et dans l'extraction : la porte flottante n'est pas comptée
+    const { portes } = extraireStructure({ largeur: W, hauteur: H, classes }, { fermeturePx: 0 });
+    expect(portes).toHaveLength(0);
   });
 });
 
