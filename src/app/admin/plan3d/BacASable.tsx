@@ -36,7 +36,7 @@ export function BacASable({ fournisseursConfigures }: { fournisseursConfigures: 
           {FOURNISSEURS.map((f) => (
             <option key={f.code} value={f.code} disabled={!fournisseursConfigures.includes(f.code)}>
               {f.libelle}
-              {fournisseursConfigures.includes(f.code) ? "" : " (clé manquante)"}
+              {fournisseursConfigures.includes(f.code) ? "" : f.necessiteCle ? " (clé manquante)" : " (modèle non installé)"}
             </option>
           ))}
         </Select>

@@ -1,0 +1,128 @@
+import { access, mkdir, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import * as ort from "onnxruntime-node";
+import type { Masque } from "./segmentation";
+
+/*
+ * Inférence locale du modèle « Solution PromoPro » (U-Net ResNet-34 exporté
+ * en ONNX par scripts/prototypes/colab/final/01-entrainement-complet.ipynb) :
+ * image du plan → masque de classes (0 fond, 1 mur, 2 porte, 3 fenêtre), sur
+ * CPU, sans Python. Prétraitement identique à l'entraînement : letterbox
+ * (proportions conservées, complément blanc) vers le carré d'entrée du
+ * modèle, normalisation ImageNet. Le modèle est lu depuis
+ * PLAN3D_MODELE_CHEMIN (défaut : storage/modeles/promopro-plan3d.onnx, hors
+ * dépôt git — 97 Mo) et gardé en mémoire après le premier chargement.
+ */
+
+export const CHEMIN_MODELE_PAR_DEFAUT = path.join("storage", "modeles", "promopro-plan3d.onnx");
+const TAILLE_ENTREE = 512;
+const MOYENNE = [0.485, 0.456, 0.406];
+const ECART = [0.229, 0.224, 0.225];
+
+export function cheminModele() {
+  return path.resolve(process.env.PLAN3D_MODELE_CHEMIN ?? CHEMIN_MODELE_PAR_DEFAUT);
+}
+
+export async function modeleDisponible(): Promise<boolean> {
+  try {
+    await access(cheminModele());
+    return true;
+  } catch {
+    return telechargerModeleSiConfigure();
+  }
+}
+
+const g2 = globalThis as unknown as { __promoproTelechargementModele?: Promise<boolean> };
+/**
+ * Sans fichier local, le modèle est téléchargé une fois depuis PLAN3D_MODELE_URL
+ * (adresse directe, ex. une « release » GitHub) vers le chemin du modèle — sur
+ * Railway, dans le volume persistant. Un échec laisse le fournisseur « non installé ».
+ */
+function telechargerModeleSiConfigure(): Promise<boolean> {
+  const url = process.env.PLAN3D_MODELE_URL?.trim();
+  if (!url) return Promise.resolve(false);
+  g2.__promoproTelechargementModele ??= (async () => {
+    try {
+      const chemin = cheminModele();
+      await mkdir(path.dirname(chemin), { recursive: true });
+      const reponse = await fetch(url);
+      if (!reponse.ok) throw new Error(`réponse ${reponse.status}`);
+      const octets = Buffer.from(await reponse.arrayBuffer());
+      if (octets.length < 1_000_000) throw new Error("fichier trop petit pour être un modèle");
+      await writeFile(`${chemin}.partiel`, octets);
+      await rename(`${chemin}.partiel`, chemin);
+      console.log(`[plan3d] modèle Solution PromoPro téléchargé (${Math.round(octets.length / 1_000_000)} Mo) vers ${chemin}`);
+      return true;
+    } catch (e) {
+      console.error("[plan3d] téléchargement du modèle Solution PromoPro impossible :", e);
+      g2.__promoproTelechargementModele = undefined; // nouvelle tentative au prochain appel
+      return false;
+    }
+  })();
+  return g2.__promoproTelechargementModele;
+}
+
+export const MESSAGE_MODELE_ABSENT = `Le modèle de la Solution PromoPro n'est pas installé (${CHEMIN_MODELE_PAR_DEFAUT}, ou PLAN3D_MODELE_CHEMIN). Voir DEPLOY.md.`;
+
+const g = globalThis as unknown as { __promoproSessionOnnx?: Promise<ort.InferenceSession> };
+function session(): Promise<ort.InferenceSession> {
+  g.__promoproSessionOnnx ??= ort.InferenceSession.create(cheminModele(), { executionProviders: ["cpu"], graphOptimizationLevel: "all" }).catch((e) => {
+    g.__promoproSessionOnnx = undefined;
+    throw e;
+  });
+  return g.__promoproSessionOnnx;
+}
+
+/** Segmente une image (PNG ou JPEG) et rend le masque à la taille de l'image d'origine. */
+export async function segmenterPlan(octets: Uint8Array): Promise<Masque> {
+  const image = sharp(Buffer.from(octets)).removeAlpha().flatten({ background: "#ffffff" });
+  const meta = await image.metadata();
+  const W = meta.width ?? 0;
+  const H = meta.height ?? 0;
+  if (!W || !H) throw new Error("Image du plan illisible.");
+
+  // Letterbox : le grand côté sur TAILLE_ENTREE, complément blanc en bas et à droite
+  const echelle = TAILLE_ENTREE / Math.max(W, H);
+  const w = Math.max(1, Math.round(W * echelle));
+  const h = Math.max(1, Math.round(H * echelle));
+  const { data } = await image
+    .resize(w, h, { fit: "fill", kernel: "lanczos3" })
+    .extend({ top: 0, left: 0, bottom: TAILLE_ENTREE - h, right: TAILLE_ENTREE - w, background: "#ffffff" })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const n = TAILLE_ENTREE * TAILLE_ENTREE;
+  const entree = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++)
+    for (let c = 0; c < 3; c++) entree[c * n + i] = (data[i * 3 + c] / 255 - MOYENNE[c]) / ECART[c];
+
+  const s = await session();
+  const nomEntree = s.inputNames[0];
+  const sortie = await s.run({ [nomEntree]: new ort.Tensor("float32", entree, [1, 3, TAILLE_ENTREE, TAILLE_ENTREE]) });
+  const logits = sortie[s.outputNames[0]];
+  const [, nbClasses, hs, ws] = logits.dims as number[];
+  const valeurs = logits.data as Float32Array;
+
+  // argmax par pixel sur la zone utile, puis remise à l'échelle de l'image d'origine (plus proche voisin)
+  const petit = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let meilleure = 0;
+      let max = -Infinity;
+      for (let c = 0; c < nbClasses; c++) {
+        const v = valeurs[c * hs * ws + y * ws + x];
+        if (v > max) {
+          max = v;
+          meilleure = c;
+        }
+      }
+      petit[y * w + x] = meilleure;
+    }
+  const classes = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) {
+    const sy = Math.min(h - 1, Math.floor(y * echelle));
+    for (let x = 0; x < W; x++) classes[y * W + x] = petit[sy * w + Math.min(w - 1, Math.floor(x * echelle))];
+  }
+  return { largeur: W, hauteur: H, classes };
+}

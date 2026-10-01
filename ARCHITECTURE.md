@@ -586,6 +586,19 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   et testées sans réseau (`tests/unit/plan3d.test.ts`) ; la base d'URL est
   surchargeable (`MELTFLEX_API_URL`, `NEURAL4D_API_URL`) pour le simulateur
   des tests (`/api/dev/plan3d-stub`, 404 en production) ;
+- `promopro.ts` — adaptateur **interne** « Solution PromoPro », synchrone et
+  sans clé : `inference.ts` (modèle ONNX U-Net ResNet-34 exécuté par
+  `onnxruntime-node` sur CPU, prétraitement letterbox identique à
+  l'entraînement, modèle lu dans `storage/modeles/` ou téléchargé depuis
+  `PLAN3D_MODELE_URL`), `segmentation.ts` (pièces par composantes connexes,
+  murs / portes / fenêtres comme barrières, ouvertures de porte refermées par
+  une fermeture morphologique selon chaque axe), `extrusion.ts` (dalles et
+  murs percés aux portes, encodeur glTF binaire) ; le `.glb` est enregistré
+  directement comme fichier `plans-3d`. Déclaré `activable: false` dans
+  `FOURNISSEURS` tant qu'il n'est pas validé sur de vrais plans : testable
+  dans le bac à sable, refusé par `definirFournisseurActif`. Les modules
+  natifs (`onnxruntime-node`, `sharp`) sont déclarés dans
+  `serverExternalPackages` (next.config.ts) ;
 - `registre.ts` — code → adaptateur ;
 - `chiffrement.ts` — AES-256-GCM des clés d'API (clé dérivée de
   `SECRETS_ENCRYPTION_KEY`), `masquerCle` ;
@@ -614,12 +627,13 @@ devient aussi `biens.plan_3d_url`, donc lisible par le client comme un
 modèle déposé à la main. Les fichiers du bac à sable ne sont référencés que
 par `essais_plan3d_labo` : seul le Super Admin (qui lit tout) les ouvre.
 
-**Ajouter un troisième fournisseur** : créer `src/lib/plan3d/<nom>.ts` qui
-exporte un objet `FournisseurPlan3d` (deux méthodes), ajouter son code dans
-`FOURNISSEURS` (provider.ts) et dans le registre (registre.ts), écrire les
-tests de ses `lireReponse…` et, si les tests e2e doivent l'exercer, ses
-routes dans le simulateur. Le Super Admin le voit aussitôt dans /admin/plan3d
-(carte, liste déroulante du bac à sable). Aucune autre modification.
+**Ajouter un fournisseur** : créer `src/lib/plan3d/<nom>.ts` qui exporte un
+objet `FournisseurPlan3d` (deux méthodes), ajouter sa description dans
+`FOURNISSEURS` (provider.ts : `necessiteCle`, `activable`, état) et dans le
+registre (registre.ts), écrire les tests de ses `lireReponse…` et, si les
+tests e2e doivent l'exercer, ses routes dans le simulateur. Le Super Admin le
+voit aussitôt dans /admin/plan3d (carte, liste déroulante du bac à sable).
+Aucune autre modification.
 
 ## Fichiers uploadés
 

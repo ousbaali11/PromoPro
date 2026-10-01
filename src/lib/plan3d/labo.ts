@@ -33,8 +33,8 @@ export async function executerEssai(id: string) {
   const essai = await db.query.essaisPlan3dLabo.findFirst({ where: eq(essaisPlan3dLabo.id, id) });
   if (!essai || essai.statut !== "EN_ATTENTE") return;
   const fournisseur = essai.fournisseur as Fournisseur;
-  const cleApi = await cleApiPour(fournisseur);
-  if (!cleApi) return terminerEssai(id, { etat: "echec", message: "Aucune clé d'API enregistrée pour ce fournisseur.", dureeMs: 0 });
+  const cleApi = await cleApiPour(fournisseur); // chaîne vide pour un fournisseur sans clé (modèle interne), null si inutilisable
+  if (cleApi === null) return terminerEssai(id, { etat: "echec", message: "Fournisseur inutilisable : aucune clé d'API enregistrée, ou modèle non installé.", dureeMs: 0 });
   const lecture = await imageDuPlan(essai.planUrl);
   if ("erreur" in lecture) return terminerEssai(id, { etat: "echec", message: lecture.erreur, dureeMs: 0 });
   const resultat = await executerGeneration(fournisseur, cleApi, lecture.image, async (reference) => {
@@ -49,7 +49,7 @@ export async function rattraperEssais() {
   for (const essai of enAttente) {
     if (!essai.referenceFournisseur || !essai.createdAt) continue;
     const cleApi = await cleApiPour(essai.fournisseur as Fournisseur);
-    if (!cleApi) continue;
+    if (cleApi === null) continue;
     const resultat = await reprendreGeneration(essai.fournisseur as Fournisseur, cleApi, essai.referenceFournisseur, essai.createdAt);
     if (resultat) await terminerEssai(essai.id, resultat);
   }

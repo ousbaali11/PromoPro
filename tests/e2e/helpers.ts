@@ -300,3 +300,36 @@ function crc32(buf: Buffer) {
   }
   return ~c;
 }
+
+/** PNG 640 × 480 d'un petit plan (contour épais et une cloison) : une image lisible par le modèle interne. */
+export function planSynthetique(): Buffer {
+  const largeur = 640;
+  const hauteur = 480;
+  const pixels = Buffer.alloc(largeur * hauteur * 3, 0xff);
+  const noir = (x: number, y: number) => {
+    const i = (y * largeur + x) * 3;
+    pixels[i] = pixels[i + 1] = pixels[i + 2] = 0;
+  };
+  for (let y = 40; y < 440; y++) for (let x = 40; x < 600; x++) {
+    const bord = x < 52 || x >= 588 || y < 52 || y >= 428;
+    const cloison = x >= 314 && x < 326 && !(y >= 200 && y < 260); // cloison verticale avec une ouverture de porte
+    if (bord || cloison) noir(x, y);
+  }
+  const lignes: Buffer[] = [];
+  for (let y = 0; y < hauteur; y++) lignes.push(Buffer.concat([Buffer.from([0]), pixels.subarray(y * largeur * 3, (y + 1) * largeur * 3)]));
+  const idat = deflateSync(Buffer.concat(lignes));
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(td) >>> 0);
+    return Buffer.concat([len, td, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(largeur, 0);
+  ihdr.writeUInt32BE(hauteur, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
+}

@@ -46,6 +46,7 @@ function attendre(ms: number) {
 
 /** Télécharge le modèle chez le fournisseur et l'enregistre comme fichier « plans-3d » de l'application. */
 export async function rapatrierModele(modelUrl: string): Promise<string> {
+  if (modelUrl.startsWith("/api/files/")) return modelUrl; // déjà enregistré par un fournisseur interne
   const reponse = await fetch(modelUrl);
   if (!reponse.ok) throw new ErreurFournisseur(`Le fichier du modèle n'a pas pu être téléchargé (${reponse.status}).`, reponse.status);
   const octets = Buffer.from(await reponse.arrayBuffer());

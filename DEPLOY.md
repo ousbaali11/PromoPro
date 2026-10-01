@@ -61,6 +61,7 @@ Onglet **Variables** du service web :
 | `RESEND_API_KEY` | clé d'API Resend (`re_…`) | E-mails de réinitialisation de mot de passe des comptes internes (« Mot de passe oublié ? » sur /login). Sans elle, la demande aboutit à un message générique mais aucun e-mail ne part (motif dans les logs). Jamais dans le code : variable Railway uniquement. |
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
+| `PLAN3D_MODELE_URL` | adresse directe du fichier `promopro-plan3d.onnx` | Facultatif : téléchargement automatique du modèle interne « Solution PromoPro » dans le volume au premier usage (section 12). Sans modèle, la carte reste « non installé ». |
 | `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
@@ -529,6 +530,29 @@ Désactiver entièrement : dans /admin/plan3d, « Désactiver » le fournisseur
 actif (ou retirer `SECRETS_ENCRYPTION_KEY`, ce qui rend toutes les clés
 inutilisables). Remplacer le fournisseur : voir ARCHITECTURE.md, « Génération
 de modèles 3D » — un adaptateur par fournisseur derrière une interface unique.
+
+### Solution PromoPro (modèle interne, sans clé)
+
+Modèle ONNX de 97 Mo (`promopro-plan3d.onnx`, produit par le carnet
+`scripts/prototypes/colab/final/01-entrainement-complet.ipynb`, voir
+IA-INTERNE.md), exécuté sur le serveur (CPU, environ une seconde par plan). Il
+n'est **pas dans le dépôt git**. Deux façons de l'installer :
+
+1. **Fichier** : déposer le modèle à `storage/modeles/promopro-plan3d.onnx`
+   (en local : ce chemin exact, ignoré par git ; sur Railway : dans le volume,
+   donc `/app/storage/modeles/promopro-plan3d.onnx`), ou ailleurs en
+   renseignant `PLAN3D_MODELE_CHEMIN`.
+2. **Adresse** : définir `PLAN3D_MODELE_URL` (adresse de téléchargement
+   directe, par exemple un fichier joint à une « release » GitHub du dépôt) :
+   au premier usage, le serveur télécharge le modèle vers le chemin ci-dessus
+   et le garde dans le volume. C'est la méthode recommandée sur Railway, où le
+   volume n'est pas accessible en dépôt direct.
+
+Dans /admin/plan3d, la carte « Solution PromoPro » indique « Modèle installé
+sur le serveur » ou « Modèle non installé ». Tant qu'elle n'est pas validée sur
+de vrais plans, elle reste **testable dans le bac à sable seulement** : le
+bouton « Utiliser pour les biens » est désactivé et le serveur refuse son
+activation. Aucun coût par génération.
 
 ## Dépannage
 

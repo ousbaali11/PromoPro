@@ -59,3 +59,9 @@ perf-resultat*.json
 
 # prototypes IA : plans d'essai, JSON et modèles générés (jamais versionnés)
 scripts/prototypes/plans/
+
+# archive Colab de la Solution PromoPro (regénérée depuis scripts/prototypes/colab/final/)
+solution-promopro-entrainement.zip
+
+# modèles ONNX (97 Mo, installés hors git : voir DEPLOY.md)
+/storage/modeles/

@@ -71,7 +71,7 @@ export async function rattraperGenerations(bienId: string) {
   const enAttente = (await generationsDuBien(bienId)).filter((g) => g.statut === "EN_ATTENTE" && g.referenceFournisseur && g.createdAt);
   for (const g of enAttente) {
     const cleApi = await cleApiPour(g.fournisseur as Fournisseur);
-    if (!cleApi) continue;
+    if (cleApi === null) continue;
     const resultat = await reprendreGeneration(g.fournisseur as Fournisseur, cleApi, g.referenceFournisseur!, g.createdAt!);
     if (resultat) await terminer(g.id, resultat);
   }

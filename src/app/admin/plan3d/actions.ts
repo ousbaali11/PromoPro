@@ -23,7 +23,8 @@ export async function enregistrerCle(fournisseur: string, _prev: CleState, formD
   const cleApi = String(formData.get("cleApi") ?? "").trim();
   if (cleApi.length < 8) return { error: "Collez la clé d'API complète (8 caractères au moins)." };
   if (cleApi.length > 500) return { error: "La clé d'API est trop longue." };
-  await enregistrerCleApi(session, fournisseur, cleApi);
+  const r = await enregistrerCleApi(session, fournisseur, cleApi);
+  if ("error" in r) return { error: r.error };
   revalidatePath(CHEMIN);
   revalidatePath("/admin/journal");
   return { success: "Clé enregistrée." };

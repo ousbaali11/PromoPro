@@ -141,3 +141,41 @@ Gemini sur les scans et les photos.
 Lancer le carnet 01 puis le carnet 02 (essai réduit) dans Colab et rapporter
 les masques obtenus sur `villa_plan_2d.png`. Selon le résultat : poursuivre
 vers le cycle 2, ou renoncer et garder Gemini / un fournisseur tiers.
+
+## 9. Entraînement complet et intégration en bac à sable (1er octobre 2026)
+
+Le carnet final (`scripts/prototypes/colab/final/`) a été exécuté sur Colab
+par le promoteur ; le modèle `promopro-plan3d.onnx` (97 Mo) a été remis et
+installé hors git dans `storage/modeles/`.
+
+Mesure sur `villa_plan_2d.png` (plan propre, référence Gemini à 9 pièces et
+2 portes), par `scripts/prototypes/evaluer-promopro.ts` qui utilise les
+modules du site :
+
+| | Modèle pré-entraîné CubiCasa (carnet 01) | Essai réduit (2 000 images) | Modèle complet (ce fichier) |
+|---|---|---|---|
+| Pièces retrouvées, IoU ≥ 0,7 | 2 / 9 | 5 / 9 brut, 8 / 9 avec fermeture | 0 / 9 brut, **8 / 9** avec fermeture selon chaque axe |
+| Portes | 0 / 2, trois faux positifs sur le texte | 0 / 2 | 0 / 2 (69 pixels de classe porte) |
+| Texte pris pour des symboles | oui | non | non |
+| Inférence | — | — | 0,8 s sur CPU |
+
+La pièce manquée est le couloir, dont l'extrémité droite n'est pas fermée dans
+le masque. La classe « porte » n'est toujours pas apprise : les pièces ne
+sont séparées que grâce au post-traitement (fermeture des ouvertures), qui
+suppose des murs orthogonaux. Les noms de pièces restent hors de portée du
+modèle (OCR à prévoir).
+
+Intégration : « Solution PromoPro » est un **vrai fournisseur** derrière
+`FournisseurPlan3d` (`src/lib/plan3d/promopro.ts`), sans clé, exécuté sur le
+serveur en une seconde, mais `activable: false` : le Super Admin peut le
+comparer aux autres dans le bac à sable, le serveur refuse de l'activer pour
+les biens. Installation du modèle : DEPLOY.md, section 12.
+
+**Validation sur de vrais plans toujours attendue.** Tant qu'elle n'a pas eu
+lieu, le verdict ne change pas : Gemini reste la référence (noms de pièces
+compris), la Solution PromoPro est un candidat prometteur sur plans propres et
+non prouvé sur scans ou plans cotés avec mobilier. Prochaine étape : déposer
+dans le bac à sable 5 à 10 vrais plans de projets et comparer avec MeltFlex ou
+Neural4D sur les mêmes plans ; puis, si l'écart est acceptable, annoter 30 à
+50 plans réels pour un cycle d'ajustement (cycle 3 du plan) avant toute
+activation.

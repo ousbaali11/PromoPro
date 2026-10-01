@@ -3,9 +3,7 @@ import { Breadcrumb, Callout, PageHeader, Section } from "@/components/ui/Primit
 import { chiffrementDisponible, VARIABLE_CLE } from "@/lib/plan3d/chiffrement";
 import { configurationsAffichees } from "@/lib/plan3d/config";
 import { listerEssais, rattraperEssais } from "@/lib/plan3d/labo";
-import { FOURNISSEURS_EN_DEVELOPPEMENT } from "@/lib/plan3d/provider";
 import { CarteFournisseur } from "./CarteFournisseur";
-import { CarteEnDeveloppement } from "./CarteEnDeveloppement";
 import { BacASable, ListeEssais } from "./BacASable";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +19,7 @@ export default async function Plan3dPage() {
   await rattraperEssais();
   const [configs, essais] = await Promise.all([configurationsAffichees(), listerEssais()]);
   const chiffrement = chiffrementDisponible();
-  const configures = configs.filter((c) => c.cleMasquee && !c.cleMasquee.startsWith("clé ")).map((c) => c.fournisseur);
+  const configures = configs.filter((c) => c.configure).map((c) => c.fournisseur);
   const actif = configs.find((c) => c.actif);
 
   return (
@@ -44,12 +42,9 @@ export default async function Plan3dPage() {
           : "Aucun fournisseur actif : aucune génération automatique sur les biens. Le dépôt manuel d'un modèle 3D fonctionne comme avant."}
       </Callout>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {configs.map((c) => (
           <CarteFournisseur key={c.fournisseur} config={c} chiffrement={chiffrement} />
-        ))}
-        {FOURNISSEURS_EN_DEVELOPPEMENT.map((f) => (
-          <CarteEnDeveloppement key={f.code} fournisseur={f} />
         ))}
       </div>
 

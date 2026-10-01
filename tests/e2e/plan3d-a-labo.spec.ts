@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { deposerFichier, login, pngEchec } from "./helpers";
+import { deposerFichier, login, planSynthetique, pngEchec } from "./helpers";
 
 /*
  * Laboratoire de génération 3D (/admin/plan3d, Super Admin) : clés d'API
@@ -39,7 +39,7 @@ async function enregistrerCle(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D", 
   await expect(c.getByTestId("cle-enregistree")).toBeVisible();
 }
 
-async function lancerEssai(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D", fichier: { name: string; buffer?: Buffer }) {
+async function lancerEssai(page: Page, fournisseur: "MELTFLEX" | "NEURAL4D" | "PROMOPRO", fichier: { name: string; buffer?: Buffer }) {
   const form = page.getByTestId("form-essai");
   await page.locator('[data-testid="form-essai"][data-hydrated="true"]').waitFor();
   await deposerFichier(form, "planUrl", [fichier]);
@@ -66,13 +66,13 @@ test("accès : le Super Admin voit le lien et la page ; un rôle interne est red
   }
   await expect(page.getByTestId("essais-vides")).toBeVisible();
 
-  // « Solution PromoPro » : carte d'information seulement, tant qu'elle n'est pas validée sur de vrais plans
+  // « Solution PromoPro » : fournisseur interne sans clé, testable dans le bac à sable, jamais activable pour les biens
   const interne = page.getByTestId("carte-fournisseur-PROMOPRO");
   await expect(interne).toContainText("Solution PromoPro");
-  await expect(interne.getByTestId("badge-en-developpement")).toHaveText("En développement — pas encore activable");
+  await expect(interne.getByTestId("badge-en-developpement")).toContainText("pas encore activable");
   await expect(interne.getByTestId("form-cle")).toHaveCount(0);
-  await expect(interne.getByTestId("bouton-actif")).toHaveCount(0);
-  await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO"]')).toHaveCount(0);
+  await expect(interne.getByTestId("bouton-actif")).toBeDisabled();
+  await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO"]')).toHaveCount(1);
 });
 
 test("clés d'API : enregistrées chiffrées, réaffichées masquées (quatre derniers caractères), jamais en clair dans la page ; journal", async ({ page }) => {
@@ -167,4 +167,30 @@ test("échecs : image refusée par le fournisseur (MeltFlex 502, Neural4D échec
   await page.locator('[data-testid="form-essai"][data-hydrated="true"]').waitFor();
   await form.locator('input[type="file"]').first().setInputFiles({ name: "plan.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%%EOF\n") });
   await expect(form.locator('input[type="hidden"][name="planUrl"]')).toHaveValue("");
+});
+
+test("Solution PromoPro : génération locale dans le bac à sable (modèle installé → .glb servi ; sinon échec explicite), jamais activable pour les biens", async ({ page }) => {
+  test.setTimeout(120_000);
+  await login(page, "SUPERADMIN");
+  await page.goto("/admin/plan3d");
+  const carte = page.getByTestId("carte-fournisseur-PROMOPRO");
+  const installe = (await carte.getByTestId("cle-masquee").innerText()).includes("installé sur le serveur");
+  const option = page.getByTestId("form-essai").locator('option[value="PROMOPRO"]');
+  if (!installe) {
+    test.info().annotations.push({ type: "note", description: "modèle ONNX absent : seule l'indisponibilité est vérifiée" });
+    await expect(option).toBeDisabled();
+    await expect(carte.getByTestId("cle-masquee")).toContainText("non installé");
+    return;
+  }
+  await expect(option).toBeEnabled();
+  const ligne = await lancerEssai(page, "PROMOPRO", { name: "plan-interne.png", buffer: planSynthetique() });
+  await expect(ligne.getByTestId("essai-statut")).toHaveText("Prêt", { timeout: 60_000 });
+  await ligne.getByTestId("voir-modele").click();
+  const src = await srcModele(ligne);
+  const reponse = await page.request.get(src);
+  expect(reponse.status()).toBe(200);
+  expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
+  expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");
+  // Toujours pas activable pour les biens, même modèle installé
+  await expect(carte.getByTestId("bouton-actif")).toBeDisabled();
 });
