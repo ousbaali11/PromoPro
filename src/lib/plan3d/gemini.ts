@@ -17,7 +17,7 @@ import { dimensionsParDefaut, extruderEnGlb } from "./extrusion";
  * generationConfig: { temperature: 0, response_mime_type: "application/json" } }
  * → 200 { candidates: [{ content: { parts: [{ text: "<JSON>" }] } }] }
  * → 400 « API key not valid » / 403 (clé), 429 (quota), 503 (forte demande,
- * rejouée). La base (GEMINI_API_URL) et le modèle (GEMINI_MODEL) sont
+ * rejouée six fois sur environ deux minutes, délais croissants). La base (GEMINI_API_URL) et le modèle (GEMINI_MODEL) sont
  * surchargeables ; la suite e2e pointe la base vers le simulateur. Quand
  * Google retire un modèle, sa réponse d'erreur nomme le remplaçant
  * (« Please update your code to use models/… ») : l'appel est rejoué une
@@ -27,9 +27,15 @@ import { dimensionsParDefaut, extruderEnGlb } from "./extrusion";
 
 export const GEMINI_BASE_PAR_DEFAUT = "https://generativelanguage.googleapis.com/v1beta";
 export const GEMINI_MODELE_PAR_DEFAUT = "gemini-3.8-flash";
-/** Tentatives sur 503 (forte demande), et délai entre deux tentatives. */
-const TENTATIVES_503 = 3;
-const DELAI_503_MS = Number(process.env.GEMINI_DELAI_503_MS) || 10_000;
+/**
+ * Pics de charge (503 « high demand ») : délais d'attente entre les tentatives,
+ * en millisecondes (six tentatives sur environ deux minutes par défaut),
+ * surchargeables par GEMINI_DELAIS_503_MS (liste séparée par des virgules).
+ */
+export function delais503Ms(): number[] {
+  const brut = (process.env.GEMINI_DELAIS_503_MS ?? "5000,10000,20000,30000,45000").split(",").map((v) => Number(v.trim()));
+  return brut.every((v) => Number.isFinite(v) && v >= 0) && brut.length ? brut : [5000, 10000, 20000, 30000, 45000];
+}
 
 export const PROMPT_GEMINI = `Tu analyses l'image d'un plan d'architecte 2D (vue de dessus d'un logement).
 Renvoie UNIQUEMENT un objet JSON strict, sans commentaire ni markdown, de la forme :
@@ -130,16 +136,17 @@ export const gemini: FournisseurPlan3d = {
       contents: [{ role: "user", parts: [{ text: PROMPT_GEMINI }, { inline_data: { mime_type: image.mime, data: Buffer.from(image.octets).toString("base64") } }] }],
       generationConfig: { temperature: 0, response_mime_type: "application/json" },
     };
+    const delais = delais503Ms();
     const appeler = async (modele: string) => {
       let reponse: Response | undefined;
-      for (let tentative = 1; tentative <= TENTATIVES_503; tentative++) {
+      for (let tentative = 0; tentative <= delais.length; tentative++) {
         reponse = await fetch(`${base()}/models/${encodeURIComponent(modele)}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": cleApi, Accept: "application/json" },
           body: JSON.stringify(corps),
         });
-        if (reponse.status !== 503 || tentative === TENTATIVES_503) break;
-        await attendre(DELAI_503_MS);
+        if (reponse.status !== 503 || tentative === delais.length) break;
+        await attendre(delais[tentative]);
       }
       return { statut: reponse!.status, corps: await corpsJson(reponse!) };
     };
@@ -149,6 +156,10 @@ export const gemini: FournisseurPlan3d = {
     if (remplacant && remplacant !== modeleGemini()) {
       console.warn(`[plan3d] Gemini : modèle ${modeleGemini()} retiré, nouvel essai avec ${remplacant} (mettez GEMINI_MODEL à jour).`);
       ({ statut, corps: enveloppe } = await appeler(remplacant));
+    }
+    if (statut === 503) {
+      const total = Math.round(delais.reduce((s, d) => s + d, 0) / 1000);
+      throw new ErreurFournisseur(`Gemini : forte demande sur le modèle ${modeleGemini()} (${delais.length + 1} tentatives sur ${total} s). Réessayez dans quelques minutes, ou changez de modèle avec GEMINI_MODEL.`, 503);
     }
     const lecture = lireReponseGemini(statut, enveloppe);
     if (lecture.pieces.length === 0) {

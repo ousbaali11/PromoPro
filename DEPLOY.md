@@ -511,7 +511,10 @@ Obtenir une clé :
   centaines de jetons en sortie) et prend quelques secondes ; Gemini lit les
   noms des pièces et les portes, l'application extrude le modèle 3D. Modèle
   par défaut `gemini-3.8-flash`, surchargeable par `GEMINI_MODEL`. En cas de
-  « forte demande » (503), l'appel est rejoué trois fois.
+  « forte demande » (503), l'appel est rejoué six fois sur environ deux
+  minutes avec des délais croissants (`GEMINI_DELAIS_503_MS` pour les
+  changer) ; si le pic persiste, l'essai échoue avec un message qui invite à
+  réessayer plus tard.
 - **Neural4D** (`https://www.neural4d.com/api`) : plan Go (19,90 $/mois,
   environ 150 modèles) ou paiement à l'usage (environ 0,15 $ par appel) ;
   l'API est réservée aux plans payants (le plan gratuit interdit l'usage

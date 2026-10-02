@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chiffrementDisponible, chiffrer, dechiffrer, masquerCle } from "@/lib/plan3d/chiffrement";
-import { lireReponseGemini, modeleGemini, modeleSuggere, PROMPT_GEMINI } from "@/lib/plan3d/gemini";
+import { delais503Ms, lireReponseGemini, modeleGemini, modeleSuggere, PROMPT_GEMINI } from "@/lib/plan3d/gemini";
 import { lireReponseDemarrageNeural4d, lireReponseStatutNeural4d } from "@/lib/plan3d/neural4d";
 import { ErreurFournisseur, estFournisseur, FOURNISSEURS, libelleFournisseur } from "@/lib/plan3d/provider";
 import { fournisseurPlan3d } from "@/lib/plan3d/registre";
@@ -89,6 +89,19 @@ describe("adaptateur Gemini (réponses documentées)", () => {
     expect(() => lireReponseGemini(200, {})).toThrow(/sans contenu/);
     expect(() => lireReponseGemini(200, enveloppe("pas du json"))).toThrow(/JSON/);
     expect(() => lireReponseGemini(200, { promptFeedback: { blockReason: "SAFETY" } })).toThrow(/refusé/);
+  });
+
+  it("les délais de rejeu sur 503 sont croissants par défaut et surchargeables, une valeur invalide rend le défaut", () => {
+    const avant = process.env.GEMINI_DELAIS_503_MS;
+    delete process.env.GEMINI_DELAIS_503_MS;
+    const defaut = delais503Ms();
+    expect(defaut).toEqual([5000, 10000, 20000, 30000, 45000]);
+    process.env.GEMINI_DELAIS_503_MS = "100, 200";
+    expect(delais503Ms()).toEqual([100, 200]);
+    process.env.GEMINI_DELAIS_503_MS = "abc";
+    expect(delais503Ms()).toEqual(defaut);
+    if (avant === undefined) delete process.env.GEMINI_DELAIS_503_MS;
+    else process.env.GEMINI_DELAIS_503_MS = avant;
   });
 
   it("un message de retrait de modèle nomme le remplaçant à rejouer", () => {
