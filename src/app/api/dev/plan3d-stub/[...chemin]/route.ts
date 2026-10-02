@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { NextResponse, type NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export const dynamic = "force-dynamic";
  * - sinon, Neural4D : première interrogation « en cours », la suivante
  *   « prêt » avec un modèle .glb (tests/fixtures/cube.glb) servi par le
  *   simulateur ; Gemini : JSON de trois pièces nommées et une porte, que
- *   l'adaptateur extrude lui-même.
+ *   l'adaptateur extrude lui-même ; Gemini — rendu 3D (modèle dont le nom
+ *   contient « image ») : une image PNG de teinte différente à chaque appel,
+ *   que l'adaptateur assemble en planche.
  */
 
 type Tache = { interrogations: number; echec: boolean };
@@ -75,9 +78,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ chemin: st
     if (!cle || cle === "cle-invalide") {
       return NextResponse.json({ error: { code: 400, message: "API key not valid. Please pass a valid API key.", status: "INVALID_ARGUMENT" } }, { status: 400 });
     }
-    const corps = (await req.json()) as { contents?: { parts?: { text?: string; inline_data?: { mime_type?: string; data?: string } }[] }[] };
+    const corps = (await req.json()) as { contents?: { parts?: { text?: string; inline_data?: { mime_type?: string; data?: string } }[] }[]; generationConfig?: { responseModalities?: string[] } };
     const image = corps.contents?.[0]?.parts?.find((p) => p.inline_data)?.inline_data;
     if (!image?.data) return NextResponse.json({ error: { code: 400, message: "Request must contain an image part.", status: "INVALID_ARGUMENT" } }, { status: 400 });
+    if (/image/.test(chemin) || corps.generationConfig?.responseModalities?.includes("IMAGE")) {
+      // Modèle d'image : une vue de teinte différente à chaque appel (sans image pour le PNG d'échec)
+      if (largeurPng(Buffer.from(image.data, "base64")) === 2) {
+        return NextResponse.json({ candidates: [{ content: { parts: [{ text: "Je ne vois aucun plan sur cette image." }], role: "model" }, finishReason: "STOP" }] });
+      }
+      const teinte = (taches.size * 60) % 360;
+      taches.set(crypto.randomUUID(), { interrogations: 0, echec: false });
+      const png = await sharp({ create: { width: 320, height: 240, channels: 3, background: { r: 200 + (teinte % 50), g: 180, b: 120 + (teinte % 100) } } }).png().toBuffer();
+      return NextResponse.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: png.toString("base64") } }], role: "model" }, finishReason: "STOP" }], usageMetadata: { totalTokenCount: 1500 } });
+    }
     if (largeurPng(Buffer.from(image.data, "base64")) === 2) return reponseGemini({ pieces: [], portes: [], remarques: "image illisible : aucun mur visible" });
     return reponseGemini({
       pieces: [

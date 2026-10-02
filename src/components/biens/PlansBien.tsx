@@ -5,7 +5,7 @@ import { ExternalLink, FileImage } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { PlanPreview } from "@/components/ui/PlanPreview";
 import { LinkButton } from "@/components/ui/Button";
-import { ModelViewer } from "./ModelViewer";
+import { Apercu3d } from "./Apercu3d";
 
 export type Plans = { plan2dUrl: string | null; plan3dUrl: string | null; visiteVirtuelleUrl: string | null };
 
@@ -47,7 +47,7 @@ export function PlansBien({ plans, designation, className }: { plans: Plans; des
             <PlanPreview url={plans.plan2dUrl} />
           </div>
         )}
-        {courant === "3d" && plans.plan3dUrl && <ModelViewer src={plans.plan3dUrl} alt={`Modèle 3D — ${designation}`} className="h-72" />}
+        {courant === "3d" && plans.plan3dUrl && <Apercu3d src={plans.plan3dUrl} alt={`Modèle 3D — ${designation}`} className="h-72" />}
         {courant === "visite" && plans.visiteVirtuelleUrl && (
           <div className="flex flex-col">
             <iframe

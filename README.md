@@ -141,7 +141,7 @@ désignée par `DATABASE_URL`, sinon la base SQLite locale.)
   dès le million, montant exact en info-bulle), lisibles quelle que soit la
   croissance des chiffres
 - **Génération de modèles 3D** à partir du plan 2D d'un bien par un fournisseur
-  externe (Gemini ou Neural4D), configuré par le Super Admin dans /admin/plan3d
+  externe (Gemini, Gemini — rendu 3D ou Neural4D), configuré par le Super Admin dans /admin/plan3d
   (clés d'API chiffrées, fournisseur actif, bac à sable de comparaison) ; le
   Directeur Commercial valide chaque modèle avant qu'il n'apparaisse côté client
 - **Directeur Commercial** : projets (dont le délai des travaux modificatifs)

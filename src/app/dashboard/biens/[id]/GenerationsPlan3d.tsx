@@ -7,7 +7,7 @@ import { validerGenerationPlan3d } from "./actions";
 import { Badge, Section, type Tone } from "@/components/ui/Primitives";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { ModelViewer } from "@/components/biens/ModelViewer";
+import { Apercu3d } from "@/components/biens/Apercu3d";
 import { libelleFournisseur } from "@/lib/plan3d/provider";
 import { formatDateTime } from "@/lib/utils";
 
@@ -108,7 +108,7 @@ function LigneGeneration({ generation: g, publiee }: { generation: GenerationAff
       {g.statut === "EN_ATTENTE" && <p className="mt-2 text-small text-navy-400">Génération en cours chez le fournisseur… cette section se met à jour d&apos;elle-même.</p>}
       {ouvert && g.modelUrl && (
         <div className="mt-3 overflow-hidden rounded-md bg-blueprint" data-testid="apercu-generation">
-          <ModelViewer src={g.modelUrl} alt={`Modèle 3D généré par ${libelleFournisseur(g.fournisseur)}`} className="h-72" />
+          <Apercu3d src={g.modelUrl} alt={`Modèle 3D généré par ${libelleFournisseur(g.fournisseur)}`} className="h-72" />
         </div>
       )}
     </li>

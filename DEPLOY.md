@@ -62,7 +62,8 @@ Onglet **Variables** du service web :
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
 | `PLAN3D_MODELE_URL` | adresse directe du fichier `promopro-plan3d.onnx` | Facultatif : téléchargement automatique du modèle interne « Solution PromoPro » dans le volume au premier usage (section 12). Sans modèle, la carte reste « non installé ». |
-| `GEMINI_MODEL` | `gemini-3.8-flash` | Facultatif : modèle Gemini utilisé par le fournisseur « Gemini (Google) » (section 12). |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Facultatif : modèle Gemini utilisé par le fournisseur « Gemini » (section 12). |
+| `GEMINI_MODEL_IMAGE` | `gemini-3.1-flash-image` | Facultatif : modèle d'image utilisé par « Gemini — rendu 3D » (section 12). |
 | `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
@@ -515,6 +516,16 @@ Obtenir une clé :
   minutes avec des délais croissants (`GEMINI_DELAIS_503_MS` pour les
   changer) ; si le pic persiste, l'essai échoue avec un message qui invite à
   réessayer plus tard.
+- **Gemini — rendu 3D** : même clé que Gemini (rien à saisir sur sa carte).
+  Le modèle d'image (`gemini-3.1-flash-image` par défaut, `GEMINI_MODEL_IMAGE`
+  pour en changer) dessine une maquette 3D photoréaliste du plan, puis la même
+  maquette tournée de 90°, 180° et 270° : quatre images par plan (quelques
+  dizaines de centimes, une à deux minutes), assemblées en une planche que la
+  visionneuse fait tourner au glisser. Ce sont des images, pas un modèle 3D :
+  la cohérence entre les vues dépend du modèle, et un rendu ne se mesure pas
+  comme une structure de pièces. Activable pour les biens comme les autres
+  fournisseurs à clé : le Directeur Commercial valide le rendu avant qu'il
+  n'apparaisse dans l'onglet « Modèle 3D » du client.
 - **Neural4D** (`https://www.neural4d.com/api`) : plan Go (19,90 $/mois,
   environ 150 modèles) ou paiement à l'usage (environ 0,15 $ par appel) ;
   l'API est réservée aux plans payants (le plan gratuit interdit l'usage

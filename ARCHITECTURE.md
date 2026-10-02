@@ -590,6 +590,19 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   visible, en JSON strict) et l'application extrude elle-même le `.glb` avec
   `extrusion.ts` ; modèle surchargeable par `GEMINI_MODEL` ; les 503 (forte
   demande) sont rejoués ; synchrone, pas de suivi ;
+- `gemini-rendu.ts` — « Gemini — rendu 3D » : le modèle d'image de Gemini
+  (`GEMINI_MODEL_IMAGE`, défaut `gemini-3.1-flash-image`) dessine une
+  maquette 3D photoréaliste du plan, puis trois vues tournées (90°, 180°,
+  270°) avec le plan et la première vue en référence ; les quatre vues sont
+  assemblées côte à côte (`assemblerVues`, sharp) en une planche JPEG de type
+  `rendus-3d`. Partage la clé de Gemini (`cleDe: "GEMINI"` : pas de clé
+  propre, `cleApiPour` lit celle du fournisseur source, la carte n'a pas de
+  formulaire). Règles de la planche (nombre de vues d'après les dimensions,
+  angle de chaque vue) dans `rendu-vues.ts`, sans import Node ; l'aperçu
+  `Apercu3d` choisit `<model-viewer>` pour un `.glb` et la visionneuse
+  tournante `RenduTournant` (glisser pour tourner, molette et boutons pour
+  zoomer, rotation lente au repos) pour une planche d'images, dans le bac à
+  sable, la fiche du bien et l'espace client ;
 - `promopro.ts` — adaptateur **interne** « Solution PromoPro », synchrone et
   sans clé, produit par une fabrique qui permettrait d'exposer une autre
   variante du modèle sans rien dupliquer ; `inference.ts` (modèle ONNX U-Net

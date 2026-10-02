@@ -8,7 +8,7 @@ import { Card, Callout, Badge, type Tone } from "@/components/ui/Primitives";
 import { Select } from "@/components/ui/Fields";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { ModelViewer } from "@/components/biens/ModelViewer";
+import { Apercu3d } from "@/components/biens/Apercu3d";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
 import { useHydrated } from "@/components/ui/useHydrated";
 import { FOURNISSEURS, libelleFournisseur } from "@/lib/plan3d/provider";
@@ -132,7 +132,7 @@ function LigneEssai({ essai }: { essai: EssaiAffiche }) {
       {essai.statut === "EN_ATTENTE" && <p className="mt-2 text-small text-navy-400">Génération en cours chez le fournisseur… la page se met à jour d&apos;elle-même.</p>}
       {ouvert && essai.resultatUrl && (
         <div className="mt-3 overflow-hidden rounded-md bg-blueprint" data-testid="apercu-essai">
-          <ModelViewer src={essai.resultatUrl} alt={`Modèle généré par ${libelleFournisseur(essai.fournisseur)}`} className="h-72" />
+          <Apercu3d src={essai.resultatUrl} alt={`Modèle généré par ${libelleFournisseur(essai.fournisseur)}`} className="h-72" />
         </div>
       )}
     </li>

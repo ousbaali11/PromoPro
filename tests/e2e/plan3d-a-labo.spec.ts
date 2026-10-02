@@ -39,7 +39,7 @@ async function enregistrerCle(page: Page, fournisseur: "GEMINI" | "NEURAL4D", cl
   await expect(c.getByTestId("cle-enregistree")).toBeVisible();
 }
 
-async function lancerEssai(page: Page, fournisseur: "GEMINI" | "NEURAL4D" | "PROMOPRO", fichier: { name: string; buffer?: Buffer }) {
+async function lancerEssai(page: Page, fournisseur: "GEMINI" | "GEMINI_RENDU" | "NEURAL4D" | "PROMOPRO", fichier: { name: string; buffer?: Buffer }) {
   const form = page.getByTestId("form-essai");
   await page.locator('[data-testid="form-essai"][data-hydrated="true"]').waitFor();
   await deposerFichier(form, "planUrl", [fichier]);
@@ -49,7 +49,7 @@ async function lancerEssai(page: Page, fournisseur: "GEMINI" | "NEURAL4D" | "PRO
   return page.getByTestId("essai-ligne").first();
 }
 
-test("accès : le Super Admin voit le lien et la page ; un rôle interne est redirigé ; trois fournisseurs, aucune clé au départ, aucune génération automatique", async ({ page }) => {
+test("accès : le Super Admin voit le lien et la page ; un rôle interne est redirigé ; quatre fournisseurs, aucune clé au départ, aucune génération automatique", async ({ page }) => {
   await login(page, "PDG");
   await page.goto("/admin/plan3d");
   await expect(page).toHaveURL(/\/login$/);
@@ -60,11 +60,19 @@ test("accès : le Super Admin voit le lien et la page ; un rôle interne est red
   await expect(page).toHaveURL(/\/admin\/plan3d$/);
   await expect(page.getByTestId("chiffrement-indisponible")).toHaveCount(0);
   await expect(page.getByTestId("etat-generation")).toContainText("Aucun fournisseur actif");
-  // Exactement trois fournisseurs : Gemini, Neural4D, Solution PromoPro (MeltFlex et la variante B ont été retirés)
-  await expect(page.locator('[data-testid^="carte-fournisseur-"]')).toHaveCount(3);
+  // Exactement quatre fournisseurs : Gemini, Gemini — rendu 3D, Neural4D, Solution PromoPro (MeltFlex et la variante B ont été retirés)
+  await expect(page.locator('[data-testid^="carte-fournisseur-"]')).toHaveCount(4);
   await expect(page.getByTestId("carte-fournisseur-MELTFLEX")).toHaveCount(0);
   await expect(page.getByTestId("carte-fournisseur-PROMOPRO_B")).toHaveCount(0);
-  await expect(page.getByTestId("form-essai").locator("option")).toHaveCount(3);
+  await expect(page.getByTestId("form-essai").locator("option")).toHaveCount(4);
+  // « Gemini — rendu 3D » partage la clé de Gemini : aucun formulaire de clé, option grisée tant que Gemini n'a pas de clé
+  const rendu = page.getByTestId("carte-fournisseur-GEMINI_RENDU");
+  await expect(rendu).toContainText("Gemini — rendu 3D");
+  await expect(rendu.getByTestId("form-cle")).toHaveCount(0);
+  await expect(rendu.getByTestId("cle-partagee")).toBeVisible();
+  await expect(rendu.getByTestId("cle-masquee")).toContainText("saisissez la clé sur la carte Gemini");
+  await expect(rendu.getByTestId("bouton-actif")).toBeDisabled();
+  await expect(page.getByTestId("form-essai").locator('option[value="GEMINI_RENDU"]')).toBeDisabled();
   for (const f of ["GEMINI", "NEURAL4D"] as const) {
     await expect(carte(page, f).getByTestId("cle-masquee")).toHaveText("Aucune");
     await expect(carte(page, f).getByTestId("bouton-actif")).toBeDisabled();
@@ -89,6 +97,9 @@ test("clés d'API : enregistrées chiffrées, réaffichées masquées (quatre de
   await page.reload();
   await expect(carte(page, "GEMINI").getByTestId("cle-masquee")).toHaveText(/^•+cdef$/);
   await expect(carte(page, "NEURAL4D").getByTestId("cle-masquee")).toHaveText(/^•+3210$/);
+  // La clé de Gemini rend « Gemini — rendu 3D » utilisable, sans la réafficher
+  await expect(page.getByTestId("carte-fournisseur-GEMINI_RENDU").getByTestId("cle-masquee")).toHaveText("Clé de Gemini (partagée)");
+  await expect(page.getByTestId("form-essai").locator('option[value="GEMINI_RENDU"]')).toBeEnabled();
   const html = await page.content();
   expect(html).not.toContain(CLE_GEMINI);
   expect(html).not.toContain(CLE_NEURAL4D);
@@ -175,6 +186,42 @@ test("échecs : image refusée par le fournisseur (Gemini sans pièce, Neural4D 
   await page.locator('[data-testid="form-essai"][data-hydrated="true"]').waitFor();
   await form.locator('input[type="file"]').first().setInputFiles({ name: "plan.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%%EOF\n") });
   await expect(form.locator('input[type="hidden"][name="planUrl"]')).toHaveValue("");
+});
+
+test("Gemini — rendu 3D : quatre vues assemblées en une planche servie comme image, visionneuse tournante (glisser, boutons, zoom), activable pour les biens", async ({ page }) => {
+  test.setTimeout(120_000);
+  await login(page, "SUPERADMIN");
+  await page.goto("/admin/plan3d");
+  const ligne = await lancerEssai(page, "GEMINI_RENDU", { name: "plan-rendu.png" });
+  await expect(ligne.getByTestId("essai-statut")).toHaveText("Prêt", { timeout: 90_000 });
+  await ligne.getByTestId("voir-modele").click();
+  const visionneuse = ligne.getByTestId("rendu-tournant");
+  await expect(visionneuse).toBeVisible();
+  await expect(visionneuse).toHaveAttribute("data-nb-vues", "4");
+  const src = await visionneuse.locator("img").getAttribute("src");
+  expect(src).toMatch(/^\/api\/files\/rendus-3d\/[0-9a-f-]+\.jpg$/);
+  const reponse = await lireUrl(page, src!);
+  expect(reponse.status()).toBe(200);
+  expect(reponse.headers()["content-type"]).toBe("image/jpeg");
+  // Navigation : bouton suivant, puis glisser vers la gauche (sens antihoraire)
+  await visionneuse.getByTestId("rendu-suivant").click();
+  await expect(visionneuse).toHaveAttribute("data-vue", "1");
+  await expect(visionneuse.getByTestId("rendu-angle")).toHaveText("90°");
+  const zone = visionneuse.getByRole("img");
+  const boite = (await zone.boundingBox())!;
+  await page.mouse.move(boite.x + boite.width / 2, boite.y + boite.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(boite.x + boite.width / 2 - 170, boite.y + boite.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(visionneuse).toHaveAttribute("data-vue", "3");
+  // Activable pour les biens, avec la clé de Gemini
+  const carteRendu = page.getByTestId("carte-fournisseur-GEMINI_RENDU");
+  await expect(carteRendu.getByTestId("bouton-actif")).toBeEnabled();
+  await carteRendu.getByTestId("bouton-actif").click();
+  await expect(carteRendu.getByTestId("badge-actif")).toBeVisible();
+  await expect(page.getByTestId("etat-generation")).toContainText("Gemini — rendu 3D");
+  await carteRendu.getByTestId("bouton-actif").click(); // Désactiver, pour laisser l'état initial à plan3d-b-biens
+  await expect(page.getByTestId("badge-actif")).toHaveCount(0);
 });
 
 test("Solution PromoPro : génération locale dans le bac à sable (modèle installé → .glb servi ; sinon échec explicite), jamais activable pour les biens", async ({ page }) => {

@@ -206,8 +206,9 @@ describe("fournisseurs", () => {
     expect(d?.necessiteCle).toBe(false);
     expect(d?.activable).toBe(false);
     expect(fournisseurPlan3d("PROMOPRO").code).toBe("PROMOPRO");
-    expect(FOURNISSEURS.filter((f) => f.activable).map((f) => f.code)).toEqual(["GEMINI", "NEURAL4D"]);
-    expect(FOURNISSEURS.map((f) => f.code)).toEqual(["GEMINI", "NEURAL4D", "PROMOPRO"]);
+    expect(FOURNISSEURS.filter((f) => f.activable).map((f) => f.code)).toEqual(["GEMINI", "GEMINI_RENDU", "NEURAL4D"]);
+    expect(FOURNISSEURS.map((f) => f.code)).toEqual(["GEMINI", "GEMINI_RENDU", "NEURAL4D", "PROMOPRO"]);
+    expect(descriptionFournisseur("GEMINI_RENDU")?.cleDe).toBe("GEMINI");
     expect(FOURNISSEURS.filter((f) => f.modeleInterne).map((f) => f.code)).toEqual(["PROMOPRO"]);
   });
 });

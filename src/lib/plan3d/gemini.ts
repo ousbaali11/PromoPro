@@ -17,16 +17,19 @@ import { dimensionsParDefaut, extruderEnGlb } from "./extrusion";
  * generationConfig: { temperature: 0, response_mime_type: "application/json" } }
  * → 200 { candidates: [{ content: { parts: [{ text: "<JSON>" }] } }] }
  * → 400 « API key not valid » / 403 (clé), 429 (quota), 503 (forte demande,
- * rejouée six fois sur environ deux minutes, délais croissants). La base (GEMINI_API_URL) et le modèle (GEMINI_MODEL) sont
- * surchargeables ; la suite e2e pointe la base vers le simulateur. Quand
- * Google retire un modèle, sa réponse d'erreur nomme le remplaçant
- * (« Please update your code to use models/… ») : l'appel est rejoué une
- * fois avec ce modèle, le temps de mettre GEMINI_MODEL à jour.
+ * rejouée six fois sur environ deux minutes, délais croissants). La base
+ * (GEMINI_API_URL) et le modèle (GEMINI_MODEL) sont surchargeables ; la suite
+ * e2e pointe la base vers le simulateur. Quand Google retire un modèle, sa
+ * réponse d'erreur nomme le remplaçant (« Please update your code to use
+ * models/… ») : l'appel est rejoué une fois avec ce modèle, le temps de
+ * mettre GEMINI_MODEL à jour. L'appel (appelerGemini) et la lecture des
+ * erreurs (erreurGemini) sont partagés avec gemini-rendu.ts.
  * Prototype d'origine : scripts/prototypes/test-lecture-plan.ts.
  */
 
 export const GEMINI_BASE_PAR_DEFAUT = "https://generativelanguage.googleapis.com/v1beta";
 export const GEMINI_MODELE_PAR_DEFAUT = "gemini-3.8-flash";
+
 /**
  * Pics de charge (503 « high demand ») : délais d'attente entre les tentatives,
  * en millisecondes (six tentatives sur environ deux minutes par défaut),
@@ -66,18 +69,19 @@ export function modeleSuggere(message: string | undefined): string | null {
   return m ? m[1] : null;
 }
 
-type Enveloppe = {
-  candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+/** Une partie de réponse Gemini : texte, ou image (inlineData en camelCase dans les réponses, inline_data accepté par prudence). */
+export type PartieGemini = { text?: string; inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; data?: string } };
+
+export type Enveloppe = {
+  candidates?: { content?: { parts?: PartieGemini[] }; finishReason?: string }[];
   error?: { code?: number; message?: string; status?: string };
   promptFeedback?: { blockReason?: string };
 };
 
-export type LectureGemini = Structure & { dimensionsM?: { largeur: number; hauteur: number }; remarques?: string };
-
 const nombre = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** Interprétation pure de la réponse HTTP de Gemini (testée sans réseau). */
-export function lireReponseGemini(statutHttp: number, corps: Enveloppe): LectureGemini {
+/** Lève l'erreur lisible correspondant à une réponse en échec (statut ≥ 400 ou image refusée) ; ne fait rien sinon. */
+export function erreurGemini(statutHttp: number, corps: Enveloppe): void {
   if (statutHttp >= 400) {
     const message = corps.error?.message ?? "";
     if (statutHttp === 400 && /api key/i.test(message)) throw new ErreurFournisseur(messageHttp(401, "Gemini"), 401);
@@ -86,6 +90,13 @@ export function lireReponseGemini(statutHttp: number, corps: Enveloppe): Lecture
     throw new ErreurFournisseur(message ? `Gemini : ${message}` : messageHttp(statutHttp, "Gemini"), statutHttp);
   }
   if (corps.promptFeedback?.blockReason) throw new ErreurFournisseur(`Gemini a refusé l'image (${corps.promptFeedback.blockReason}).`);
+}
+
+export type LectureGemini = Structure & { dimensionsM?: { largeur: number; hauteur: number }; remarques?: string };
+
+/** Interprétation pure de la réponse HTTP de Gemini (testée sans réseau). */
+export function lireReponseGemini(statutHttp: number, corps: Enveloppe): LectureGemini {
+  erreurGemini(statutHttp, corps);
   const texte = corps.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   if (!texte.trim()) throw new ErreurFournisseur("Gemini a répondu sans contenu.");
   let brut: { pieces?: unknown; portes?: unknown; dimensions_m?: unknown; remarques?: unknown };
@@ -128,6 +139,41 @@ async function corpsJson(reponse: Response): Promise<Enveloppe> {
 
 const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Appel generateContent avec rejeu des 503 (délais croissants) puis, si le
+ * modèle a été retiré, un rejeu avec le remplaçant nommé par Google. Rend le
+ * statut et l'enveloppe ; si le dernier statut est encore 503, lève une erreur
+ * lisible. Le corps est envoyé tel quel.
+ */
+export async function appelerGemini(cleApi: string, modele: string, corps: unknown): Promise<{ statut: number; corps: Enveloppe }> {
+  const delais = delais503Ms();
+  const appeler = async (m: string) => {
+    let reponse: Response | undefined;
+    for (let tentative = 0; tentative <= delais.length; tentative++) {
+      reponse = await fetch(`${base()}/models/${encodeURIComponent(m)}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": cleApi, Accept: "application/json" },
+        body: JSON.stringify(corps),
+      });
+      if (reponse.status !== 503 || tentative === delais.length) break;
+      await attendre(delais[tentative]);
+    }
+    return { statut: reponse!.status, corps: await corpsJson(reponse!) };
+  };
+  let resultat = await appeler(modele);
+  // Modèle retiré par Google : rejoué une fois avec le remplaçant qu'il indique
+  const remplacant = resultat.statut >= 400 ? modeleSuggere(resultat.corps.error?.message) : null;
+  if (remplacant && remplacant !== modele) {
+    console.warn(`[plan3d] Gemini : modèle ${modele} retiré, nouvel essai avec ${remplacant} (mettez la variable du modèle à jour).`);
+    resultat = await appeler(remplacant);
+  }
+  if (resultat.statut === 503) {
+    const total = Math.round(delais.reduce((s, d) => s + d, 0) / 1000);
+    throw new ErreurFournisseur(`Gemini : forte demande sur le modèle ${modele} (${delais.length + 1} tentatives sur ${total} s). Réessayez dans quelques minutes, ou changez de modèle.`, 503);
+  }
+  return resultat;
+}
+
 export const gemini: FournisseurPlan3d = {
   code: "GEMINI",
 
@@ -136,31 +182,7 @@ export const gemini: FournisseurPlan3d = {
       contents: [{ role: "user", parts: [{ text: PROMPT_GEMINI }, { inline_data: { mime_type: image.mime, data: Buffer.from(image.octets).toString("base64") } }] }],
       generationConfig: { temperature: 0, response_mime_type: "application/json" },
     };
-    const delais = delais503Ms();
-    const appeler = async (modele: string) => {
-      let reponse: Response | undefined;
-      for (let tentative = 0; tentative <= delais.length; tentative++) {
-        reponse = await fetch(`${base()}/models/${encodeURIComponent(modele)}:generateContent`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": cleApi, Accept: "application/json" },
-          body: JSON.stringify(corps),
-        });
-        if (reponse.status !== 503 || tentative === delais.length) break;
-        await attendre(delais[tentative]);
-      }
-      return { statut: reponse!.status, corps: await corpsJson(reponse!) };
-    };
-    let { statut, corps: enveloppe } = await appeler(modeleGemini());
-    // Modèle retiré par Google : rejoué une fois avec le remplaçant qu'il indique
-    const remplacant = statut >= 400 ? modeleSuggere(enveloppe.error?.message) : null;
-    if (remplacant && remplacant !== modeleGemini()) {
-      console.warn(`[plan3d] Gemini : modèle ${modeleGemini()} retiré, nouvel essai avec ${remplacant} (mettez GEMINI_MODEL à jour).`);
-      ({ statut, corps: enveloppe } = await appeler(remplacant));
-    }
-    if (statut === 503) {
-      const total = Math.round(delais.reduce((s, d) => s + d, 0) / 1000);
-      throw new ErreurFournisseur(`Gemini : forte demande sur le modèle ${modeleGemini()} (${delais.length + 1} tentatives sur ${total} s). Réessayez dans quelques minutes, ou changez de modèle avec GEMINI_MODEL.`, 503);
-    }
+    const { statut, corps: enveloppe } = await appelerGemini(cleApi, modeleGemini(), corps);
     const lecture = lireReponseGemini(statut, enveloppe);
     if (lecture.pieces.length === 0) {
       throw new ErreurFournisseur(`Gemini n'a reconnu aucune pièce sur cette image${lecture.remarques ? ` (${lecture.remarques})` : ""}.`);

@@ -82,13 +82,18 @@ export function CarteFournisseur({ config, chiffrement }: { config: ConfigAffich
       {config.description && <p className="mt-3 text-small text-navy-500">{config.description}</p>}
 
       <dl className="mt-4 rounded-sm bg-navy-50 px-3 py-2.5 text-small">
-        <dt className="text-label uppercase text-navy-400">{config.necessiteCle ? "Clé d'API enregistrée" : "Modèle"}</dt>
+        <dt className="text-label uppercase text-navy-400">{config.cleDe ? "Clé d'API" : config.necessiteCle ? "Clé d'API enregistrée" : "Modèle"}</dt>
         <dd className="mt-0.5 font-mono text-navy-900" data-testid="cle-masquee">
           {config.cleMasquee ?? "Aucune"}
         </dd>
       </dl>
 
-      {config.necessiteCle ? (
+      {config.cleDe ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2" data-testid="cle-partagee">
+          {boutonActif}
+          <p className="text-caption text-navy-400">{config.configure ? "Testez-le dans le bac à sable ci-dessous." : "Aucune clé à saisir ici."}</p>
+        </div>
+      ) : config.necessiteCle ? (
         <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="mt-4 space-y-3" data-testid="form-cle">
           <Input
             id={`cle-${config.fournisseur}`}

@@ -30,6 +30,8 @@ export type ConfigAffichee = {
   configure: boolean;
   actif: boolean;
   modifieAt: Date | null;
+  /** Fournisseur dont la clé est réutilisée (aucune clé propre à saisir). */
+  cleDe?: Fournisseur;
 };
 
 export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
@@ -37,11 +39,24 @@ export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
   const modeles = await Promise.all(FOURNISSEURS.map((f) => (f.modeleInterne ? modeleDisponible(f.modeleInterne) : Promise.resolve(false))));
   // Empreinte du fichier réellement chargé : permet de vérifier que deux variantes n'utilisent pas le même modèle
   const empreintes = await Promise.all(FOURNISSEURS.map((f, i) => (f.modeleInterne && modeles[i] ? empreinteModele(f.modeleInterne) : Promise.resolve(null))));
+  const cleLisible = (code: string) => {
+    const ligne = lignes.find((l) => l.fournisseur === code);
+    if (!ligne || !chiffrementDisponible()) return false;
+    try {
+      dechiffrer(ligne.cleApiChiffree);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   return FOURNISSEURS.map((f, i) => {
     const ligne = lignes.find((l) => l.fournisseur === f.code);
     let cleMasquee: string | null = null;
     let configure = false;
-    if (!f.necessiteCle) {
+    if (f.cleDe) {
+      configure = cleLisible(f.cleDe);
+      cleMasquee = configure ? `Clé de ${libelleFournisseur(f.cleDe)} (partagée)` : `Aucune : saisissez la clé sur la carte ${libelleFournisseur(f.cleDe)}`;
+    } else if (!f.necessiteCle) {
       configure = modeles[i];
       cleMasquee = modeles[i] ? `Modèle installé sur le serveur · empreinte ${empreintes[i] ?? "inconnue"}` : "Modèle non installé (voir DEPLOY.md)";
     } else if (ligne && chiffrementDisponible()) {
@@ -66,6 +81,7 @@ export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
       configure,
       actif: !!ligne?.actif && f.activable,
       modifieAt: ligne?.modifieAt ?? null,
+      cleDe: f.cleDe,
     };
   });
 }
@@ -76,7 +92,8 @@ export async function cleApiPour(fournisseur: Fournisseur): Promise<string | nul
   if (!description) return null;
   if (!description.necessiteCle) return description.modeleInterne && (await modeleDisponible(description.modeleInterne)) ? "" : null;
   if (!chiffrementDisponible()) return null;
-  const ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
+  // Clé partagée : celle du fournisseur désigné par cleDe
+  const ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, description.cleDe ?? fournisseur) });
   if (!ligne) return null;
   try {
     return dechiffrer(ligne.cleApiChiffree);
@@ -96,7 +113,9 @@ export async function fournisseurActif(): Promise<{ fournisseur: Fournisseur; cl
 }
 
 export async function enregistrerCleApi(session: SessionPayload, fournisseur: Fournisseur, cleApi: string) {
-  if (!descriptionFournisseur(fournisseur)?.necessiteCle) return { error: "Ce fournisseur ne demande aucune clé d'API." };
+  const description = descriptionFournisseur(fournisseur);
+  if (!description?.necessiteCle) return { error: "Ce fournisseur ne demande aucune clé d'API." };
+  if (description.cleDe) return { error: `Ce fournisseur utilise la clé de ${libelleFournisseur(description.cleDe)} : saisissez-la sur sa carte.` };
   const chiffree = chiffrer(cleApi);
   const existante = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
   if (existante) {
@@ -121,7 +140,15 @@ export async function definirFournisseurActif(session: SessionPayload, fournisse
   if (fournisseur) {
     const description = descriptionFournisseur(fournisseur);
     if (!description?.activable) return { error: `${libelleFournisseur(fournisseur)} n'est pas encore activable pour les biens : ${description?.etat ?? "en développement"}.` };
-    const ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
+    // Un fournisseur à clé partagée a sa propre ligne (créée ici au besoin) pour porter le drapeau actif ; la clé reste sur le fournisseur source
+    if (description.cleDe) {
+      const source = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, description.cleDe) });
+      if (!source) return { error: `Enregistrez d'abord la clé d'API de ${libelleFournisseur(description.cleDe)}.` };
+    }
+    let ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
+    if (!ligne && description.cleDe) {
+      [ligne] = await db.insert(fournisseursPlan3dConfig).values({ fournisseur, cleApiChiffree: "", actif: false, modifieParId: session.userId, modifieAt: new Date() }).returning();
+    }
     if (!ligne) return { error: "Enregistrez d'abord la clé d'API de ce fournisseur." };
     await db.update(fournisseursPlan3dConfig).set({ actif: false });
     await db.update(fournisseursPlan3dConfig).set({ actif: true, modifieParId: session.userId, modifieAt: new Date() }).where(eq(fournisseursPlan3dConfig.id, ligne.id));

@@ -11,7 +11,7 @@
  * fournisseurPlan3d(). Rien d'autre à toucher (voir ARCHITECTURE.md).
  */
 
-export type Fournisseur = "GEMINI" | "NEURAL4D" | "PROMOPRO";
+export type Fournisseur = "GEMINI" | "GEMINI_RENDU" | "NEURAL4D" | "PROMOPRO";
 
 /** Variantes du modèle interne (un fichier ONNX chacune, voir inference.ts) ; une seule aujourd'hui. */
 export type VarianteModele = "principal";
@@ -30,6 +30,8 @@ export type DescriptionFournisseur = {
   recolorer?: boolean;
   /** Fournisseur interne : variante du modèle ONNX exécutée sur le serveur. */
   modeleInterne?: VarianteModele;
+  /** Utilise la clé d'API d'un autre fournisseur (même service) : pas de clé propre à saisir. */
+  cleDe?: Fournisseur;
   description?: string;
 };
 
@@ -42,6 +44,16 @@ export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
     activable: true,
     description:
       "Le modèle multimodal Gemini (Google) lit le plan et rend les pièces (avec leur nom), les portes et les dimensions réelles si une échelle est visible ; le modèle 3D est ensuite extrudé par l'application. Clé d'API Google AI Studio ; quelques secondes et quelques centimes par plan.",
+  },
+  {
+    code: "GEMINI_RENDU",
+    libelle: "Gemini — rendu 3D",
+    site: "https://ai.google.dev/gemini-api/docs/image-generation",
+    necessiteCle: true,
+    cleDe: "GEMINI",
+    activable: true,
+    description:
+      "Le modèle d'image de Gemini dessine une maquette 3D photoréaliste du plan (murs coupés, sols, mobilier, noms des pièces), puis la même maquette tournée de 90°, 180° et 270° : quatre vues assemblées, à faire tourner au glisser. Ce sont des images, pas un modèle 3D : la cohérence entre les vues dépend du modèle. Quatre générations par plan (quelques dizaines de centimes), une à deux minutes. Utilise la clé saisie sur la carte Gemini.",
   },
   { code: "NEURAL4D", libelle: "Neural4D", site: "https://docs.neural4d.com", necessiteCle: true, activable: true, recolorer: true },
   {
