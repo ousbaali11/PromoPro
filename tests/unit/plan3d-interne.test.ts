@@ -201,12 +201,13 @@ describe("extrusion .glb", () => {
 });
 
 describe("fournisseurs", () => {
-  it("la Solution PromoPro est un fournisseur sans clé, non activable, présent dans le registre", () => {
+  it("la Solution PromoPro est un fournisseur sans clé, activable pour les biens à la demande du promoteur (résultats non validés), présent dans le registre", () => {
     const d = descriptionFournisseur("PROMOPRO");
     expect(d?.necessiteCle).toBe(false);
-    expect(d?.activable).toBe(false);
+    expect(d?.activable).toBe(true);
+    expect(d?.description).toMatch(/non encore validés/);
     expect(fournisseurPlan3d("PROMOPRO").code).toBe("PROMOPRO");
-    expect(FOURNISSEURS.filter((f) => f.activable).map((f) => f.code)).toEqual(["GEMINI", "GEMINI_RENDU", "NEURAL4D"]);
+    expect(FOURNISSEURS.filter((f) => f.activable).map((f) => f.code)).toEqual(["GEMINI", "GEMINI_RENDU", "NEURAL4D", "PROMOPRO"]);
     expect(FOURNISSEURS.map((f) => f.code)).toEqual(["GEMINI", "GEMINI_RENDU", "NEURAL4D", "PROMOPRO"]);
     expect(descriptionFournisseur("GEMINI_RENDU")?.cleDe).toBe("GEMINI");
     expect(FOURNISSEURS.filter((f) => f.modeleInterne).map((f) => f.code)).toEqual(["PROMOPRO"]);

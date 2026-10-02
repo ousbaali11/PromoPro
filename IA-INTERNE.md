@@ -167,9 +167,11 @@ modèle (OCR à prévoir).
 
 Intégration : « Solution PromoPro » est un **vrai fournisseur** derrière
 `FournisseurPlan3d` (`src/lib/plan3d/promopro.ts`), sans clé, exécuté sur le
-serveur en une seconde, mais `activable: false` : le Super Admin peut le
-comparer aux autres dans le bac à sable, le serveur refuse de l'activer pour
-les biens. Installation du modèle : DEPLOY.md, section 12.
+serveur en une seconde. D'abord réservé au bac à sable (`activable: false`),
+il est **activable pour les biens depuis le 2 octobre 2026** à la demande du
+promoteur, bien que ses résultats ne soient pas validés sur de vrais plans :
+la validation de chaque modèle par le Directeur Commercial avant publication
+reste le garde-fou. Installation du modèle : DEPLOY.md, section 12.
 
 Rendu du `.glb` (retour du promoteur sur le bac à sable, 1er octobre 2026) :
 la première version construisait quatre murs par pièce, dans un gris presque

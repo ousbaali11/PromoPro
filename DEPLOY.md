@@ -567,10 +567,11 @@ n'est **pas dans le dépôt git**. Deux façons de l'installer :
    volume n'est pas accessible en dépôt direct.
 
 Dans /admin/plan3d, la carte « Solution PromoPro » indique « Modèle installé
-sur le serveur » ou « Modèle non installé ». Tant qu'elle n'est pas validée sur
-de vrais plans, elle reste **testable dans le bac à sable seulement** : le
-bouton « Utiliser pour les biens » est désactivé et le serveur refuse son
-activation. Aucun coût par génération.
+sur le serveur » (avec l'empreinte du fichier) ou « Modèle non installé ».
+Elle est **activable pour les biens** dès que le modèle est installé, sans
+clé ni coût par génération ; ses résultats n'étant pas encore validés sur de
+vrais plans, chaque modèle généré reste à vérifier par le Directeur
+Commercial avant publication, comme pour les autres fournisseurs.
 
 
 ## Dépannage

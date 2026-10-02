@@ -80,12 +80,12 @@ test("accès : le Super Admin voit le lien et la page ; un rôle interne est red
   await expect(carte(page, "GEMINI")).toContainText("Gemini");
   await expect(page.getByTestId("essais-vides")).toBeVisible();
 
-  // « Solution PromoPro » : fournisseur interne sans clé, testable dans le bac à sable, jamais activable pour les biens
+  // « Solution PromoPro » : fournisseur interne sans clé, activable pour les biens dès que son modèle est installé (aucun badge « en développement »)
   const interne = page.getByTestId("carte-fournisseur-PROMOPRO");
   await expect(interne).toContainText("Solution PromoPro");
-  await expect(interne.getByTestId("badge-en-developpement")).toContainText("pas encore activable");
+  await expect(interne).toContainText("non encore validés");
+  await expect(interne.getByTestId("badge-en-developpement")).toHaveCount(0);
   await expect(interne.getByTestId("form-cle")).toHaveCount(0);
-  await expect(interne.getByTestId("bouton-actif")).toBeDisabled();
   await expect(page.getByTestId("form-essai").locator('option[value="PROMOPRO"]')).toHaveCount(1);
 });
 
@@ -224,7 +224,7 @@ test("Gemini — rendu 3D : quatre vues assemblées en une planche servie comme 
   await expect(page.getByTestId("badge-actif")).toHaveCount(0);
 });
 
-test("Solution PromoPro : génération locale dans le bac à sable (modèle installé → .glb servi ; sinon échec explicite), jamais activable pour les biens", async ({ page }) => {
+test("Solution PromoPro : génération locale dans le bac à sable (modèle installé → .glb servi, activable pour les biens ; sinon indisponibilité explicite et activation impossible)", async ({ page }) => {
   test.setTimeout(120_000);
   await login(page, "SUPERADMIN");
   await page.goto("/admin/plan3d");
@@ -247,6 +247,13 @@ test("Solution PromoPro : génération locale dans le bac à sable (modèle inst
   expect(reponse.status()).toBe(200);
   expect(reponse.headers()["content-type"]).toBe("model/gltf-binary");
   expect((await reponse.body()).subarray(0, 4).toString("ascii")).toBe("glTF");
-  // Toujours pas activable pour les biens, même modèle installé
-  await expect(carte.getByTestId("bouton-actif")).toBeDisabled();
+  // Activable pour les biens sans aucune clé, à la demande du promoteur ; puis désactivé pour laisser l'état initial à plan3d-b-biens
+  await expect(carte.getByTestId("bouton-actif")).toBeEnabled();
+  await carte.getByTestId("bouton-actif").click();
+  await expect(carte.getByTestId("badge-actif")).toBeVisible();
+  await expect(page.getByTestId("etat-generation")).toContainText("Solution PromoPro");
+  await carte.getByTestId("bouton-actif").click();
+  await expect(page.getByTestId("badge-actif")).toHaveCount(0);
+  await page.goto("/admin/journal?periode=jour");
+  await expect(page.getByTestId("journal-ligne").filter({ hasText: "Fournisseur actif pour les générations sur les biens : Solution PromoPro" })).toHaveCount(1);
 });

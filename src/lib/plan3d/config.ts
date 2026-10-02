@@ -145,8 +145,12 @@ export async function definirFournisseurActif(session: SessionPayload, fournisse
       const source = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, description.cleDe) });
       if (!source) return { error: `Enregistrez d'abord la clé d'API de ${libelleFournisseur(description.cleDe)}.` };
     }
+    // Un fournisseur interne (sans clé) a lui aussi sa ligne, créée ici, à condition que son modèle soit installé
+    if (!description.necessiteCle && !(description.modeleInterne && (await modeleDisponible(description.modeleInterne)))) {
+      return { error: `Installez d'abord le modèle de ${libelleFournisseur(fournisseur)} (DEPLOY.md, section 12).` };
+    }
     let ligne = await db.query.fournisseursPlan3dConfig.findFirst({ where: eq(fournisseursPlan3dConfig.fournisseur, fournisseur) });
-    if (!ligne && description.cleDe) {
+    if (!ligne && (description.cleDe || !description.necessiteCle)) {
       [ligne] = await db.insert(fournisseursPlan3dConfig).values({ fournisseur, cleApiChiffree: "", actif: false, modifieParId: session.userId, modifieAt: new Date() }).returning();
     }
     if (!ligne) return { error: "Enregistrez d'abord la clé d'API de ce fournisseur." };

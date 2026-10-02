@@ -73,7 +73,7 @@ export function CarteFournisseur({ config, chiffrement }: { config: ConfigAffich
         ) : config.activable ? (
           <Badge tone="neutral">Inactif</Badge>
         ) : (
-          <Badge tone="warning" dot data-testid="badge-en-developpement">
+          <Badge tone="warning" dot className="max-w-[55%] whitespace-normal! text-left" data-testid="badge-en-developpement">
             {config.etat}
           </Badge>
         )}

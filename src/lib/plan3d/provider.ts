@@ -61,11 +61,10 @@ export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
     libelle: "Solution PromoPro",
     site: "IA-INTERNE.md",
     necessiteCle: false,
-    activable: false,
+    activable: true,
     modeleInterne: "principal",
-    etat: "En développement — testable dans le bac à sable, pas encore activable pour les biens",
     description:
-      "Modèle interne (segmentation des murs, portes et fenêtres, puis extrusion), exécuté sur le serveur sans service tiers ni clé. Activable pour les biens une fois validé sur de vrais plans.",
+      "Modèle interne (segmentation des murs, portes et fenêtres, puis extrusion), exécuté sur le serveur sans service tiers ni clé, gratuit et en une seconde. Résultats non encore validés sur de vrais plans : chaque modèle généré reste à vérifier par le Directeur Commercial avant publication, comme pour les autres fournisseurs.",
   },
 ];
 

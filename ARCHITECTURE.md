@@ -623,9 +623,11 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   pièces alignés sur des lignes de murs communes, un seul mur entre deux
   pièces voisines, murs percés aux portes, couleurs de `palette.ts`,
   encodeur glTF binaire partagé `glb.ts`) ; le `.glb` est enregistré
-  directement comme fichier `plans-3d`. Déclaré `activable: false` dans
-  `FOURNISSEURS` tant qu'il n'est pas validé sur de vrais plans : testable
-  dans le bac à sable, refusé par `definirFournisseurActif`. Les modules
+  directement comme fichier `plans-3d`. Activable pour les biens comme les
+  autres (à la demande du promoteur, résultats non encore validés sur de vrais
+  plans : la validation du Directeur Commercial reste le garde-fou) ;
+  `definirFournisseurActif` crée sa ligne de configuration (sans clé) si le
+  modèle est installé. Les modules
   natifs (`onnxruntime-node`, `sharp`) sont déclarés dans
   `serverExternalPackages` (next.config.ts) ;
 - `palette.ts` — palette commune des modèles générés (sol en bois clair en
