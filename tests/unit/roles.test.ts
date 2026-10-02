@@ -49,4 +49,14 @@ describe("NAV_BY_ROLE", () => {
       expect(aEquipe(role)).toBe(false);
     }
   });
+
+  it("donne la recherche de clients (détection de doublons) au Commercial et au Responsable Commercial seulement", () => {
+    const aRecherche = (role: keyof typeof NAV_BY_ROLE) => NAV_BY_ROLE[role].some((n) => n.href === "/dashboard/recherche-clients");
+    expect(aRecherche("COMMERCIAL")).toBe(true);
+    expect(aRecherche("RESPONSABLE_COMMERCIAL")).toBe(true);
+    for (const role of ROLES) {
+      if (role === "COMMERCIAL" || role === "RESPONSABLE_COMMERCIAL") continue;
+      expect(aRecherche(role)).toBe(false);
+    }
+  });
 });

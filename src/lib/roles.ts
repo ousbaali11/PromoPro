@@ -12,6 +12,7 @@ import {
   Landmark,
   UsersRound,
   ScrollText,
+  UserSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,6 +73,8 @@ const COMMON: NavItem[] = [
 const PROJETS: NavItem = { href: "/dashboard/projets", label: "Projets & biens", icon: Building2 };
 const PROPOSITIONS: NavItem = { href: "/dashboard/propositions", label: "Propositions", icon: FileSignature };
 const CLIENTS: NavItem = { href: "/dashboard/clients", label: "Clients", icon: Contact };
+// Détection de doublons parmi tous les clients du promoteur (route sœur de /dashboard/clients pour ne pas allumer l'entrée « Clients »)
+const RECHERCHE_CLIENTS: NavItem = { href: "/dashboard/recherche-clients", label: "Recherche clients", icon: UserSearch };
 const CONTRATS: NavItem = { href: "/dashboard/contrats", label: "Contrats", icon: FileSignature };
 const PAIEMENTS: NavItem = { href: "/dashboard/paiements", label: "Paiements", icon: Wallet };
 const DESISTEMENTS: NavItem = { href: "/dashboard/desistements", label: "Désistements", icon: UserRoundX };
@@ -86,8 +89,8 @@ const JOURNAL: NavItem = { href: "/dashboard/journal", label: "Journal d'activit
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   PDG: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, JOURNAL],
   DIRECTEUR_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, EQUIPE, JOURNAL],
-  COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
-  RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, DESISTES, PROSPECTS],
+  COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, RECHERCHE_CLIENTS, DESISTES, PROSPECTS],
+  RESPONSABLE_COMMERCIAL: [...COMMON, PROJETS, PROPOSITIONS, CLIENTS, RECHERCHE_CLIENTS, DESISTES, PROSPECTS],
   RESPONSABLE_ADMINISTRATIF: [...COMMON, CONTRATS, DESISTEMENTS],
   DIRECTEUR_FINANCIER: [...COMMON, FINANCE, EQUIPE, JOURNAL],
   COMPTABLE_INTERNE: [...COMMON, PAIEMENTS],

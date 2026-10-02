@@ -169,6 +169,13 @@ test("pages, fichiers et journal : les identifiants de B répondent 404 / 403 au
     expect(r.status(), q).toBe(200);
     expect((await r.json()).groupes, q).toEqual([]);
   }
+  // Recherche de clients inter-commerciaux (détection de doublons) : un commercial de A ne trouve jamais le client de B,
+  // même par son nom exact ; la même recherche chez B le trouve
+  await login(page, "COM1");
+  await page.goto(`/dashboard/recherche-clients?nom=${encodeURIComponent(B.clientNom)}`);
+  await expect(page.getByTestId("form-recherche-clients")).toBeVisible();
+  await expect(page.getByTestId("resultat-client")).toHaveCount(0);
+  await expect(page.getByTestId("recherche-clients-vide")).toBeVisible();
   await loginAvec(page, B.dircom.identifiant, B.dircom.mdp, /\/dashboard$/);
   const trouve = await (await page.request.get(`/api/recherche?q=${encodeURIComponent(B.bien)}`)).json();
   expect(trouve.groupes.map((g: { type: string }) => g.type)).toEqual(["bien"]);

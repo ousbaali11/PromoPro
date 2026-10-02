@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { Plus, FileText, Users } from "lucide-react";
+import { Plus, FileText, Users, UserSearch } from "lucide-react";
 import { requireStaffSession } from "@/lib/session";
 import { db } from "@/db/client";
 import { clients } from "@/db/schema";
@@ -27,9 +27,16 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const canReset = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"].includes(session.role);
 
   const nouveau = canCreate ? (
-    <LinkButton href="/dashboard/clients/nouveau" size="sm">
-      <Plus className="h-4 w-4" /> Nouveau client
-    </LinkButton>
+    <>
+      {canReset && (
+        <LinkButton href="/dashboard/recherche-clients" size="sm" variant="secondary" data-testid="lien-recherche-clients">
+          <UserSearch className="h-4 w-4" /> Vérifier un doublon
+        </LinkButton>
+      )}
+      <LinkButton href="/dashboard/clients/nouveau" size="sm">
+        <Plus className="h-4 w-4" /> Nouveau client
+      </LinkButton>
+    </>
   ) : undefined;
 
   return (

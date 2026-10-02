@@ -220,6 +220,26 @@ affichent ces opérations dans une section « Annulés par désistement »
 distincte des opérations en attente et des validées. Seuls les paiements
 `VALIDE` comptent dans la trésorerie, les reçus et le contrat.
 
+## Recherche de clients inter-commerciaux (détection de doublons)
+
+Page `/dashboard/recherche-clients` (Commercial et Responsable Commercial,
+`requireRole`), entrée « Recherche clients » du menu et bouton « Vérifier un
+doublon » de la liste des clients. Critères par l'URL (formulaire GET : nom,
+prénom, date de naissance, numéro de pièce), logique pure dans
+`src/lib/recherche-clients.ts` (critères nettoyés, correspondance insensible
+à la casse et aux accents, pièce comparée sans espaces ni ponctuation,
+comptes supprimés exclus) testée par Vitest. La requête ne porte que sur les
+clients du promoteur de la session — jamais au-delà, vérifié par
+`isolation.spec.ts` — et, contrairement à la liste « Clients », inclut ceux
+des autres commerciaux. Confidentialité : `projeterResultat` construit, pour
+un client dont le dossier n'est pas consultable (`peutConsulterDossierClient`
+faux), une projection **limitée** champ par champ — nom, prénom, date de
+naissance, pièce, nom du commercial qui le suit —, sans téléphone, e-mail,
+adresse, identifiant ni lien ; pour ses propres clients (et tout le pôle pour
+le Responsable Commercial), la projection est complète avec le lien vers la
+fiche. Résultats groupés « Vos clients » / « Clients d'autres commerciaux de
+ce promoteur » dans deux `DataTable`.
+
 ## Fiche client : point d'entrée unique, pages d'index sans action
 
 `/dashboard/clients/[id]?bien=<id>&onglet=<contrat|paiements|tma|documents>`
