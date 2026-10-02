@@ -33,6 +33,13 @@ export function OngletDocuments({ client, selection, dossier }: { client: Client
       documents: dossier.syndics.flatMap((s) => (s.preuveUrl ? [{ libelle: `Preuve de paiement du syndic · ${formatMoney(s.montant)}`, detail: s.periode ?? undefined, href: s.preuveUrl, icone: Paperclip }] : [])),
     },
     {
+      titre: "Frais de dossier",
+      documents: dossier.fraisDossier.flatMap((f) => [
+        ...(f.preuveUrl ? [{ libelle: `Preuve de paiement des frais de dossier · ${formatMoney(f.montant)}`, detail: f.natureOperation ? `${f.natureOperation} · ${formatDate(f.dateOperation)}` : undefined, href: f.preuveUrl, icone: Paperclip }] : []),
+        ...(f.recuPdfUrl ? [{ libelle: `Reçu des frais de dossier · ${formatMoney(f.montant)}`, detail: f.validatedAt ? `validé le ${formatDate(f.validatedAt)}` : undefined, href: f.recuPdfUrl, icone: FileDown }] : []),
+      ]),
+    },
+    {
       titre: "Visites",
       documents: dossier.visites.flatMap((v) => (v.autorisationUrl ? [{ libelle: "Autorisation de visite", detail: v.dateVisite ? `visite le ${formatDate(v.dateVisite)}` : `délivrée le ${formatDate(v.decidedAt)}`, href: v.autorisationUrl, icone: FileDown }] : [])),
     },

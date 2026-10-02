@@ -399,6 +399,36 @@ export const photosAvancement = sqliteTable("photos_avancement", {
 });
 
 // ---------------------------------------------------------------------------
+// Frais de dossier (par bien vendu, sur le modèle du syndic ; définis et
+// validés par le Comptable Interne)
+// ---------------------------------------------------------------------------
+// A_PAYER | EN_ATTENTE_VALIDATION | PAYE
+export const fraisDossier = sqliteTable("frais_dossier", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => clients.id),
+  montant: real("montant").notNull(),
+  statut: text("statut").notNull().default("A_PAYER"),
+  definiParId: text("defini_par_id").references(() => users.id), // Comptable Interne
+  // Paiement déclaré par le client, avec preuve
+  natureOperation: text("nature_operation"),
+  banque: text("banque"),
+  dateOperation: integer("date_operation", { mode: "timestamp" }),
+  porteur: text("porteur"),
+  preuveUrl: text("preuve_url"),
+  payeAt: integer("paye_at", { mode: "timestamp" }),
+  // Validation par le Comptable Interne, reçu PDF généré
+  valideParId: text("valide_par_id").references(() => users.id),
+  validatedAt: integer("validated_at", { mode: "timestamp" }),
+  recuPdfUrl: text("recu_pdf_url"),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
 // Syndic (2 ans obligatoire)
 // ---------------------------------------------------------------------------
 // A_PAYER | EN_ATTENTE_VALIDATION | PAYE

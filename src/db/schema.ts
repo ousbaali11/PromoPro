@@ -45,6 +45,7 @@ export const visites = s.visites;
 export const demandesPhotos = s.demandesPhotos;
 export const photosAvancement = s.photosAvancement;
 export const syndics = s.syndics;
+export const fraisDossier = s.fraisDossier;
 export const notifications = s.notifications;
 export const journalActivite = s.journalActivite;
 export const demandesTma = s.demandesTma;

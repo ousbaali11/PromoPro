@@ -31,6 +31,7 @@ export const CIBLE_LABELS: Record<string, string> = {
   tma: "Travaux modificatifs",
   prospects: "Prospects",
   biens: "Biens",
+  "frais-dossier": "Frais de dossier",
   plan3d: "Génération 3D",
 };
 

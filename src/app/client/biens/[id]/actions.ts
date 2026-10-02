@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { biens, clients, demandesPhotos, demandesTma, projets, syndics, visites } from "@/db/schema";
+import { biens, clients, demandesPhotos, demandesTma, fraisDossier, projets, syndics, visites } from "@/db/schema";
 import { requireClientSession } from "@/lib/session";
 import { creerPaiement, lirePaiementForm, notifierComptable, NATURES_OPERATION } from "@/lib/paiements";
 import { notify, notifyRole } from "@/lib/notifications";
@@ -304,4 +304,39 @@ export async function accepterDevisTma(_prev: TmaState, formData: FormData): Pro
   revalidatePath(`/client/biens/${r.bien.id}`);
   revalidatePath("/dashboard/sav");
   return { success: `Devis accepté le ${formatDateTime(maintenant)}. Le service après-vente planifie les travaux.` };
+}
+
+/** Frais de dossier (modèle du syndic) — le client déclare son paiement, avec preuve ; le Comptable Interne valide. */
+export async function payerFraisDossier(fraisId: string, _prev: { error?: string } | undefined, formData: FormData): Promise<{ error?: string } | undefined> {
+  const session = await requireClientSession();
+  const frais = await db.query.fraisDossier.findFirst({ where: eq(fraisDossier.id, fraisId) });
+  if (!frais || frais.clientId !== session.clientId) return { error: "Frais de dossier introuvables." };
+  if (frais.statut !== "A_PAYER") return { error: "Ces frais de dossier ne sont pas en attente de paiement." };
+
+  const natureOperation = String(formData.get("natureOperation") ?? "");
+  const banque = String(formData.get("banque") ?? "").trim();
+  const dateStr = String(formData.get("dateOperation") ?? "");
+  const porteur = String(formData.get("porteur") ?? "").trim();
+  const preuveUrl = String(formData.get("preuveUrl") ?? "");
+  if (!NATURES_OPERATION.some((n) => n.value === natureOperation)) return { error: "Nature d'opération invalide." };
+  if (!banque || !dateStr || !porteur) return { error: "Merci de compléter banque, date et porteur." };
+  if (parsePublicPath(preuveUrl)?.type !== "preuves-paiement") return { error: "Merci de joindre la preuve de paiement." };
+
+  await db
+    .update(fraisDossier)
+    .set({ statut: "EN_ATTENTE_VALIDATION", natureOperation, banque, dateOperation: new Date(dateStr), porteur, preuveUrl, payeAt: new Date() })
+    .where(and(eq(fraisDossier.id, fraisId), eq(fraisDossier.statut, "A_PAYER")));
+
+  const bien = await db.query.biens.findFirst({ where: eq(biens.id, frais.bienId) });
+  await notifyRole(session.promoteurId, "COMPTABLE_INTERNE", {
+    type: "FRAIS_DOSSIER_A_VALIDER",
+    titre: "Paiement de frais de dossier à valider",
+    message: `${session.prenom} ${session.nom} déclare avoir réglé ${Math.round(frais.montant).toLocaleString("fr-FR")} MAD de frais de dossier pour ${bien?.designation ?? "son bien"}.`,
+    lien: "/dashboard/paiements",
+  });
+
+  revalidatePath(`/client/biens/${frais.bienId}`);
+  revalidatePath("/dashboard/paiements");
+  revalidatePath("/dashboard/clients/[id]", "page");
+  return undefined;
 }

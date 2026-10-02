@@ -13,6 +13,8 @@ import { AjouterPaiement } from "./AjouterPaiement";
 import { VisiteSection } from "./VisiteSection";
 import { DemandePhotosButton } from "./PhotosSection";
 import { LivraisonCard, SyndicCard } from "./LivraisonSyndic";
+import { FraisDossierCard } from "./FraisDossierCard";
+import { fraisDossierDuBien } from "@/lib/frais-dossier";
 import { TmaSection } from "./TmaSection";
 import { PlansBien } from "@/components/biens/PlansBien";
 import { fenetreTma, demandesTmaDuBien } from "@/lib/tma-data";
@@ -75,6 +77,7 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
     where: and(eq(syndics.bienId, bien.id), eq(syndics.clientId, session.clientId)),
     orderBy: [desc(syndics.createdAt)],
   });
+  const frais = await fraisDossierDuBien(bien.id, session.clientId);
   // 11.11 — navigation entre les biens du client, sans mélange des données
   const mesBiens = await db.query.biens.findMany({ where: eq(biens.clientId, session.clientId) });
 
@@ -251,6 +254,14 @@ export default async function ClientBienPage({ params }: { params: Promise<{ id:
                     : null
                 }
               />
+            </Card>
+          )}
+
+          {/* Frais de dossier (modèle du syndic) */}
+          {vendu && (
+            <Card className="p-5" data-testid="carte-frais-dossier">
+              <h2 className="mb-3 text-h3 text-navy-900">Frais de dossier</h2>
+              <FraisDossierCard frais={frais ? { id: frais.id, montant: formatMoney(frais.montant), statut: frais.statut, preuveUrl: frais.preuveUrl, recuPdfUrl: frais.recuPdfUrl } : null} />
             </Card>
           )}
 

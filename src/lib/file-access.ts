@@ -1,6 +1,6 @@
 import { eq, like, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { biens, clients, contrats, demandesTma, desistements, generationsPlan3d, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
+import { biens, clients, contrats, demandesTma, desistements, fraisDossier, generationsPlan3d, paiements, photosAvancement, projets, promoteurs, syndics, visites } from "@/db/schema";
 
 /**
  * Retrouve à quel promoteur et à quel client appartient un fichier stocké, à
@@ -34,6 +34,10 @@ export async function proprietaireDuFichier(
 
   const syndic = await db.query.syndics.findFirst({ where: eq(syndics.preuveUrl, url) });
   if (syndic) return viaClient(syndic.clientId);
+
+  // Frais de dossier : preuve déposée par le client, reçu généré à la validation
+  const frais = await db.query.fraisDossier.findFirst({ where: or(eq(fraisDossier.preuveUrl, url), eq(fraisDossier.recuPdfUrl, url)) });
+  if (frais) return viaClient(frais.clientId);
 
   const desistement = await db.query.desistements.findFirst({ where: eq(desistements.documentUrl, url) });
   if (desistement) return viaClient(desistement.clientId);

@@ -1,5 +1,5 @@
 import { inArray } from "drizzle-orm";
-import { Building, CalendarClock, FileDown, Paperclip, Receipt } from "lucide-react";
+import { Building, CalendarClock, FileBadge, FileDown, Paperclip, Receipt } from "lucide-react";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import type { SessionPayload } from "@/lib/auth";
@@ -12,6 +12,8 @@ import type { BienDuClient, Client, DossierBien } from "@/lib/dossier-client";
 import { PaiementAttenteCarte, lienDoc } from "@/components/dossier/cartes";
 import { CompleterForm } from "@/app/dashboard/paiements/CompleterForm";
 import { ValiderSyndicButton } from "@/app/dashboard/paiements/ValiderSyndicButton";
+import { DefinirFraisDossierForm, ValiderFraisDossierButton } from "@/app/dashboard/paiements/FraisDossierActions";
+import { FRAIS_DOSSIER_STATUT } from "@/lib/frais-dossier-regles";
 import { PaiementForm } from "@/components/paiements/PaiementForm";
 import { saisirPaiementCommercial } from "@/app/dashboard/biens/[id]/actions";
 import { EditeurEcheancier } from "./EditeurEcheancier";
@@ -250,6 +252,56 @@ export async function OngletPaiements({
                 </div>
               );
             })}
+          </Card>
+        </Section>
+      )}
+
+      {(dossier.fraisDossier.length > 0 || (isComptable && detenu)) && (
+        <Section title="Frais de dossier" count={dossier.fraisDossier.length || undefined} testId="section-frais-dossier">
+          <Card className="divide-y divide-navy-50">
+            {dossier.fraisDossier.map((f) => {
+              const st = FRAIS_DOSSIER_STATUT[f.statut];
+              return (
+                <div key={f.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="frais-dossier-ligne" data-statut={f.statut}>
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      <FileBadge className="mr-1.5 inline h-4 w-4 text-gold-600" />
+                      Frais de dossier
+                    </p>
+                    <p className="text-caption text-navy-400">
+                      {f.natureOperation ? `${f.natureOperation} · ${f.banque} · ${formatDate(f.dateOperation)} · porteur ${f.porteur}` : "Paiement attendu du client."}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-3">
+                      {f.preuveUrl && (
+                        <a href={f.preuveUrl} target="_blank" rel="noreferrer" className={lienDoc}>
+                          <Paperclip className="h-3.5 w-3.5" /> Preuve de paiement
+                        </a>
+                      )}
+                      {f.recuPdfUrl && (
+                        <a href={f.recuPdfUrl} target="_blank" rel="noreferrer" className={lienDoc} data-testid="recu-frais-dossier">
+                          <FileDown className="h-3.5 w-3.5" /> Reçu (PDF)
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <p className="text-price tabular text-navy-900">{formatMoney(f.montant)}</p>
+                    <StatusBadge statut={f.statut} label={st?.label ?? f.statut} tone={st?.tone ?? "neutral"} />
+                    {isComptable && f.statut === "EN_ATTENTE_VALIDATION" && <ValiderFraisDossierButton fraisId={f.id} />}
+                  </div>
+                </div>
+              );
+            })}
+            {isComptable && detenu && (dossier.fraisDossier.length === 0 || dossier.fraisDossier[0].statut === "A_PAYER") && (
+              <div className="px-5 py-4">
+                <p className="mb-3 text-caption text-navy-400">
+                  {dossier.fraisDossier.length === 0
+                    ? "Définissez le montant des frais de dossier dus pour ce bien : le client est notifié et déclare son paiement depuis son espace."
+                    : "Le montant reste modifiable tant que le client n'a pas déclaré son paiement ; il est notifié à chaque modification."}
+                </p>
+                <DefinirFraisDossierForm bienId={bien.id} montantActuel={dossier.fraisDossier[0]?.montant ?? null} />
+              </div>
+            )}
           </Card>
         </Section>
       )}

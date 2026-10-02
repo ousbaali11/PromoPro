@@ -404,6 +404,36 @@ export const photosAvancement = pgTable("photos_avancement", {
 });
 
 // ---------------------------------------------------------------------------
+// Frais de dossier (par bien vendu, sur le modèle du syndic ; définis et
+// validés par le Comptable Interne)
+// ---------------------------------------------------------------------------
+// A_PAYER | EN_ATTENTE_VALIDATION | PAYE
+export const fraisDossier = pgTable("frais_dossier", {
+  id: id(),
+  bienId: text("bien_id")
+    .notNull()
+    .references(() => biens.id),
+  clientId: text("client_id")
+    .notNull()
+    .references(() => clients.id),
+  montant: doublePrecision("montant").notNull(),
+  statut: text("statut").notNull().default("A_PAYER"),
+  definiParId: text("defini_par_id").references(() => users.id), // Comptable Interne
+  // Paiement déclaré par le client, avec preuve
+  natureOperation: text("nature_operation"),
+  banque: text("banque"),
+  dateOperation: timestamp("date_operation", { withTimezone: true }),
+  porteur: text("porteur"),
+  preuveUrl: text("preuve_url"),
+  payeAt: timestamp("paye_at", { withTimezone: true }),
+  // Validation par le Comptable Interne, reçu PDF généré
+  valideParId: text("valide_par_id").references(() => users.id),
+  validatedAt: timestamp("validated_at", { withTimezone: true }),
+  recuPdfUrl: text("recu_pdf_url"),
+  createdAt: createdAt(),
+});
+
+// ---------------------------------------------------------------------------
 // Syndic (2 ans obligatoire)
 // ---------------------------------------------------------------------------
 // A_PAYER | EN_ATTENTE_VALIDATION | PAYE

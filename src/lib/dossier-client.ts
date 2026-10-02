@@ -6,6 +6,7 @@ import {
   demandesTma,
   desistements,
   echeances,
+  fraisDossier,
   paiements,
   projets,
   propositions,
@@ -87,6 +88,10 @@ export async function chargerDossierBien(client: Client, bien: Bien) {
     where: and(eq(syndics.bienId, bien.id), eq(syndics.clientId, client.id)),
     orderBy: [desc(syndics.createdAt)],
   });
+  const listeFraisDossier = await db.query.fraisDossier.findMany({
+    where: and(eq(fraisDossier.bienId, bien.id), eq(fraisDossier.clientId, client.id)),
+    orderBy: [desc(fraisDossier.createdAt)],
+  });
   const ORDRE_TMA: Record<string, number> = { DEMANDE: 0, CHIFFRE: 1, SIGNE: 2, EN_COURS: 3, TERMINE: 4, REFUSE: 5 };
   const listeTma = (
     await db.query.demandesTma.findMany({
@@ -98,6 +103,6 @@ export async function chargerDossierBien(client: Client, bien: Bien) {
     where: and(eq(visites.bienId, bien.id), eq(visites.clientId, client.id)),
     orderBy: [desc(visites.createdAt)],
   });
-  return { projet, proposition, echeancier, desistement, contrat, contratsSupprimes: supprimes, paiements: listePaiements, syndics: listeSyndics, tma: listeTma, visites: listeVisites };
+  return { projet, proposition, echeancier, desistement, contrat, contratsSupprimes: supprimes, paiements: listePaiements, syndics: listeSyndics, fraisDossier: listeFraisDossier, tma: listeTma, visites: listeVisites };
 }
 export type DossierBien = Awaited<ReturnType<typeof chargerDossierBien>>;

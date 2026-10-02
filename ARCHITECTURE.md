@@ -254,8 +254,14 @@ qui ne charge que le couple client / bien). Sélecteur de bien
   livré) ; désistement du client sur ce bien (vérification, remboursement).
 - **Échéancier & Paiements** : tranches, paiements à traiter (Comptable
   Interne : référence, montant exact, réception, porteur → validation et
-  reçu), paiements validés, syndic (validation comptable), saisie d'un
-  encaissement par le commercial du bien.
+  reçu), paiements validés, syndic (validation comptable), **frais de
+  dossier** (Comptable Interne : définition ou modification du montant tant
+  que le client n'a pas déclaré son paiement, puis validation avec reçu PDF ;
+  `src/lib/frais-dossier.ts`, table `frais_dossier` sur le modèle de
+  `syndics` ; le client est notifié à la définition, à chaque modification
+  et à la validation, déclare son paiement avec preuve depuis la carte
+  « Frais de dossier » de son bien ; définition et validation tracées au
+  journal), saisie d'un encaissement par le commercial du bien.
 - **Travaux modificatifs** : demandes du client sur ce bien ; SAV :
   chiffrage / refus / avancement.
 - **Documents** : tout ce qui a été déposé ou généré pour ce couple, en
@@ -267,8 +273,13 @@ mais chaque carte ou ligne renvoie vers l'onglet concerné de la fiche
 (`lienFicheClient`) et ne porte plus aucun bouton d'action. Les cartes
 (`src/components/dossier/cartes.tsx`) sont partagées : `lienFiche` sur un
 index, `actions` sur la fiche. Les visites, photos, livraisons et la
-définition du syndic restent sur la page SAV (pas d'onglet dédié). Les
-Server Actions concernées revalident `/dashboard/clients/[id]`.
+définition du syndic restent sur la page SAV (pas d'onglet dédié) ; la
+définition des frais de dossier, elle, se fait dans l'onglet Échéancier &
+Paiements de la fiche, par le Comptable Interne qui les valide aussi (choix
+du promoteur, distinct du syndic défini par le SAV). L'index des paiements
+présente les frais de dossier à valider dans une section distincte des
+tranches et du syndic. Les Server Actions concernées revalident
+`/dashboard/clients/[id]`.
 
 ## Contrat par sections, versions du PDF, suppression douce
 

@@ -73,6 +73,7 @@ lire ou modifier les données du promoteur B.
 | `dashboard/contrats/actions.ts` (confirmer, copie signée, notaire) | `requireRole(RESP. ADMIN)` | projet du bien du contrat | OK |
 | `dashboard/desistements/actions.ts` (vérifier, rembourser) | `requireRole(RESP. ADMIN)` | `getDesistementDuPromoteur` | OK |
 | `dashboard/paiements/actions.ts` (compléter / valider, syndic) | `requireRole(COMPTABLE)` | projet du bien du paiement ; `client.promoteurId` pour le syndic | OK |
+| `dashboard/paiements/actions.ts` (frais de dossier : définir, valider) | `requireRole(COMPTABLE)` | `bienDuPromoteur` + `client.promoteurId` (lib/frais-dossier.ts) ; mise à jour conditionnelle sur le statut | OK — couvert par `frais-dossier.spec.ts` |
 | `dashboard/recouvrement/actions.ts` (paiement constaté) | `requireRole(RECOUVREMENT)` | projet du bien | OK |
 | `dashboard/rendez-vous/actions.ts` (accepter, reproposer) | `requireStaffSession` | `client.promoteurId` + rôle du service + commercial concerné | OK |
 | `dashboard/sav/actions.ts` (photos, livraison, syndic, visites) | `requireRole(SAV)` | `client.promoteurId` ou `bienDuPromoteur` | OK |
@@ -80,7 +81,7 @@ lire ou modifier les données du promoteur B.
 | `dashboard/prospects/actions.ts` (contacté, retour client) | `requireRole` | `commercialId === session.userId` / `prospect.promoteurId` | OK |
 | `dashboard/prospects/actions.ts` (`relancerCommercial`) | `requireRole(ASSISTANT)` | **aucun contrôle sur `commercialId`** | **F1 — corrigé** |
 | `dashboard/prospects/actions.ts` (import : analyser, confirmer) | `requireRole(ASSISTANT)` | commerciaux et téléphones connus filtrés par `session.promoteurId` | OK — couvert par `isolation.spec.ts` |
-| `client/biens/[id]/actions.ts` (paiement, visite, photos, livraison, syndic, créneau, TMA demande / acceptation) | `requireClientSession` | `bien.clientId` / `syndic.clientId` / `visite.clientId` / `demande.clientId === session.clientId` | OK |
+| `client/biens/[id]/actions.ts` (paiement, visite, photos, livraison, syndic, frais de dossier, créneau, TMA demande / acceptation) | `requireClientSession` | `bien.clientId` / `syndic.clientId` / `frais.clientId` / `visite.clientId` / `demande.clientId === session.clientId` | OK |
 | `client/rendez-vous/actions.ts` | `requireClientSession` | `bien.clientId`, `rdv.clientId` | OK |
 | `lib/actions/comptes-actions.ts` + `POST /api/comptes/restaurer` | `requireStaffSession` / `getStaffSessionActive` | `cibleInterne` / `cibleClient` : même promoteur, pas soi-même, `ROLES_GERABLES_PAR` ou commercial gérant | OK — `comptes.spec.ts`, `isolation.spec.ts` |
 | `lib/actions/notifications-actions.ts` | `getSession` | condition « mes notifications » (userId / clientId) dans la requête | OK |

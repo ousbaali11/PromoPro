@@ -9,6 +9,7 @@ import { validerPaiement } from "@/lib/paiements";
 import { tenterStockage } from "@/lib/stockage-erreurs";
 import { lireNombre, verifierMontant } from "@/lib/validation";
 import { notifyClient, notifyRole } from "@/lib/notifications";
+import { definirFraisDossier, validerFraisDossier } from "@/lib/frais-dossier";
 
 export type CompleterState = { error?: string } | undefined;
 
@@ -97,4 +98,39 @@ export async function completerReference(
   revalidatePath(`/dashboard/biens/${paiement.bienId}`);
   revalidatePath(`/client/biens/${paiement.bienId}`);
   return { error: undefined };
+}
+
+// ---------------------------------------------------------------------------
+// Frais de dossier (modèle du syndic) : le Comptable Interne définit ou
+// modifie le montant depuis la fiche client, puis valide le paiement déclaré
+// (reçu PDF). Règles et notifications dans src/lib/frais-dossier.ts.
+// ---------------------------------------------------------------------------
+
+export type DefinirFraisDossierState = { error?: string; modification?: boolean } | undefined;
+
+export async function definirFraisDossierAction(_prev: DefinirFraisDossierState, formData: FormData): Promise<DefinirFraisDossierState> {
+  const session = await requireRole(["COMPTABLE_INTERNE"]);
+  const bienId = String(formData.get("bienId") ?? "");
+  const montant = lireNombre(formData.get("montant"));
+  const erreurMontant = verifierMontant(montant, { libelle: "Le montant des frais de dossier" });
+  if (erreurMontant) return { error: erreurMontant };
+  const resultat = await definirFraisDossier(session, bienId, montant);
+  if (resultat.error) return { error: resultat.error };
+  revalidatePath("/dashboard/clients/[id]", "page");
+  revalidatePath("/dashboard/paiements");
+  revalidatePath(`/client/biens/${bienId}`);
+  revalidatePath("/dashboard/journal");
+  return { error: undefined, modification: resultat.modification };
+}
+
+export async function validerFraisDossierAction(fraisId: string): Promise<{ error?: string } | undefined> {
+  const session = await requireRole(["COMPTABLE_INTERNE"]);
+  const validation = await tenterStockage("validation des frais de dossier (reçu)", () => validerFraisDossier(session, fraisId));
+  if (!validation.ok) return { error: validation.error };
+  if (validation.valeur.error) return { error: validation.valeur.error };
+  revalidatePath("/dashboard/paiements");
+  revalidatePath("/dashboard/clients/[id]", "page");
+  revalidatePath("/dashboard/journal");
+  revalidatePath("/client/biens/[id]", "page");
+  return undefined;
 }

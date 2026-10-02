@@ -234,7 +234,17 @@ reconstitué depuis l'historique git seul, listait comme « en attente » cinq
 tables et onze colonnes qui existaient déjà (`db:push` faits les 23 et
 24 septembre ; `No changes detected` le 30 septembre, état vérifié en base).
 
-En attente (1er octobre 2026, génération de modèles 3D) :
+En attente (3 octobre 2026, frais de dossier) :
+
+- table `frais_dossier` (frais de dossier par bien vendu, sur le modèle de
+  `syndics` : montant défini par le Comptable Interne, paiement déclaré par
+  le client avec preuve, validation et reçu PDF). Sans elle, la fiche client
+  (onglet Échéancier & Paiements), l'index des paiements et la page d'un
+  bien vendu dans l'espace client échouent : appliquer le `db:push`
+  **avant** de déployer ce commit, ou immédiatement après.
+
+En attente (1er octobre 2026, génération de modèles 3D) — à vérifier en base,
+probablement déjà appliquées :
 
 - tables `fournisseurs_plan3d_config` (clés d'API chiffrées, fournisseur
   actif), `essais_plan3d_labo` (bac à sable du Super Admin) et

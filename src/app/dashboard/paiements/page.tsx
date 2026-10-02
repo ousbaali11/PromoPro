@@ -1,7 +1,7 @@
 import { NomCompte } from "@/components/ui/EtatCompte";
 import { MontantCompact } from "@/components/ui/MontantCompact";
 import { desc, eq } from "drizzle-orm";
-import { FileDown, Paperclip, Receipt, Building, Wallet, HandCoins } from "lucide-react";
+import { FileDown, Paperclip, Receipt, Building, Wallet, HandCoins, FileBadge } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { db } from "@/db/client";
 import { paiements, projets, clients, users, propositions, syndics } from "@/db/schema";
@@ -10,6 +10,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { LienFiche, PaiementAttenteCarte, lienDoc } from "@/components/dossier/cartes";
 import { lienFicheClient } from "@/lib/dossier-client";
+import { fraisDossierEnAttente } from "@/lib/frais-dossier";
 
 const lien =
   "inline-flex items-center gap-1 rounded-xs text-caption font-medium text-gold-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus";
@@ -40,6 +41,9 @@ export default async function PaiementsPage() {
     bienById.has(s.bienId),
   );
 
+  // Frais de dossier en attente de validation (même liste d'attente, section distincte)
+  const fraisEnAttente = (await fraisDossierEnAttente(session.promoteurId!)).filter((f) => bienById.has(f.bienId));
+
   // 9.3 — biens vendus par commercial
   const ventes = (await db.query.propositions.findMany({ where: eq(propositions.statut, "ACCEPTEE") }))
     .filter((p) => bienById.has(p.bienId))
@@ -58,10 +62,11 @@ export default async function PaiementsPage() {
         description="Opérations saisies par les commerciaux, les clients et le recouvrement — à référencer puis valider depuis la fiche du client."
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="En attente" value={enAttente.length} tone={enAttente.length > 0 ? "warning" : undefined} icon={<Wallet />} hint="Référence et validation à saisir" />
         <Stat label="Validés" value={<MontantCompact montant={totalValide} />} icon={<Receipt />} hint={`${valides.length} opération${valides.length > 1 ? "s" : ""}`} />
         <Stat label="Syndic à valider" value={syndicsEnAttente.length} tone={syndicsEnAttente.length > 0 ? "warning" : undefined} icon={<Building />} />
+        <Stat label="Frais de dossier à valider" value={fraisEnAttente.length} tone={fraisEnAttente.length > 0 ? "warning" : undefined} icon={<FileBadge />} />
       </div>
 
       <Section
@@ -230,6 +235,52 @@ export default async function PaiementsPage() {
                     {clientById.has(s.clientId) && (
                       <div className="mt-2">
                         <LienFiche href={lienFicheClient(s.clientId, s.bienId, "paiements")} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        )}
+      </Section>
+
+      <Section
+        title="Frais de dossier en attente de validation"
+        count={fraisEnAttente.length}
+        countTone={fraisEnAttente.length > 0 ? "warning" : "neutral"}
+        testId="section-frais-dossier"
+      >
+        {fraisEnAttente.length === 0 ? (
+          <EmptyState icon={<FileBadge />} title="Aucun paiement de frais de dossier à valider" />
+        ) : (
+          <Card className="divide-y divide-navy-50">
+            {fraisEnAttente.map((f) => {
+              const bien = bienById.get(f.bienId);
+              const client = clientById.get(f.clientId);
+              return (
+                <div key={f.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4" data-testid="frais-dossier-attente">
+                  <div>
+                    <p className="font-medium text-navy-900">
+                      {bien?.designation ?? "—"}
+                      <Badge tone="neutral" className="ml-2 align-middle">
+                        Frais de dossier
+                      </Badge>
+                    </p>
+                    <p className="text-caption text-navy-400">
+                      <NomCompte compte={client} /> · {f.natureOperation} · {f.banque} · {formatDate(f.dateOperation)} · porteur {f.porteur}
+                    </p>
+                    {f.preuveUrl && (
+                      <a href={f.preuveUrl} target="_blank" rel="noreferrer" className={`${lien} mt-1`}>
+                        <Paperclip className="h-3.5 w-3.5" /> Preuve de paiement
+                      </a>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-price tabular text-navy-900">{formatMoney(f.montant)}</p>
+                    {clientById.has(f.clientId) && (
+                      <div className="mt-2">
+                        <LienFiche href={lienFicheClient(f.clientId, f.bienId, "paiements")} />
                       </div>
                     )}
                   </div>
