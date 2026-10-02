@@ -1,4 +1,6 @@
-import { access, mkdir, rename, unlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { access, mkdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import * as ort from "onnxruntime-node";
@@ -76,6 +78,33 @@ function telechargerModeleSiConfigure(variante: VarianteModele): Promise<boolean
     }
   })();
   return cache[variante]!;
+}
+
+const g3 = globalThis as unknown as { __promoproEmpreintes?: Map<string, { cle: string; empreinte: string }> };
+/**
+ * Empreinte SHA-256 (huit premiers caractères) du fichier de modèle de la
+ * variante, affichée sur sa carte pour vérifier quel fichier le serveur
+ * charge réellement ; recalculée seulement si le fichier change (taille ou
+ * date). Null si le fichier est absent.
+ */
+export async function empreinteModele(variante: VarianteModele = "principal"): Promise<string | null> {
+  const chemin = cheminModele(variante);
+  let infos;
+  try {
+    infos = await stat(chemin);
+  } catch {
+    return null;
+  }
+  const cle = `${infos.size}:${infos.mtimeMs}`;
+  const cache = (g3.__promoproEmpreintes ??= new Map());
+  const connue = cache.get(chemin);
+  if (connue?.cle === cle) return connue.empreinte;
+  const empreinte = await new Promise<string>((resoudre, rejeter) => {
+    const h = createHash("sha256");
+    createReadStream(chemin).on("data", (d) => h.update(d)).on("end", () => resoudre(h.digest("hex").slice(0, 8))).on("error", rejeter);
+  });
+  cache.set(chemin, { cle, empreinte });
+  return empreinte;
 }
 
 export function messageModeleAbsent(variante: VarianteModele = "principal") {

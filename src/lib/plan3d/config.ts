@@ -4,7 +4,7 @@ import { fournisseursPlan3dConfig } from "@/db/schema";
 import { enregistrerActivite } from "@/lib/journal";
 import type { SessionPayload } from "@/lib/auth";
 import { chiffrementDisponible, chiffrer, dechiffrer, masquerCle } from "./chiffrement";
-import { modeleDisponible } from "./inference";
+import { empreinteModele, modeleDisponible } from "./inference";
 import { descriptionFournisseur, FOURNISSEURS, libelleFournisseur, type Fournisseur } from "./provider";
 
 /*
@@ -35,13 +35,15 @@ export type ConfigAffichee = {
 export async function configurationsAffichees(): Promise<ConfigAffichee[]> {
   const lignes = await db.query.fournisseursPlan3dConfig.findMany();
   const modeles = await Promise.all(FOURNISSEURS.map((f) => (f.modeleInterne ? modeleDisponible(f.modeleInterne) : Promise.resolve(false))));
+  // Empreinte du fichier réellement chargé : permet de vérifier que deux variantes n'utilisent pas le même modèle
+  const empreintes = await Promise.all(FOURNISSEURS.map((f, i) => (f.modeleInterne && modeles[i] ? empreinteModele(f.modeleInterne) : Promise.resolve(null))));
   return FOURNISSEURS.map((f, i) => {
     const ligne = lignes.find((l) => l.fournisseur === f.code);
     let cleMasquee: string | null = null;
     let configure = false;
     if (!f.necessiteCle) {
       configure = modeles[i];
-      cleMasquee = modeles[i] ? "Modèle installé sur le serveur" : "Modèle non installé (voir DEPLOY.md)";
+      cleMasquee = modeles[i] ? `Modèle installé sur le serveur · empreinte ${empreintes[i] ?? "inconnue"}` : "Modèle non installé (voir DEPLOY.md)";
     } else if (ligne && chiffrementDisponible()) {
       try {
         cleMasquee = masquerCle(dechiffrer(ligne.cleApiChiffree));
