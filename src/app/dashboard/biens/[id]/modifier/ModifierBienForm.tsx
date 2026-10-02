@@ -7,6 +7,7 @@ import { modifierBien } from "@/app/dashboard/projets/actions";
 import { Card, Input, Select, Callout } from "@/components/ui/Primitives";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { soumettreSansReinitialiser } from "@/components/ui/soumission";
+import { useHydrated } from "@/components/ui/useHydrated";
 
 
 export function ModifierBienForm({
@@ -15,11 +16,12 @@ export function ModifierBienForm({
   bien: { id: string; designation: string; nature: string; prix: number; surface: number };
 }) {
   const [state, formAction, pending] = useActionState(modifierBien, undefined);
+  const hydrated = useHydrated();
   // Une nature historique hors liste reste sélectionnable telle quelle (jamais modifiée à l'insu de l'utilisateur)
   const horsListe = natureValide(bien.nature) ? null : bien.nature;
   return (
     <Card className="p-6">
-      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="form-modifier-bien">
+      <form action={formAction} onSubmit={soumettreSansReinitialiser(formAction)} className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="form-modifier-bien" data-hydrated={hydrated ? "true" : undefined}>
         <input type="hidden" name="bienId" value={bien.id} />
         <Input id="designation" name="designation" label="Désignation" defaultValue={bien.designation} required containerClassName="sm:col-span-2" />
         <Select id="nature" name="nature" label="Nature" defaultValue={bien.nature} data-testid="select-nature">

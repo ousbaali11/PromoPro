@@ -105,8 +105,13 @@ async function reglerDelaiTma(page: import("@playwright/test").Page, valeur: str
 }
 
 test("fenêtre de dépôt : la date limite suit le délai configuré par projet ; 0 ou négatif refusés", async ({ page }) => {
-  // Le bien A01 est bloqué le jour du seed (aujourd'hui) : limite = aujourd'hui + délai, fin de journée.
-  const aujourdhui = new Date();
+  // Le bien A01 est bloqué le jour du seed : limite = jour du seed + délai, fin de journée. Le seed est joué
+  // juste avant la suite : c'est aujourd'hui, ou hier si la suite a passé minuit entre-temps (vu en CI).
+  const plusJours = (base: Date, jours: number) => {
+    const d = new Date(base);
+    d.setDate(d.getDate() + jours);
+    return d;
+  };
 
   // Un délai nul ou négatif est refusé avec un message clair (le projet garde sa valeur)
   await login(page, "DIRCOM");
@@ -125,14 +130,15 @@ test("fenêtre de dépôt : la date limite suit le délai configuré par projet 
 
   await login(page, "CLIENT");
   await ouvrirBienClient(page, "Appartement A01");
-  const demain = new Date(aujourdhui);
-  demain.setDate(demain.getDate() + 1);
-  await expect(page.getByTestId("tma-limite")).toHaveText(formatDate(demain));
+  const maintenant = new Date();
+  const limiteDelai1 = await page.getByTestId("tma-limite").innerText();
+  const base = [0, -1].map((j) => plusJours(maintenant, j)).find((b) => formatDate(plusJours(b, 1)) === limiteDelai1);
+  expect(base, `limite affichée « ${limiteDelai1} » : ni aujourd'hui + 1 j, ni hier + 1 j`).toBeTruthy();
+  await expect(page.getByTestId("tma-limite")).toHaveText(formatDate(plusJours(base!, 1)));
   await expect(page.getByRole("button", { name: "Demander une modification" })).toBeVisible();
 
   await reglerDelaiTma(page, initial);
-  const attendue = new Date(aujourdhui);
-  attendue.setDate(attendue.getDate() + Number(initial));
+  const attendue = plusJours(base!, Number(initial));
   await login(page, "CLIENT");
   await ouvrirBienClient(page, "Appartement A01");
   await expect(page.getByTestId("tma-limite")).toHaveText(formatDate(attendue));

@@ -32,7 +32,7 @@ test("création avec une nouvelle nature (Garage), affichage, filtre, modificati
   // Modification : Terrain constructible
   const href = (await lien.getAttribute("href"))!;
   await page.goto(`${href}/modifier`);
-  await expect(page.getByTestId("form-modifier-bien")).toBeVisible();
+  await page.locator('[data-testid="form-modifier-bien"][data-hydrated="true"]').waitFor();
   await page.getByTestId("select-nature").selectOption("Terrain constructible");
   await page.getByRole("button", { name: "Enregistrer les modifications" }).click();
   await expect(page).toHaveURL(/\/dashboard\/biens\/[^/]+$/);
@@ -40,6 +40,7 @@ test("création avec une nouvelle nature (Garage), affichage, filtre, modificati
 
   // Nature forgée (hors liste) : refusée par la Server Action, la nature reste inchangée
   await page.goto(`${href}/modifier`);
+  await page.locator('[data-testid="form-modifier-bien"][data-hydrated="true"]').waitFor();
   await page.getByTestId("select-nature").evaluate((el) => {
     const o = document.createElement("option");
     o.value = "Château";
