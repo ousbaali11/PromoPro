@@ -62,7 +62,7 @@ Onglet **Variables** du service web :
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
 | `PLAN3D_MODELE_URL` | adresse directe du fichier `promopro-plan3d.onnx` | Facultatif : téléchargement automatique du modèle interne « Solution PromoPro » dans le volume au premier usage (section 12). Sans modèle, la carte reste « non installé ». |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Facultatif : modèle Gemini utilisé par le fournisseur « Gemini (Google) » (section 12). |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Facultatif : modèle Gemini utilisé par le fournisseur « Gemini (Google) » (section 12). |
 | `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
@@ -510,7 +510,7 @@ Obtenir une clé :
   sont faibles). Un plan coûte quelques centimes (image en entrée, quelques
   centaines de jetons en sortie) et prend quelques secondes ; Gemini lit les
   noms des pièces et les portes, l'application extrude le modèle 3D. Modèle
-  par défaut `gemini-2.5-flash`, surchargeable par `GEMINI_MODEL`. En cas de
+  par défaut `gemini-3.8-flash`, surchargeable par `GEMINI_MODEL`. En cas de
   « forte demande » (503), l'appel est rejoué trois fois.
 - **Neural4D** (`https://www.neural4d.com/api`) : plan Go (19,90 $/mois,
   environ 150 modèles) ou paiement à l'usage (environ 0,15 $ par appel) ;

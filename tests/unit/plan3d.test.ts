@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chiffrementDisponible, chiffrer, dechiffrer, masquerCle } from "@/lib/plan3d/chiffrement";
-import { lireReponseGemini, modeleGemini, PROMPT_GEMINI } from "@/lib/plan3d/gemini";
+import { lireReponseGemini, modeleGemini, modeleSuggere, PROMPT_GEMINI } from "@/lib/plan3d/gemini";
 import { lireReponseDemarrageNeural4d, lireReponseStatutNeural4d } from "@/lib/plan3d/neural4d";
 import { ErreurFournisseur, estFournisseur, FOURNISSEURS, libelleFournisseur } from "@/lib/plan3d/provider";
 import { fournisseurPlan3d } from "@/lib/plan3d/registre";
@@ -89,6 +89,12 @@ describe("adaptateur Gemini (réponses documentées)", () => {
     expect(() => lireReponseGemini(200, {})).toThrow(/sans contenu/);
     expect(() => lireReponseGemini(200, enveloppe("pas du json"))).toThrow(/JSON/);
     expect(() => lireReponseGemini(200, { promptFeedback: { blockReason: "SAFETY" } })).toThrow(/refusé/);
+  });
+
+  it("un message de retrait de modèle nomme le remplaçant à rejouer", () => {
+    expect(modeleSuggere("This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features.")).toBe("gemini-3.8-flash");
+    expect(modeleSuggere("API key not valid")).toBeNull();
+    expect(modeleSuggere(undefined)).toBeNull();
   });
 
   it("le prompt demande du JSON strict en coordonnées relatives ; le modèle est surchargeable par GEMINI_MODEL", () => {

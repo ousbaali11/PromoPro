@@ -18,12 +18,15 @@ import { dimensionsParDefaut, extruderEnGlb } from "./extrusion";
  * → 200 { candidates: [{ content: { parts: [{ text: "<JSON>" }] } }] }
  * → 400 « API key not valid » / 403 (clé), 429 (quota), 503 (forte demande,
  * rejouée). La base (GEMINI_API_URL) et le modèle (GEMINI_MODEL) sont
- * surchargeables ; la suite e2e pointe la base vers le simulateur.
+ * surchargeables ; la suite e2e pointe la base vers le simulateur. Quand
+ * Google retire un modèle, sa réponse d'erreur nomme le remplaçant
+ * (« Please update your code to use models/… ») : l'appel est rejoué une
+ * fois avec ce modèle, le temps de mettre GEMINI_MODEL à jour.
  * Prototype d'origine : scripts/prototypes/test-lecture-plan.ts.
  */
 
 export const GEMINI_BASE_PAR_DEFAUT = "https://generativelanguage.googleapis.com/v1beta";
-export const GEMINI_MODELE_PAR_DEFAUT = "gemini-2.5-flash";
+export const GEMINI_MODELE_PAR_DEFAUT = "gemini-3.8-flash";
 /** Tentatives sur 503 (forte demande), et délai entre deux tentatives. */
 const TENTATIVES_503 = 3;
 const DELAI_503_MS = Number(process.env.GEMINI_DELAI_503_MS) || 10_000;
@@ -49,6 +52,12 @@ function base() {
 
 export function modeleGemini() {
   return process.env.GEMINI_MODEL?.trim() || GEMINI_MODELE_PAR_DEFAUT;
+}
+
+/** Modèle de remplacement nommé par Google dans un message de retrait (« use models/gemini-x »), ou null. */
+export function modeleSuggere(message: string | undefined): string | null {
+  const m = message?.match(/use models\/([A-Za-z0-9._-]+)/);
+  return m ? m[1] : null;
 }
 
 type Enveloppe = {
@@ -121,17 +130,27 @@ export const gemini: FournisseurPlan3d = {
       contents: [{ role: "user", parts: [{ text: PROMPT_GEMINI }, { inline_data: { mime_type: image.mime, data: Buffer.from(image.octets).toString("base64") } }] }],
       generationConfig: { temperature: 0, response_mime_type: "application/json" },
     };
-    let reponse: Response | undefined;
-    for (let tentative = 1; tentative <= TENTATIVES_503; tentative++) {
-      reponse = await fetch(`${base()}/models/${encodeURIComponent(modeleGemini())}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": cleApi, Accept: "application/json" },
-        body: JSON.stringify(corps),
-      });
-      if (reponse.status !== 503 || tentative === TENTATIVES_503) break;
-      await attendre(DELAI_503_MS);
+    const appeler = async (modele: string) => {
+      let reponse: Response | undefined;
+      for (let tentative = 1; tentative <= TENTATIVES_503; tentative++) {
+        reponse = await fetch(`${base()}/models/${encodeURIComponent(modele)}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": cleApi, Accept: "application/json" },
+          body: JSON.stringify(corps),
+        });
+        if (reponse.status !== 503 || tentative === TENTATIVES_503) break;
+        await attendre(DELAI_503_MS);
+      }
+      return { statut: reponse!.status, corps: await corpsJson(reponse!) };
+    };
+    let { statut, corps: enveloppe } = await appeler(modeleGemini());
+    // Modèle retiré par Google : rejoué une fois avec le remplaçant qu'il indique
+    const remplacant = statut >= 400 ? modeleSuggere(enveloppe.error?.message) : null;
+    if (remplacant && remplacant !== modeleGemini()) {
+      console.warn(`[plan3d] Gemini : modèle ${modeleGemini()} retiré, nouvel essai avec ${remplacant} (mettez GEMINI_MODEL à jour).`);
+      ({ statut, corps: enveloppe } = await appeler(remplacant));
     }
-    const lecture = lireReponseGemini(reponse!.status, await corpsJson(reponse!));
+    const lecture = lireReponseGemini(statut, enveloppe);
     if (lecture.pieces.length === 0) {
       throw new ErreurFournisseur(`Gemini n'a reconnu aucune pièce sur cette image${lecture.remarques ? ` (${lecture.remarques})` : ""}.`);
     }
