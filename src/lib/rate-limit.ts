@@ -66,6 +66,7 @@ export function consommer(key: string, max: number, windowMs: number, now = Date
 export const LIMITES = {
   upload: { max: 30, fenetreMs: 10 * 60 * 1000 }, // 30 fichiers / 10 min
   importProspects: { max: 10, fenetreMs: 10 * 60 * 1000 }, // 10 analyses / 10 min
+  importBiens: { max: 10, fenetreMs: 10 * 60 * 1000 }, // 10 analyses / 10 min (Directeur Commercial)
   demandeTma: { max: 10, fenetreMs: 60 * 60 * 1000 }, // 10 demandes / heure
 } as const;
 

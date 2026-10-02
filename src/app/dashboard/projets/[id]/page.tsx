@@ -8,6 +8,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Pencil } from "lucide-react";
 import { AddBienForm } from "./AddBienForm";
 import { BiensExplorer } from "./BiensExplorer";
+import { ImportBiens } from "./ImportBiens";
 
 export default async function ProjetDetailPage({
   params,
@@ -45,9 +46,12 @@ export default async function ProjetDetailPage({
         description={`${projet.nomCompte} · IBAN ${projet.iban} · ${listeBiens.length} bien${listeBiens.length > 1 ? "s" : ""}, ${disponibles} disponible${disponibles > 1 ? "s" : ""} · TMA : ${projet.delaiTmaJours} j après blocage`}
         action={
           session.role === "DIRECTEUR_COMMERCIAL" ? (
-            <LinkButton href={`/dashboard/projets/${projet.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-projet">
-              <Pencil className="h-4 w-4" /> Modifier
-            </LinkButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <ImportBiens projetId={projet.id} />
+              <LinkButton href={`/dashboard/projets/${projet.id}/modifier`} variant="secondary" size="sm" data-testid="modifier-projet">
+                <Pencil className="h-4 w-4" /> Modifier
+              </LinkButton>
+            </div>
           ) : undefined
         }
       />

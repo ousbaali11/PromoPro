@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { prospects, users } from "@/db/schema";
@@ -8,20 +7,12 @@ import { telephoneCanonique, type ChargeCommercial } from "./prospects";
  * Import Excel des prospects : le fichier est lu en mémoire (SheetJS) et n'est
  * jamais écrit sur le disque — il ne contient que des données de travail dont
  * la version de référence est la base une fois l'import confirmé, et rien ne
- * justifie d'en garder une copie (données personnelles de tiers).
+ * justifie d'en garder une copie (données personnelles de tiers). La
+ * lecture elle-même est partagée avec l'import des biens (import-excel.ts).
  */
 
-export const EXTENSIONS_IMPORT = [".xlsx", ".xls"] as const;
-export const MAX_TAILLE_IMPORT = 4 * 1024 * 1024; // 4 Mo (limite du corps des Server Actions : 5 Mo)
-
-/** Lit la première feuille du classeur : une entrée par ligne, clés = en-têtes (ligne 1), valeurs en texte. */
-export function lireFeuilleProspects(contenu: ArrayBuffer | Buffer): Record<string, unknown>[] {
-  const classeur = XLSX.read(contenu, { type: "buffer" });
-  const nomFeuille = classeur.SheetNames[0];
-  if (!nomFeuille) return [];
-  const feuille = classeur.Sheets[nomFeuille];
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(feuille, { defval: "", raw: false });
-}
+export { EXTENSIONS_IMPORT, MAX_TAILLE_IMPORT } from "./import-excel";
+export { lireFeuille as lireFeuilleProspects } from "./import-excel";
 
 /** Rôles qui reçoivent des prospects. */
 export const ROLES_PROSPECTS = ["COMMERCIAL", "RESPONSABLE_COMMERCIAL"] as const;

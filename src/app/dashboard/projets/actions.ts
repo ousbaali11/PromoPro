@@ -9,6 +9,10 @@ import { projets, biens, epingles } from "@/db/schema";
 import { requireRole, requireStaffSession } from "@/lib/session";
 import { enregistrerActivite, decrireChangements } from "@/lib/journal";
 import { lireNombre, verifierMontant, verifierDelaiTma, verifierTexte, LONGUEURS } from "@/lib/validation";
+import { analyserLignesBiens, MAX_LIGNES_IMPORT_BIENS, resoudreNature, type LigneBien, type LigneBienIgnoree } from "@/lib/biens-import";
+import { designationsConnues } from "@/lib/biens-import-db";
+import { lireFeuille, verifierFichierImport } from "@/lib/import-excel";
+import { consommer, LIMITES, messageLimite } from "@/lib/rate-limit";
 
 export async function createProjet(_prev: { error?: string } | undefined, formData: FormData) {
   const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
@@ -201,4 +205,105 @@ export async function modifierBien(_prev: ModifState, formData: FormData): Promi
   revalidatePath(`/dashboard/biens/${bienId}`);
   revalidatePath("/dashboard/journal");
   redirect(`/dashboard/biens/${bienId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Import Excel des biens d'un projet (Directeur Commercial), sur le modèle de
+// l'import des prospects : analyse en mémoire puis confirmation ; rien n'est
+// écrit avant la confirmation, les lignes invalides sont ignorées et comptées.
+// ---------------------------------------------------------------------------
+
+export type ApercuImportBiens = { projetId: string; nomFichier: string; valides: LigneBien[]; ignorees: LigneBienIgnoree[] };
+export type AnalyseImportBiensState = { error?: string; apercu?: ApercuImportBiens } | undefined;
+export type ConfirmationImportBiensState = { error?: string; resultat?: { importes: number; ignorees: number } } | undefined;
+
+/** Étape 1 — lecture du fichier en mémoire et contrôle des lignes (aucune écriture). */
+export async function analyserImportBiens(_prev: AnalyseImportBiensState, formData: FormData): Promise<AnalyseImportBiensState> {
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const limite = consommer(`import-biens:${session.userId}`, LIMITES.importBiens.max, LIMITES.importBiens.fenetreMs);
+  if (!limite.autorise) return { error: messageLimite(limite.reessaiDansSec) };
+  const projetId = String(formData.get("projetId") ?? "");
+  if (!projetId || !(await projetDuPromoteur(projetId, session.promoteurId))) return { error: "Projet introuvable." };
+  const fichier = formData.get("fichier");
+  const refus = verifierFichierImport(fichier);
+  if (refus) return { error: refus };
+  const nomFichier = (fichier as File).name;
+
+  let lignes: Record<string, unknown>[];
+  try {
+    lignes = lireFeuille(Buffer.from(await (fichier as File).arrayBuffer()));
+  } catch {
+    return { error: "Fichier illisible : vérifiez qu'il s'agit bien d'un classeur Excel." };
+  }
+  if (lignes.length === 0) return { error: "La première feuille du classeur est vide." };
+  if (lignes.length > MAX_LIGNES_IMPORT_BIENS) return { error: `Fichier trop long : ${MAX_LIGNES_IMPORT_BIENS} lignes maximum par import.` };
+
+  const { valides, ignorees, colonnes } = analyserLignesBiens(lignes, { designationsExistantes: await designationsConnues(projetId) });
+  const manquantes = (["designation", "nature", "prix", "surface"] as const).filter((c) => !colonnes[c]);
+  if (manquantes.length) {
+    return { error: `Colonne ${manquantes.join(", ")} introuvable dans les en-têtes. Colonnes attendues : désignation, nature, prix, surface (ordre libre).` };
+  }
+  if (valides.length === 0) {
+    return { error: `Aucun bien valide : ${ignorees.length} ligne${ignorees.length > 1 ? "s" : ""} ignorée${ignorees.length > 1 ? "s" : ""} (${ignorees.map((i) => `ligne ${i.ligne} : ${i.motif}`).slice(0, 5).join(" ; ")}${ignorees.length > 5 ? " ; …" : ""}).` };
+  }
+  return { apercu: { projetId, nomFichier, valides, ignorees } };
+}
+
+/** Lignes de l'aperçu renvoyées par le navigateur, revalidées une à une (défense contre un aperçu forgé). */
+function lireBiensConfirmes(brut: FormDataEntryValue | null): LigneBien[] | null {
+  if (typeof brut !== "string") return null;
+  try {
+    const data: unknown = JSON.parse(brut);
+    if (!Array.isArray(data) || data.length === 0 || data.length > MAX_LIGNES_IMPORT_BIENS) return null;
+    const lignes: LigneBien[] = [];
+    for (const l of data) {
+      if (!l || typeof l !== "object") return null;
+      const { designation, nature, prix, surface } = l as Record<string, unknown>;
+      if (typeof designation !== "string" || typeof nature !== "string" || typeof prix !== "number" || typeof surface !== "number") return null;
+      const natureCanonique = resoudreNature(nature);
+      if (!natureCanonique) return null;
+      if (verifierTexte(designation.trim(), { libelle: "La désignation", max: LONGUEURS.designation, obligatoire: true })) return null;
+      if (verifierMontant(prix, { libelle: "Le prix" }) || verifierMontant(surface, { libelle: "La surface" })) return null;
+      lignes.push({ designation: designation.trim(), nature: natureCanonique, prix, surface });
+    }
+    return lignes;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Étape 2 — création des biens au statut « Disponible » (comme à la création
+ * manuelle), doublons apparus depuis l'aperçu écartés, trace au journal.
+ */
+export async function confirmerImportBiens(_prev: ConfirmationImportBiensState, formData: FormData): Promise<ConfirmationImportBiensState> {
+  const session = await requireRole(["DIRECTEUR_COMMERCIAL"]);
+  const projetId = String(formData.get("projetId") ?? "");
+  const projet = projetId ? await projetDuPromoteur(projetId, session.promoteurId) : null;
+  if (!projet) return { error: "Projet introuvable." };
+  const nomFichier = String(formData.get("nomFichier") ?? "").slice(0, 200);
+  const lignes = lireBiensConfirmes(formData.get("lignes"));
+  if (!lignes) return { error: "Aperçu invalide : relancez l'analyse du fichier." };
+  const ignoreesApercu = Math.max(0, Math.min(MAX_LIGNES_IMPORT_BIENS, Math.floor(Number(formData.get("ignorees")) || 0)));
+
+  // Re-contrôle des désignations déjà présentes (ajoutées entre l'aperçu et la confirmation)
+  const { valides, ignorees: ignoreesConfirmation } = analyserLignesBiens(
+    lignes.map((l) => ({ designation: l.designation, nature: l.nature, prix: String(l.prix), surface: String(l.surface) })),
+    { designationsExistantes: await designationsConnues(projetId), premiereLigne: 1 },
+  );
+  if (valides.length === 0) return { error: "Tous les biens de l'aperçu existent déjà dans le projet." };
+  const ignorees = ignoreesApercu + ignoreesConfirmation.length;
+
+  await db.insert(biens).values(valides.map((b) => ({ projetId, designation: b.designation, nature: b.nature, prix: b.prix, surface: b.surface })));
+  await enregistrerActivite({
+    acteur: session,
+    action: "IMPORT",
+    cibleType: "biens",
+    cibleId: projetId,
+    cibleNom: `${valides.length} bien${valides.length > 1 ? "s" : ""} importé${valides.length > 1 ? "s" : ""}${nomFichier ? ` (${nomFichier})` : ""}`,
+    details: `Projet ${projet.nom}${ignorees ? ` ; ${ignorees} ligne${ignorees > 1 ? "s" : ""} ignorée${ignorees > 1 ? "s" : ""}` : ""}`,
+  });
+  revalidatePath(`/dashboard/projets/${projetId}`);
+  revalidatePath("/dashboard/journal");
+  return { resultat: { importes: valides.length, ignorees } };
 }

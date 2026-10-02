@@ -155,6 +155,7 @@ suffisant pour une instance ; derrière plusieurs instances, remplacer le
 | `/mot-de-passe-oublie` | 3 demandes / identifiant, 10 / IP, 15 min (chaque demande compte) | message avec délai | envoi d'e-mails à la demande : borne le harcèlement d'un compte et le coût d'envoi |
 | `POST /api/upload` | 30 fichiers / compte / 10 min | 429 | tout compte connecté peut déposer ; borne le remplissage du disque (jusqu'à 50 Mo par modèle 3D) |
 | Import Excel (`analyserImportProspects`) | 10 analyses / assistant / 10 min | message | parsing en mémoire d'un fichier jusqu'à 4 Mo |
+| Import Excel des biens (`analyserImportBiens`) | 10 analyses / Directeur Commercial / 10 min | message | même lecture en mémoire ; biens créés au statut Disponible après confirmation seulement |
 | Demande TMA (`demanderTma`) | 10 demandes / client / heure | message | création libre depuis l'espace client, chaque demande notifie le SAV |
 
 Écarté, et pourquoi :
