@@ -118,7 +118,7 @@ export default async function RechercheClientsPage({
 
       {lance && !valides && (
         <Callout tone="warning" className="mt-4" testId="recherche-criteres-invalides">
-          Indiquez au moins un critère : un nom ou un prénom d&apos;au moins deux lettres, une date de naissance ou un numéro de pièce.
+          Indiquez au moins un critère précis : un nom ou un prénom d&apos;au moins trois lettres, une date de naissance, ou un numéro de pièce complet (cinq caractères au moins).
         </Callout>
       )}
 

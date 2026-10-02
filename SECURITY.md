@@ -69,7 +69,7 @@ lire ou modifier les données du promoteur B.
 | `dashboard/clients/actions.ts` (`resetClientPassword`) | `requireStaffSession` | promoteur seulement, **aucune règle de rôle ni de commercial gérant** | **F2 — corrigé** |
 | `dashboard/biens/[id]/actions.ts` (bloquer, débloquer, plans, paiement commercial, désistement) | `requireRole` | `bienDuPromoteur` (projet du bien) ; paiement et désistement : commercial en charge ou responsable | OK |
 | `dashboard/projets/actions.ts` (projet, biens, épingles, modifications) | `requireRole` / `requireStaffSession` | `projetDuPromoteur` sur chaque projet / bien, y compris `toggleEpingle` | OK |
-| `dashboard/propositions/actions.ts` (créer, accepter, refuser, négocier) | `requireRole` | bien via projet, client via `clients.promoteurId`, proposition via son commercial | OK |
+| `dashboard/propositions/actions.ts` (créer, accepter, refuser, négocier) | `requireRole` | bien via projet, client via `clients.promoteurId` **et `peutGererClient`** (un Commercial ne propose qu'à ses clients), proposition via son commercial | OK — couvert par `visibilite-commerciale.spec.ts` |
 | `dashboard/contrats/actions.ts` (confirmer, copie signée, notaire) | `requireRole(RESP. ADMIN)` | projet du bien du contrat | OK |
 | `dashboard/desistements/actions.ts` (vérifier, rembourser) | `requireRole(RESP. ADMIN)` | `getDesistementDuPromoteur` | OK |
 | `dashboard/paiements/actions.ts` (compléter / valider, syndic) | `requireRole(COMPTABLE)` | projet du bien du paiement ; `client.promoteurId` pour le syndic | OK |

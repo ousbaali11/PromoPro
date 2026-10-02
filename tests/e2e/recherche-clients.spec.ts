@@ -83,9 +83,16 @@ test("un commercial trouve le client de son collègue par CIN, nom ou date de na
   // Un critère qui ne correspond pas : état vide explicite
   await rechercher(page, { nom: DOUBLON.nom, piece: "ZZ000000" });
   await expect(page.getByTestId("recherche-clients-vide")).toBeVisible();
-  // Sans critère exploitable
+  // Sans critère exploitable : deux lettres ne suffisent pas (ni pour un nom, ni pour une pièce), trois oui
   await rechercher(page, { nom: "D" });
   await expect(page.getByTestId("recherche-criteres-invalides")).toBeVisible();
+  await rechercher(page, { nom: "Do" });
+  await expect(page.getByTestId("recherche-criteres-invalides")).toBeVisible();
+  await expect(page.getByTestId("resultat-client")).toHaveCount(0);
+  await rechercher(page, { piece: `AB${S}`.slice(0, 4) });
+  await expect(page.getByTestId("recherche-criteres-invalides")).toBeVisible();
+  await rechercher(page, { nom: "Dou" });
+  await expect(page.getByTestId("resultat-client")).toHaveCount(2);
 });
 
 test("le premier commercial voit la situation inverse ; le dossier du client du collègue reste introuvable même avec son identifiant", async ({ page }) => {

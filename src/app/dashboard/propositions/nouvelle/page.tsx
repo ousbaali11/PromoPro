@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { biens, clients, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
+import { peutGererClient } from "@/lib/comptes";
 import { PageHeader, Breadcrumb } from "@/components/ui/Primitives";
 import { formatMoney } from "@/lib/utils";
 import { datesEcheancierParDefaut } from "@/lib/echeancier";
@@ -21,8 +22,11 @@ export default async function NouvellePropositionPage({
   if (!bien || bien.statut !== "DISPONIBLE") notFound();
   const projet = await db.query.projets.findFirst({ where: eq(projets.id, bien.projetId) });
 
-  // Seuls les clients actifs (ni suspendus, ni supprimés) peuvent recevoir une nouvelle proposition
-  const listeClients = (await db.query.clients.findMany({ where: and(eq(clients.promoteurId, session.promoteurId!), isNull(clients.deletedAt)) })).filter((c) => c.actif);
+  // Seuls les clients actifs (ni suspendus, ni supprimés) peuvent recevoir une nouvelle proposition, et seulement ceux
+  // que le commercial connecté gère (tout le pôle pour le Responsable Commercial) : pas d'annuaire des clients des collègues
+  const listeClients = (await db.query.clients.findMany({ where: and(eq(clients.promoteurId, session.promoteurId!), isNull(clients.deletedAt)) })).filter(
+    (c) => c.actif && peutGererClient(session, c),
+  );
 
   const defaultDates = datesEcheancierParDefaut();
 

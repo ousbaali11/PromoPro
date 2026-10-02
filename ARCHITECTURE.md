@@ -238,7 +238,13 @@ naissance, pièce, nom du commercial qui le suit —, sans téléphone, e-mail,
 adresse, identifiant ni lien ; pour ses propres clients (et tout le pôle pour
 le Responsable Commercial), la projection est complète avec le lien vers la
 fiche. Résultats groupés « Vos clients » / « Clients d'autres commerciaux de
-ce promoteur » dans deux `DataTable`.
+ce promoteur » dans deux `DataTable`. Contre l'énumération du fichier par
+balayage, un nom ou un prénom recherché compte au moins trois lettres et un
+numéro de pièce au moins cinq caractères (`LONGUEUR_MIN_NOM`,
+`LONGUEUR_MIN_PIECE`) ; la même règle client vaut sur la fiche d'un bien
+(client masqué, sans téléphone, échéancier ni paiements, pour un Commercial
+qui n'est ni le commercial du bien ni celui du client) et sur la nouvelle
+proposition (liste limitée aux clients gérés, refus côté serveur sinon).
 
 ## Fiche client : point d'entrée unique, pages d'index sans action
 

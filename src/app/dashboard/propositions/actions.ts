@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import { biens, clients, propositions, echeances, users, contrats, projets } from "@/db/schema";
 import { requireRole } from "@/lib/session";
+import { peutGererClient } from "@/lib/comptes";
 import { hashPassword, generateIdentifiant, generateTempPassword } from "@/lib/auth";
 import { notify, notifyMany } from "@/lib/notifications";
 import { verifierTexte, LONGUEURS } from "@/lib/validation";
@@ -32,6 +33,11 @@ export async function createProposition(_prev: { error?: string } | undefined, f
   if (clientId && clientId !== "__nouveau__") {
     const existant = await db.query.clients.findFirst({ where: eq(clients.id, clientId) });
     if (!existant || existant.promoteurId !== session.promoteurId) return { error: "Client introuvable." };
+    // Même règle que la liste du formulaire : un Commercial ne propose qu'à ses propres clients (un client HTTP modifié
+    // qui substituerait l'identifiant d'un client d'un collègue est refusé ici)
+    if (!peutGererClient(session, existant)) {
+      return { error: "Vous ne gérez pas ce client : seul le commercial qui le suit, ou le Responsable Commercial, peut lui envoyer une proposition." };
+    }
   }
   if (clientId === "__nouveau__") {
     const nom = String(formData.get("clientNom") ?? "").trim();

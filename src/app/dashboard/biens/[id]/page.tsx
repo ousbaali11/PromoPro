@@ -12,6 +12,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { formatMoney, formatDate, STATUT_BIEN_LABELS, STATUT_BIEN_TONES, libelleStatutPaiement, toneStatutPaiement } from "@/lib/utils";
 import { NomCompte } from "@/components/ui/EtatCompte";
 import { echeancierDuBien } from "@/lib/paiements";
+import { peutConsulterDossierClient } from "@/lib/comptes";
 import { BlockBienForm, UnblockBienButton, PlanUploadForm } from "./BienActions";
 import { DesistementForm } from "./DesistementForm";
 import { saisirPaiementCommercial } from "./actions";
@@ -34,10 +35,13 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
 
   const client = bien.clientId ? await db.query.clients.findFirst({ where: eq(clients.id, bien.clientId) }) : null;
   const vendu = ["VENDU", "LIVRE"].includes(bien.statut);
-  const echeancier = vendu ? await echeancierDuBien(bien.id) : [];
+  // Règle unique du pôle commercial (peutConsulterDossierClient) : un Commercial qui n'est ni le commercial de ce bien
+  // ni celui qui gère le client ne voit ni son identité, ni son téléphone, ni son échéancier, ni ses paiements
+  const peutVoirClient = !client || peutConsulterDossierClient(session, client, [bien.commercialId]);
+  const echeancier = vendu && peutVoirClient ? await echeancierDuBien(bien.id) : [];
   // Paiements du client actuel uniquement (l'historique d'un ancien client désisté reste dans « Biens désistés »)
   const listePaiements =
-    vendu && bien.clientId
+    vendu && bien.clientId && peutVoirClient
       ? await db.query.paiements.findMany({
           where: and(eq(paiements.bienId, bien.id), eq(paiements.clientId, bien.clientId)),
           orderBy: [desc(paiements.createdAt)],
@@ -130,17 +134,22 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
             <Info
               label="Client"
               value={
-                client ? (
+                client && peutVoirClient ? (
                   <Link
                     href={`/dashboard/clients/${client.id}`}
                     className="rounded-xs font-medium text-navy-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:shadow-focus"
+                    data-testid="lien-client-du-bien"
                   >
                     <NomCompte compte={client} />
                   </Link>
+                ) : client ? (
+                  <span className="text-navy-500" data-testid="client-masque" title="Client suivi par un autre commercial">
+                    {STATUT_BIEN_LABELS[bien.statut] ?? "Vendu"}
+                  </span>
                 ) : undefined
               }
             />
-            {client?.telephone1 && <Info label="Téléphone" value={<span className="tabular">{client.telephone1}</span>} />}
+            {client?.telephone1 && peutVoirClient && <Info label="Téléphone" value={<span className="tabular">{client.telephone1}</span>} />}
           </Card>
 
           {bien.statut === "PROPOSITION_EN_COURS" && (
@@ -182,7 +191,7 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {vendu && (
+      {vendu && peutVoirClient && (
         <Section
           title="Échéancier de paiement"
           description={echeancier.length > 0 ? `${formatMoney(totalPaye)} payés sur ${formatMoney(bien.prix)}` : undefined}
@@ -239,7 +248,7 @@ export default async function BienDetailPage({ params }: { params: Promise<{ id:
         </Section>
       )}
 
-      {vendu && (
+      {vendu && peutVoirClient && (
         <Section title="Paiements" count={listePaiements.length > 0 ? listePaiements.length : undefined}>
           {listePaiements.length === 0 ? (
             <EmptyState icon={<Receipt />} title="Aucun paiement saisi" />

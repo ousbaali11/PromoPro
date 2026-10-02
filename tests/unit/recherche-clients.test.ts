@@ -12,13 +12,21 @@ const clients: ClientRecherchable[] = [
 
 describe("recherche de clients inter-commerciaux : critères et correspondance", () => {
   it("nettoie les critères venus de l'URL et refuse une recherche sans critère exploitable", () => {
-    expect(nettoyerCriteres({ nom: "  Naciri ", prenom: "", dateNaissance: "1985-03-12", piece: "x" })).toEqual({ nom: "Naciri", dateNaissance: "1985-03-12" });
+    expect(nettoyerCriteres({ nom: "  Naciri ", prenom: "", dateNaissance: "1985-03-12", piece: " " })).toEqual({ nom: "Naciri", dateNaissance: "1985-03-12" });
     expect(nettoyerCriteres({ dateNaissance: "12/03/1985" })).toEqual({});
     expect(criteresValides({})).toBe(false);
+    // Contre l'énumération du fichier : trois lettres au moins pour un nom ou un prénom, cinq caractères pour une pièce
     expect(criteresValides({ nom: "N" })).toBe(false);
-    expect(criteresValides({ nom: "Na" })).toBe(true);
-    expect(criteresValides({ piece: "BE" })).toBe(true);
+    expect(criteresValides({ nom: "Na" })).toBe(false);
+    expect(criteresValides({ nom: "Nac" })).toBe(true);
+    expect(criteresValides({ prenom: "Ha" })).toBe(false);
+    expect(criteresValides({ prenom: "Ham" })).toBe(true);
+    expect(criteresValides({ piece: "BE" })).toBe(false);
+    expect(criteresValides({ piece: "BE12" })).toBe(false);
+    expect(criteresValides({ piece: "BE123" })).toBe(true);
     expect(criteresValides({ dateNaissance: "1985-03-12" })).toBe(true);
+    // Un critère court n'est pas non plus un filtre accessoire : « Na » + date = la date seule
+    expect(rechercherClients(clients, { nom: "Na", dateNaissance: "1985-03-12" }).map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(pieceCanonique(" be 123-456 ")).toBe("BE123456");
   });
 
@@ -28,7 +36,8 @@ describe("recherche de clients inter-commerciaux : critères et correspondance",
     expect(rechercherClients(clients, { dateNaissance: "1985-03-12" }).map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(rechercherClients(clients, { dateNaissance: "1985-03-13" })).toEqual([]);
     expect(rechercherClients(clients, { piece: "be-123456" }).map((c) => c.id)).toEqual(["c1", "c2"]);
-    expect(rechercherClients(clients, { piece: "ZX" }).map((c) => c.id)).toEqual(["c3"]);
+    expect(rechercherClients(clients, { piece: "ZX" })).toEqual([]);
+    expect(rechercherClients(clients, { piece: "ZX998" }).map((c) => c.id)).toEqual(["c3"]);
     expect(rechercherClients(clients, { nom: "naciri", piece: "ZX9988" })).toEqual([]);
     expect(rechercherClients(clients, {})).toEqual([]);
   });

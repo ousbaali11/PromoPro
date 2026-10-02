@@ -81,17 +81,26 @@ export function nettoyerCriteres(brut: Record<string, string | string[] | undefi
   if (lire("nom")) c.nom = lire("nom");
   if (lire("prenom")) c.prenom = lire("prenom");
   if (/^\d{4}-\d{2}-\d{2}$/.test(lire("dateNaissance"))) c.dateNaissance = lire("dateNaissance");
-  if (pieceCanonique(lire("piece")).length >= 2) c.piece = lire("piece");
+  if (pieceCanonique(lire("piece")).length >= 1) c.piece = lire("piece");
   return c;
 }
 
-/** Au moins un critère exploitable (deux caractères utiles pour un nom ou un prénom). */
+/** Longueur minimale d'un nom ou d'un prénom recherché, et d'un numéro de pièce (caractères utiles). */
+export const LONGUEUR_MIN_NOM = 3;
+export const LONGUEUR_MIN_PIECE = 5;
+
+/**
+ * Au moins un critère exploitable : un nom ou un prénom d'au moins trois
+ * caractères utiles, une date de naissance, ou un numéro de pièce complet ou
+ * presque (cinq caractères utiles au moins). Deux lettres suffiraient à
+ * moissonner le fichier clients par balayage ; ces seuils l'empêchent.
+ */
 export function criteresValides(c: CriteresRecherche): boolean {
   return (
-    (!!c.nom && normaliser(c.nom).length >= 2) ||
-    (!!c.prenom && normaliser(c.prenom).length >= 2) ||
+    (!!c.nom && normaliser(c.nom).length >= LONGUEUR_MIN_NOM) ||
+    (!!c.prenom && normaliser(c.prenom).length >= LONGUEUR_MIN_NOM) ||
     !!c.dateNaissance ||
-    (!!c.piece && pieceCanonique(c.piece).length >= 2)
+    (!!c.piece && pieceCanonique(c.piece).length >= LONGUEUR_MIN_PIECE)
   );
 }
 
@@ -104,9 +113,10 @@ export function criteresValides(c: CriteresRecherche): boolean {
  */
 export function rechercherClients<T extends ClientRecherchable>(clients: T[], c: CriteresRecherche): T[] {
   if (!criteresValides(c)) return [];
-  const nom = c.nom ? normaliser(c.nom) : null;
-  const prenom = c.prenom ? normaliser(c.prenom) : null;
-  const piece = c.piece ? pieceCanonique(c.piece) : null;
+  // Un critère trop court pour être valide seul ne sert pas non plus de filtre accessoire
+  const nom = c.nom && normaliser(c.nom).length >= LONGUEUR_MIN_NOM ? normaliser(c.nom) : null;
+  const prenom = c.prenom && normaliser(c.prenom).length >= LONGUEUR_MIN_NOM ? normaliser(c.prenom) : null;
+  const piece = c.piece && pieceCanonique(c.piece).length >= LONGUEUR_MIN_PIECE ? pieceCanonique(c.piece) : null;
   return clients
     .filter((cl) => !cl.deletedAt)
     .filter((cl) => {
