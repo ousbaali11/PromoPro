@@ -1,4 +1,4 @@
-import { access, mkdir, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import * as ort from "onnxruntime-node";
@@ -62,6 +62,10 @@ function telechargerModeleSiConfigure(variante: VarianteModele): Promise<boolean
       const octets = Buffer.from(await reponse.arrayBuffer());
       if (octets.length < 1_000_000) throw new Error("fichier trop petit pour être un modèle");
       await writeFile(`${chemin}.partiel`, octets);
+      if (!(await modeleOnnxLisible(`${chemin}.partiel`))) {
+        await unlink(`${chemin}.partiel`).catch(() => undefined);
+        throw new Error(`le fichier servi par ${envUrl} n'est pas un modèle ONNX lisible (adresse erronée ? fichier .safetensors au lieu du .onnx ?)`);
+      }
       await rename(`${chemin}.partiel`, chemin);
       console.log(`[plan3d] modèle ${libelle} téléchargé (${Math.round(octets.length / 1_000_000)} Mo) vers ${chemin}`);
       return true;
@@ -80,10 +84,41 @@ export function messageModeleAbsent(variante: VarianteModele = "principal") {
 }
 export const MESSAGE_MODELE_ABSENT = messageModeleAbsent("principal");
 
+const OPTIONS_SESSION: ort.InferenceSession.SessionOptions = { executionProviders: ["cpu"], graphOptimizationLevel: "all" };
+
+/** Vrai si le fichier se charge comme un modèle ONNX (un .safetensors ou une page HTML téléchargée par erreur échouent ici). */
+export async function modeleOnnxLisible(chemin: string): Promise<boolean> {
+  try {
+    await ort.InferenceSession.create(chemin, OPTIONS_SESSION);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const g = globalThis as unknown as { __promoproSessionOnnx?: Partial<Record<VarianteModele, Promise<ort.InferenceSession>>> };
+/**
+ * Session ONNX de la variante, gardée en mémoire. Si le fichier présent ne se
+ * charge pas (modèle illisible : mauvais fichier déposé ou téléchargé avant
+ * que l'adresse ne soit corrigée), il est supprimé puis retéléchargé une fois
+ * depuis l'adresse configurée ; sinon l'erreur dit quoi faire.
+ */
 function session(variante: VarianteModele): Promise<ort.InferenceSession> {
   const cache = (g.__promoproSessionOnnx ??= {});
-  cache[variante] ??= ort.InferenceSession.create(cheminModele(variante), { executionProviders: ["cpu"], graphOptimizationLevel: "all" }).catch((e) => {
+  cache[variante] ??= (async () => {
+    const chemin = cheminModele(variante);
+    const { libelle, envUrl } = VARIANTES[variante];
+    try {
+      return await ort.InferenceSession.create(chemin, OPTIONS_SESSION);
+    } catch (e) {
+      console.error(`[plan3d] modèle ${libelle} illisible (${chemin}), supprimé :`, e instanceof Error ? e.message : e);
+      await unlink(chemin).catch(() => undefined);
+      const cacheTelechargement = g2.__promoproTelechargementModele;
+      if (cacheTelechargement) cacheTelechargement[variante] = undefined;
+      if (await telechargerModeleSiConfigure(variante)) return ort.InferenceSession.create(chemin, OPTIONS_SESSION);
+      throw new Error(`Le fichier du modèle « ${libelle} » n'était pas un modèle ONNX lisible : il a été supprimé. Déposez le bon fichier .onnx ou définissez ${envUrl} (DEPLOY.md, section 12).`);
+    }
+  })().catch((e) => {
     cache[variante] = undefined;
     throw e;
   });

@@ -572,6 +572,7 @@ activation pour les biens.
 | Symptôme | Cause probable | Correction |
 |---|---|---|
 | Logs : `JWT_SECRET manquant ou trop court` | variable absente | définir `JWT_SECRET` (≥ 16 caractères) |
+| Bac à sable 3D : `Load model from /app/storage/modeles/… failed:Protobuf parsing failed` | le fichier présent dans le volume n'est pas un modèle ONNX (un `.safetensors` ou une page HTML téléchargés depuis une mauvaise adresse, avant que `PLAN3D_MODELE_URL` / `PLAN3D_MODELE_B_URL` ne soit corrigée) | automatique depuis la version 2 octobre 2026 : le fichier illisible est supprimé et retéléchargé à l'essai suivant, et une adresse qui ne sert pas un ONNX est refusée au téléchargement ; sinon, supprimer le fichier du volume et relancer un essai |
 | Logs : `getaddrinfo ENOTFOUND postgres.railway.internal` | app et Postgres dans des projets différents, ou variable non référencée | utiliser `DATABASE_PUBLIC_URL` du service Postgres, ou déplacer le service dans le même projet |
 | Logs : `[stockage] UPLOAD_DIR n'est pas accessible en écriture` ou `EACCES … /app/storage` | volume appartenant à root et conteneur lancé sans les privilèges nécessaires (`RAILWAY_RUN_UID` / `--user` défini), ou volume monté ailleurs que `UPLOAD_DIR` | retirer `RAILWAY_RUN_UID`, vérifier le mount path (étape 3, « Piège ») ; les utilisateurs voient « Le stockage des fichiers est temporairement indisponible » en attendant |
 | Uploads perdus après déploiement | volume non monté sur `/app/storage` | vérifier le mount path et `UPLOAD_DIR` |
