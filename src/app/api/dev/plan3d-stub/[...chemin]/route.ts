@@ -6,17 +6,19 @@ export const dynamic = "force-dynamic";
 
 /*
  * Simulateur des fournisseurs de modèles 3D, **hors production seulement**
- * (404 en production). La suite e2e pointe MELTFLEX_API_URL et NEURAL4D_API_URL
- * vers /api/dev/plan3d-stub/meltflex et /api/dev/plan3d-stub/neural4d : les
+ * (404 en production). La suite e2e pointe GEMINI_API_URL et NEURAL4D_API_URL
+ * vers /api/dev/plan3d-stub/gemini et /api/dev/plan3d-stub/neural4d : les
  * adaptateurs réels (src/lib/plan3d/) sont exercés de bout en bout, avec les
  * mêmes formes de requête et de réponse que les API documentées.
  *
  * Règles du simulateur :
- * - clé « cle-invalide » → 401 ;
- * - image PNG de largeur 2 px (PNG_ECHEC des tests) → échec de conversion
- *   (MeltFlex : 502 ; Neural4D : codeStatus -3 au suivi) ;
- * - sinon, première interrogation « en cours », la suivante « prêt » avec un
- *   modèle .glb (tests/fixtures/cube.glb) servi par le simulateur.
+ * - clé « cle-invalide » → Neural4D 401 ; Gemini 400 « API key not valid » ;
+ * - image PNG de largeur 2 px (PNG_ECHEC des tests) → échec : Neural4D
+ *   codeStatus -3 au suivi ; Gemini renvoie un JSON sans aucune pièce ;
+ * - sinon, Neural4D : première interrogation « en cours », la suivante
+ *   « prêt » avec un modèle .glb (tests/fixtures/cube.glb) servi par le
+ *   simulateur ; Gemini : JSON de trois pièces nommées et une porte, que
+ *   l'adaptateur extrude lui-même.
  */
 
 type Tache = { interrogations: number; echec: boolean };
@@ -44,6 +46,15 @@ function urlModele(req: NextRequest) {
   return `${req.nextUrl.origin}/api/dev/plan3d-stub/modele.glb`;
 }
 
+/** Réponse Gemini : le JSON de structure est dans le texte du premier candidat. */
+function reponseGemini(structure: unknown) {
+  return NextResponse.json({
+    candidates: [{ content: { parts: [{ text: JSON.stringify(structure) }], role: "model" }, finishReason: "STOP" }],
+    usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 180, totalTokenCount: 1380 },
+    modelVersion: "simulateur",
+  });
+}
+
 export async function GET(req: NextRequest, ctx: { params: Promise<{ chemin: string[] }> }) {
   if (process.env.NODE_ENV === "production") return new NextResponse(null, { status: 404 });
   const chemin = (await ctx.params).chemin.join("/");
@@ -52,15 +63,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ chemin: str
     const cube = readFileSync(path.join(process.cwd(), "tests", "fixtures", "cube.glb"));
     return new NextResponse(new Uint8Array(cube), { headers: { "Content-Type": "model/gltf-binary" } });
   }
-  if (chemin === "meltflex/floorplan-to-3d") {
-    if (!cleValide(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const taskId = req.nextUrl.searchParams.get("taskId") ?? "";
-    const tache = taches.get(taskId);
-    if (!tache) return NextResponse.json({ success: false, status: "FAILED", taskId, error: "unknown task" });
-    tache.interrogations++;
-    if (tache.interrogations < 2) return NextResponse.json({ success: false, status: "IN_PROGRESS", taskId, progress: 50 });
-    return NextResponse.json({ success: true, status: "SUCCEEDED", taskId, progress: 100, modelUrl: urlModele(req), format: "glb", textured: false, creditsUsed: 100 });
-  }
   return new NextResponse(null, { status: 404 });
 }
 
@@ -68,14 +70,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ chemin: st
   if (process.env.NODE_ENV === "production") return new NextResponse(null, { status: 404 });
   const chemin = (await ctx.params).chemin.join("/");
 
-  if (chemin === "meltflex/floorplan-to-3d") {
-    if (!cleValide(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const corps = (await req.json()) as { image?: string; output?: string };
-    const base64 = corps.image?.split(",")[1] ?? "";
-    if (!base64 || corps.output !== "model") return NextResponse.json({ error: "Missing or invalid field: image" }, { status: 400 });
-    if (largeurPng(Buffer.from(base64, "base64")) === 2) return NextResponse.json({ error: "Conversion Failed: no walls detected" }, { status: 502 });
-    const taskId = nouvelleTache(false);
-    return NextResponse.json({ success: false, output: "model", status: "IN_PROGRESS", taskId, progress: 0, creditsUsed: 100 }, { status: 202 });
+  if (/^gemini\/models\/[^/]+:generateContent$/.test(chemin)) {
+    const cle = req.headers.get("x-goog-api-key") ?? "";
+    if (!cle || cle === "cle-invalide") {
+      return NextResponse.json({ error: { code: 400, message: "API key not valid. Please pass a valid API key.", status: "INVALID_ARGUMENT" } }, { status: 400 });
+    }
+    const corps = (await req.json()) as { contents?: { parts?: { text?: string; inline_data?: { mime_type?: string; data?: string } }[] }[] };
+    const image = corps.contents?.[0]?.parts?.find((p) => p.inline_data)?.inline_data;
+    if (!image?.data) return NextResponse.json({ error: { code: 400, message: "Request must contain an image part.", status: "INVALID_ARGUMENT" } }, { status: 400 });
+    if (largeurPng(Buffer.from(image.data, "base64")) === 2) return reponseGemini({ pieces: [], portes: [], remarques: "image illisible : aucun mur visible" });
+    return reponseGemini({
+      pieces: [
+        { nom: "Salon", x: 0.05, y: 0.05, largeur: 0.55, hauteur: 0.5 },
+        { nom: "Cuisine", x: 0.62, y: 0.05, largeur: 0.33, hauteur: 0.5 },
+        { nom: "Chambre", x: 0.05, y: 0.57, largeur: 0.9, hauteur: 0.38 },
+      ],
+      portes: [{ x: 0.6, y: 0.3, mur: "vertical", relie: ["Salon", "Cuisine"] }],
+      dimensions_m: { largeur: 12, hauteur: 9 },
+      remarques: "simulateur",
+    });
   }
 
   if (chemin === "neural4d/generateModelWithImage") {

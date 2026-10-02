@@ -62,7 +62,7 @@ Onglet **Variables** du service web :
 | `RESEND_FROM` | `PromoPro <no-reply@votre-domaine>` | Expéditeur, sur un domaine vérifié dans Resend. Par défaut, l'adresse de test de Resend (ne délivre qu'au propriétaire du compte Resend). |
 | `APP_URL` | `https://votre-domaine` | Origine des liens envoyés par e-mail. Facultatif : sans elle, l'hôte de la requête (`x-forwarded-host`) est utilisé. |
 | `PLAN3D_MODELE_URL` | adresse directe du fichier `promopro-plan3d.onnx` | Facultatif : téléchargement automatique du modèle interne « Solution PromoPro » dans le volume au premier usage (section 12). Sans modèle, la carte reste « non installé ». |
-| `PLAN3D_MODELE_B_URL` | adresse directe du fichier `promopro-variante-b.onnx` | Facultatif : même mécanisme pour « PromoPro — variante B » (second entraînement, bac à sable seulement, section 12). |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Facultatif : modèle Gemini utilisé par le fournisseur « Gemini (Google) » (section 12). |
 | `SECRETS_ENCRYPTION_KEY` | sortie de `openssl rand -base64 48` | Chiffrement au repos (AES-256-GCM) des clés d'API des fournisseurs de modèles 3D saisies dans /admin/plan3d. Sans elle, la page refuse d'enregistrer une clé et aucune génération n'a lieu. **Ne la changez jamais** après avoir enregistré des clés : elles deviendraient illisibles (à ressaisir). Voir la section 12. |
 | `RAILWAY_RUN_UID` | *(ne pas définir)* | Plus nécessaire depuis le point d'entrée `docker-entrypoint.sh` (voir étape 3) : le conteneur démarre en root, attribue le volume à l'utilisateur `node` puis abandonne les privilèges. Avec `RAILWAY_RUN_UID=0`, tout le serveur tournerait en root ; s'il est encore défini, retirez-le. |
 
@@ -504,19 +504,22 @@ déclenche : le dépôt manuel d'un modèle 3D fonctionne comme avant.
 
 Obtenir une clé :
 
-- **MeltFlex** (`https://www.meltflexai.com`) : abonnement Pro ou Enterprise
-  (l'usage commercial n'est pas inclus dans le plan Standard), puis clé
-  `mf_sk_…` dans les réglages du compte. Un modèle .glb coûte 100 crédits
-  (Pro : 2 250 crédits/mois, soit environ 22 modèles ; au-delà, Enterprise sur
-  devis). Génération en 2 à 3 minutes.
+- **Gemini (Google)** (`https://aistudio.google.com/apikey`) : créer une clé
+  d'API dans Google AI Studio (compte Google, facturation à activer pour un
+  usage au-delà du niveau gratuit, dont les limites par minute et par jour
+  sont faibles). Un plan coûte quelques centimes (image en entrée, quelques
+  centaines de jetons en sortie) et prend quelques secondes ; Gemini lit les
+  noms des pièces et les portes, l'application extrude le modèle 3D. Modèle
+  par défaut `gemini-2.5-flash`, surchargeable par `GEMINI_MODEL`. En cas de
+  « forte demande » (503), l'appel est rejoué trois fois.
 - **Neural4D** (`https://www.neural4d.com/api`) : plan Go (19,90 $/mois,
   environ 150 modèles) ou paiement à l'usage (environ 0,15 $ par appel) ;
   l'API est réservée aux plans payants (le plan gratuit interdit l'usage
   commercial). Clé Bearer dans le tableau de bord. Génération en 1,5 à
   2 minutes.
 
-Coût approximatif à 50 générations par mois : MeltFlex ≈ devis Enterprise
-(ou 22 modèles pour 9,90 $ en Pro) ; Neural4D ≈ 19,90 $/mois (plan Go).
+Coût approximatif à 50 générations par mois : Gemini ≈ quelques dollars à
+l'usage ; Neural4D ≈ 19,90 $/mois (plan Go).
 
 Fonctionnement sur les biens : un plan 2D (PNG/JPEG) déposé sur un bien sans
 modèle 3D crée une génération (au plus une par bien et par 24 h), exécutée
@@ -555,24 +558,13 @@ de vrais plans, elle reste **testable dans le bac à sable seulement** : le
 bouton « Utiliser pour les biens » est désactivé et le serveur refuse son
 activation. Aucun coût par génération.
 
-### PromoPro — variante B (second modèle, bac à sable seulement)
-
-Second entraînement (`best.safetensors`, epoch 26) converti en ONNX sans
-Python par `scripts/prototypes/safetensors-vers-onnx.mjs` (IA-INTERNE.md,
-section 11). Même chaîne et mêmes règles que la Solution PromoPro, avec son
-propre fichier : `storage/modeles/promopro-variante-b.onnx` (ou
-`PLAN3D_MODELE_B_CHEMIN`), téléchargeable au premier usage depuis
-`PLAN3D_MODELE_B_URL`. Sa carte porte le résultat déjà mesuré (murs plus
-nets, mais plus de fausses portes sur les plans avec du texte) ; elle n'est
-proposée que dans le bac à sable, pour comparaison, et le serveur refuse son
-activation pour les biens.
 
 ## Dépannage
 
 | Symptôme | Cause probable | Correction |
 |---|---|---|
 | Logs : `JWT_SECRET manquant ou trop court` | variable absente | définir `JWT_SECRET` (≥ 16 caractères) |
-| Bac à sable 3D : `Load model from /app/storage/modeles/… failed:Protobuf parsing failed` | le fichier présent dans le volume n'est pas un modèle ONNX (un `.safetensors` ou une page HTML téléchargés depuis une mauvaise adresse, avant que `PLAN3D_MODELE_URL` / `PLAN3D_MODELE_B_URL` ne soit corrigée) | automatique depuis la version 2 octobre 2026 : le fichier illisible est supprimé et retéléchargé à l'essai suivant, et une adresse qui ne sert pas un ONNX est refusée au téléchargement ; sinon, supprimer le fichier du volume et relancer un essai |
+| Bac à sable 3D : `Load model from /app/storage/modeles/… failed:Protobuf parsing failed` | le fichier présent dans le volume n'est pas un modèle ONNX (un `.safetensors` ou une page HTML téléchargés depuis une mauvaise adresse, avant que `PLAN3D_MODELE_URL` ne soit corrigée) | automatique depuis la version 2 octobre 2026 : le fichier illisible est supprimé et retéléchargé à l'essai suivant, et une adresse qui ne sert pas un ONNX est refusée au téléchargement ; sinon, supprimer le fichier du volume et relancer un essai |
 | Logs : `getaddrinfo ENOTFOUND postgres.railway.internal` | app et Postgres dans des projets différents, ou variable non référencée | utiliser `DATABASE_PUBLIC_URL` du service Postgres, ou déplacer le service dans le même projet |
 | Logs : `[stockage] UPLOAD_DIR n'est pas accessible en écriture` ou `EACCES … /app/storage` | volume appartenant à root et conteneur lancé sans les privilèges nécessaires (`RAILWAY_RUN_UID` / `--user` défini), ou volume monté ailleurs que `UPLOAD_DIR` | retirer `RAILWAY_RUN_UID`, vérifier le mount path (étape 3, « Piège ») ; les utilisateurs voient « Le stockage des fichiers est temporairement indisponible » en attendant |
 | Uploads perdus après déploiement | volume non monté sur `/app/storage` | vérifier le mount path et `UPLOAD_DIR` |

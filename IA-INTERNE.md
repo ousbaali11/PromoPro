@@ -188,7 +188,7 @@ modèle, pas de l'extrusion.
 lieu, le verdict ne change pas : Gemini reste la référence (noms de pièces
 compris), la Solution PromoPro est un candidat prometteur sur plans propres et
 non prouvé sur scans ou plans cotés avec mobilier. Prochaine étape : déposer
-dans le bac à sable 5 à 10 vrais plans de projets et comparer avec MeltFlex ou
+dans le bac à sable 5 à 10 vrais plans de projets et comparer avec Gemini ou
 Neural4D sur les mêmes plans ; puis, si l'écart est acceptable, annoter 30 à
 50 plans réels pour un cycle d'ajustement (cycle 3 du plan) avant toute
 activation.
@@ -276,13 +276,12 @@ sur du texte sont effacées (`ajouterEncre`), et une ouverture n'est gardée
 que si du mur la borde aux deux bouts (`ouverturesDansLesMurs`). Même avec
 eux, le second modèle reste en dessous ou à égalité sur la structure des
 pièces et introduit de fausses portes : **il ne remplace pas le modèle en
-place**. À la demande du promoteur, il est proposé dans le bac à sable de
-/admin/plan3d sous le nom neutre « PromoPro — variante B (epoch 26) »
-(fournisseur `PROMOPRO_B`, fichier `storage/modeles/promopro-variante-b.onnx`
-ou `PLAN3D_MODELE_B_CHEMIN` / `PLAN3D_MODELE_B_URL`, hors git), côte à côte
-avec la Solution PromoPro pour les comparaisons à venir, sa carte rappelant le
-résultat mesuré. Comme la Solution PromoPro, il n'est pas activable pour les
-biens (`activable: false`, refus côté serveur) et ne le deviendra pas tant
-qu'il n'a pas dépassé le modèle en place sur ces deux plans et sur 5 à 10
-autres vrais plans, avec confirmation explicite du promoteur.
+place**. Il a été proposé un temps dans le bac à sable sous le nom neutre
+« PromoPro — variante B (epoch 26) », puis **retiré du site le 2 octobre
+2026** à la demande du promoteur, avec MeltFlex, pour ne garder que trois
+fournisseurs : Gemini (Google), Neural4D et la Solution PromoPro. Le fichier
+converti reste disponible (pièce jointe `promopro-variante-b.onnx` de la
+release GitHub `modele-plan3d-v1`, et en local hors git) et la procédure de
+conversion ci-dessus reste valable ; la fabrique de `promopro.ts` permet de
+réexposer une variante en quelques lignes si une nouvelle mesure le justifie.
 

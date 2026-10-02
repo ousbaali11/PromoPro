@@ -4,7 +4,7 @@ import { deposerFichier, hrefBienStaff, lireUrl, login, loginAvec, ouvrirBienCli
 /*
  * Génération automatique du modèle 3D d'un bien à partir de son plan 2D
  * (fournisseur actif choisi dans /admin/plan3d, simulé par /api/dev/plan3d-stub) :
- * sans fournisseur actif rien ne se déclenche ; avec MeltFlex actif, le dépôt
+ * sans fournisseur actif rien ne se déclenche ; avec Gemini actif, le dépôt
  * d'un plan 2D crée une génération, le Directeur Commercial la voit en
  * attente puis prête, le client ne voit rien tant qu'elle n'est pas validée ;
  * après validation, l'onglet « Modèle 3D » apparaît dans l'espace client.
@@ -24,12 +24,12 @@ async function deposerPlan2d(page: Page, fichier: { name: string; buffer?: Buffe
   await expect(page.getByTestId("plans-bien")).toBeVisible();
 }
 
-async function activerMeltflex(page: Page) {
+async function activerGemini(page: Page) {
   await login(page, "SUPERADMIN");
   await page.goto("/admin/plan3d");
-  const carte = page.getByTestId("carte-fournisseur-MELTFLEX");
+  const carte = page.getByTestId("carte-fournisseur-GEMINI");
   if ((await carte.getByTestId("cle-masquee").innerText()) === "Aucune") {
-    await carte.getByLabel(/Clé d'API/).fill("mf_sk_test_biens_0123456789");
+    await carte.getByLabel(/Clé d'API/).fill("AIzaSy_test_biens_0123456789");
     await carte.getByRole("button", { name: "Enregistrer la clé" }).click();
     await expect(carte.getByTestId("cle-enregistree")).toBeVisible();
   }
@@ -67,9 +67,9 @@ test("sans fournisseur actif : le dépôt d'un plan 2D ne déclenche rien, le d�
   await expect(page.getByTestId("section-generations-3d")).toHaveCount(0);
 });
 
-test("MeltFlex actif : le dépôt d'un plan 2D déclenche une génération, visible en attente puis prête pour le Directeur Commercial, jamais côté client avant validation", async ({ page, browser }) => {
+test("Gemini actif : le dépôt d'un plan 2D déclenche une génération, visible en attente puis prête pour le Directeur Commercial, jamais côté client avant validation", async ({ page, browser }) => {
   test.setTimeout(120_000);
-  await activerMeltflex(page);
+  await activerGemini(page);
 
   await login(page, "DIRCOM");
   await deposerPlan2d(page, { name: "plan-studio-2.png" });
@@ -78,7 +78,7 @@ test("MeltFlex actif : le dépôt d'un plan 2D déclenche une génération, visi
   const ligne = section.getByTestId("generation-ligne").first();
   await expect(ligne).toHaveAttribute("data-statut", /EN_ATTENTE|PRET/);
   await expect(ligne.getByTestId("generation-statut")).toHaveText("À valider", { timeout: 30_000 });
-  await expect(ligne).toContainText("MeltFlex");
+  await expect(ligne).toContainText("Gemini");
 
   // Notification du Directeur Commercial
   await page.getByTestId("cloche-notifications").click();
@@ -118,7 +118,7 @@ test("validation : « Valider et publier » copie le modèle vers le plan 3D du 
   const onglets = page.getByTestId("onglets-plans");
   await expect(onglets.getByRole("tab", { name: "Modèle 3D" })).toBeVisible();
   await page.goto("/dashboard/journal?periode=jour");
-  await expect(page.getByTestId("journal-ligne").filter({ hasText: BIEN }).filter({ hasText: "Modèle 3D généré par MeltFlex validé et publié" })).toHaveCount(1);
+  await expect(page.getByTestId("journal-ligne").filter({ hasText: BIEN }).filter({ hasText: "Modèle 3D généré par Gemini validé et publié" })).toHaveCount(1);
 
   // Côté client : ce bien n'est pas vendu au client de démonstration, mais le fichier publié est désormais rattaché au bien ;
   // on vérifie le rendu sur la fiche staff (même composant PlansBien que l'espace client) et l'accès au fichier par le staff
@@ -189,7 +189,7 @@ test("échec du fournisseur : statut Échec avec message, notification discrète
   await page.getByRole("button", { name: "Enregistrer les plans" }).click();
   const ligne = page.getByTestId("section-generations-3d").getByTestId("generation-ligne").first();
   await expect(ligne.getByTestId("generation-statut")).toHaveText("Échec", { timeout: 30_000 });
-  await expect(ligne.getByTestId("generation-erreur")).toContainText("Conversion Failed");
+  await expect(ligne.getByTestId("generation-erreur")).toContainText("aucune pièce");
   await expect(ligne.getByTestId("valider-generation")).toHaveCount(0);
   await page.getByTestId("cloche-notifications").click();
   await expect(page.getByText("Génération du modèle 3D impossible").first()).toBeVisible();

@@ -503,7 +503,7 @@ export const demandesTma = sqliteTable("demandes_tma", {
 // ---------------------------------------------------------------------------
 export const fournisseursPlan3dConfig = sqliteTable("fournisseurs_plan3d_config", {
   id: id(),
-  fournisseur: text("fournisseur").notNull().unique(), // MELTFLEX | NEURAL4D
+  fournisseur: text("fournisseur").notNull().unique(), // GEMINI | NEURAL4D | PROMOPRO
   cleApiChiffree: text("cle_api_chiffree").notNull(),
   actif: integer("actif", { mode: "boolean" }).notNull().default(false),
   modifieParId: text("modifie_par_id").references(() => users.id),

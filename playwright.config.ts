@@ -47,7 +47,7 @@ export default defineConfig({
       JWT_SECRET: "secret-de-test-e2e-promopro-0123456789",
       // Génération 3D : clés chiffrées avec un secret de test, fournisseurs simulés par /api/dev/plan3d-stub, suivi rapide
       SECRETS_ENCRYPTION_KEY: "secret-de-chiffrement-e2e-0123456789",
-      MELTFLEX_API_URL: `http://localhost:${PORT}/api/dev/plan3d-stub/meltflex`,
+      GEMINI_API_URL: `http://localhost:${PORT}/api/dev/plan3d-stub/gemini`,
       NEURAL4D_API_URL: `http://localhost:${PORT}/api/dev/plan3d-stub/neural4d`,
       PLAN3D_INTERVALLE_MS: "500",
       PLAN3D_DELAI_MAX_MS: "20000",

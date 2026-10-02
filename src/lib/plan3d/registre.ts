@@ -1,14 +1,13 @@
-import { meltflex } from "./meltflex";
+import { gemini } from "./gemini";
 import { neural4d } from "./neural4d";
-import { promopro, promoproB } from "./promopro";
+import { promopro } from "./promopro";
 import type { Fournisseur, FournisseurPlan3d } from "./provider";
 
 /** Registre des adaptateurs : un nouveau fournisseur s'ajoute ici et dans FOURNISSEURS (provider.ts). */
 const REGISTRE: Record<Fournisseur, FournisseurPlan3d> = {
-  MELTFLEX: meltflex,
+  GEMINI: gemini,
   NEURAL4D: neural4d,
   PROMOPRO: promopro,
-  PROMOPRO_B: promoproB,
 };
 
 export function fournisseurPlan3d(code: Fournisseur): FournisseurPlan3d {

@@ -13,17 +13,15 @@ import type { VarianteModele } from "./provider";
  * image du plan → masque de classes (0 fond, 1 mur, 2 porte, 3 fenêtre), sur
  * CPU, sans Python. Prétraitement identique à l'entraînement : letterbox
  * (proportions conservées, complément blanc) vers le carré d'entrée du
- * modèle, normalisation ImageNet. Deux variantes du modèle, un fichier
- * chacune (hors dépôt git — 97 Mo), gardées en mémoire après le premier
- * chargement : « principal » (Solution PromoPro, PLAN3D_MODELE_CHEMIN /
- * PLAN3D_MODELE_URL, défaut storage/modeles/promopro-plan3d.onnx) et « b »
- * (PromoPro — variante B, PLAN3D_MODELE_B_CHEMIN / PLAN3D_MODELE_B_URL,
- * défaut storage/modeles/promopro-variante-b.onnx).
+ * modèle, normalisation ImageNet. Le modèle (hors dépôt git — 97 Mo) est lu
+ * depuis PLAN3D_MODELE_CHEMIN (défaut storage/modeles/promopro-plan3d.onnx)
+ * ou téléchargé depuis PLAN3D_MODELE_URL, et gardé en mémoire après le
+ * premier chargement. La table VARIANTES permet d'ajouter un second fichier
+ * de modèle (autre variante) sans toucher au reste.
  */
 
 export const VARIANTES: Record<VarianteModele, { libelle: string; fichier: string; envChemin: string; envUrl: string }> = {
   principal: { libelle: "Solution PromoPro", fichier: "promopro-plan3d.onnx", envChemin: "PLAN3D_MODELE_CHEMIN", envUrl: "PLAN3D_MODELE_URL" },
-  b: { libelle: "PromoPro — variante B", fichier: "promopro-variante-b.onnx", envChemin: "PLAN3D_MODELE_B_CHEMIN", envUrl: "PLAN3D_MODELE_B_URL" },
 };
 export const CHEMIN_MODELE_PAR_DEFAUT = path.join("storage", "modeles", VARIANTES.principal.fichier);
 const cheminParDefaut = (variante: VarianteModele) => path.join("storage", "modeles", VARIANTES[variante].fichier);

@@ -32,12 +32,12 @@ describe("fichier de modèle ONNX", () => {
     expect(await modeleOnnxLisible(path.join(dossier, "absent.onnx"))).toBe(false);
   });
 
-  it("le modèle installé (s'il est présent) se charge ; les variantes ont des fichiers et des variables distincts", async () => {
+  it("le modèle installé (s'il est présent) se charge ; la variante principale a son fichier et ses variables", async () => {
     const chemin = cheminModele("principal");
     const installe = await access(chemin).then(() => true, () => false);
     if (installe) expect(await modeleOnnxLisible(chemin)).toBe(true);
-    expect(VARIANTES.principal.fichier).not.toBe(VARIANTES.b.fichier);
-    expect(VARIANTES.principal.envUrl).not.toBe(VARIANTES.b.envUrl);
-    expect(cheminModele("b")).not.toBe(chemin);
+    expect(VARIANTES.principal.fichier).toBe("promopro-plan3d.onnx");
+    expect(VARIANTES.principal.envUrl).toBe("PLAN3D_MODELE_URL");
+    expect(chemin.endsWith("promopro-plan3d.onnx") || !!process.env.PLAN3D_MODELE_CHEMIN).toBe(true);
   });
 });

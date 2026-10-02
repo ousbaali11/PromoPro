@@ -42,7 +42,7 @@ export default async function Plan3dPage() {
           : "Aucun fournisseur actif : aucune génération automatique sur les biens. Le dépôt manuel d'un modèle 3D fonctionne comme avant."}
       </Callout>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {configs.map((c) => (
           <CarteFournisseur key={c.fournisseur} config={c} chiffrement={chiffrement} />
         ))}

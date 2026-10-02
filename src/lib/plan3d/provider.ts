@@ -1,6 +1,6 @@
 /*
  * Génération d'un modèle 3D (.glb) à partir de l'image d'un plan 2D, derrière
- * une interface commune. Chaque fournisseur est un adaptateur (meltflex.ts,
+ * une interface commune. Chaque fournisseur est un adaptateur (gemini.ts,
  * neural4d.ts, promopro.ts) qui traduit ses appels — démarrer une génération,
  * vérifier son état — vers le contrat ci-dessous ; le reste de l'application
  * (bac à sable du Super Admin, générations sur les biens) ne connaît que ce
@@ -11,10 +11,10 @@
  * fournisseurPlan3d(). Rien d'autre à toucher (voir ARCHITECTURE.md).
  */
 
-export type Fournisseur = "MELTFLEX" | "NEURAL4D" | "PROMOPRO" | "PROMOPRO_B";
+export type Fournisseur = "GEMINI" | "NEURAL4D" | "PROMOPRO";
 
-/** Variantes du modèle interne (un fichier ONNX chacune, voir inference.ts). */
-export type VarianteModele = "principal" | "b";
+/** Variantes du modèle interne (un fichier ONNX chacune, voir inference.ts) ; une seule aujourd'hui. */
+export type VarianteModele = "principal";
 
 export type DescriptionFournisseur = {
   code: Fournisseur;
@@ -34,7 +34,15 @@ export type DescriptionFournisseur = {
 };
 
 export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
-  { code: "MELTFLEX", libelle: "MeltFlex", site: "https://www.meltflexai.com/api", necessiteCle: true, activable: true },
+  {
+    code: "GEMINI",
+    libelle: "Gemini",
+    site: "https://ai.google.dev/gemini-api/docs/api-key",
+    necessiteCle: true,
+    activable: true,
+    description:
+      "Le modèle multimodal Gemini (Google) lit le plan et rend les pièces (avec leur nom), les portes et les dimensions réelles si une échelle est visible ; le modèle 3D est ensuite extrudé par l'application. Clé d'API Google AI Studio ; quelques secondes et quelques centimes par plan.",
+  },
   { code: "NEURAL4D", libelle: "Neural4D", site: "https://docs.neural4d.com", necessiteCle: true, activable: true, recolorer: true },
   {
     code: "PROMOPRO",
@@ -46,17 +54,6 @@ export const FOURNISSEURS: readonly DescriptionFournisseur[] = [
     etat: "En développement — testable dans le bac à sable, pas encore activable pour les biens",
     description:
       "Modèle interne (segmentation des murs, portes et fenêtres, puis extrusion), exécuté sur le serveur sans service tiers ni clé. Activable pour les biens une fois validé sur de vrais plans.",
-  },
-  {
-    code: "PROMOPRO_B",
-    libelle: "PromoPro — variante B (epoch 26)",
-    site: "IA-INTERNE.md",
-    necessiteCle: false,
-    activable: false,
-    modeleInterne: "b",
-    etat: "Bac à sable seulement — pas activable pour les biens",
-    description:
-      "Second entraînement (best.safetensors, epoch 26) converti en ONNX, même post-traitement que la Solution PromoPro. Mesure déjà faite (IA-INTERNE.md, section 11) : murs plus nets, mais plus de fausses portes sur les plans avec du texte — 26 contre 0 sur l'appartement réel, 6 pièces sur 9 contre 8 sur la villa. Comparaison dans le bac à sable seulement, tant qu'elle n'a pas dépassé le modèle en place sur 5 à 10 vrais plans.",
   },
 ];
 

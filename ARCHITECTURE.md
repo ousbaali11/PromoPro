@@ -581,19 +581,22 @@ n'apparaissaient que là (journal et traces Playwright à l'appui) :
   avec une `reference`) et `verifierStatut(reference, cleApi)` (→ en cours /
   prêt / échec), la liste `FOURNISSEURS` (code, libellé, site) et
   `ErreurFournisseur` (message déjà lisible) ;
-- `meltflex.ts`, `neural4d.ts` — un adaptateur par fournisseur, qui traduit
-  son API documentée vers le contrat ; les fonctions `lireReponse…` sont pures
-  et testées sans réseau (`tests/unit/plan3d.test.ts`) ; la base d'URL est
-  surchargeable (`MELTFLEX_API_URL`, `NEURAL4D_API_URL`) pour le simulateur
-  des tests (`/api/dev/plan3d-stub`, 404 en production) ;
-- `promopro.ts` — adaptateurs **internes**, synchrones et sans clé,
-  produits par une même fabrique : « Solution PromoPro » (variante
-  `principal`) et « PromoPro — variante B » (variante `b`, second
-  entraînement, bac à sable seulement) ; `inference.ts` (modèle ONNX U-Net
+- `gemini.ts`, `neural4d.ts` — un adaptateur par fournisseur externe, qui
+  traduit son API documentée vers le contrat ; les fonctions `lireReponse…`
+  sont pures et testées sans réseau (`tests/unit/plan3d.test.ts`) ; la base
+  d'URL est surchargeable (`GEMINI_API_URL`, `NEURAL4D_API_URL`) pour le
+  simulateur des tests (`/api/dev/plan3d-stub`, 404 en production). Gemini
+  lit le plan (pièces nommées, portes, dimensions réelles si une échelle est
+  visible, en JSON strict) et l'application extrude elle-même le `.glb` avec
+  `extrusion.ts` ; modèle surchargeable par `GEMINI_MODEL` ; les 503 (forte
+  demande) sont rejoués ; synchrone, pas de suivi ;
+- `promopro.ts` — adaptateur **interne** « Solution PromoPro », synchrone et
+  sans clé, produit par une fabrique qui permettrait d'exposer une autre
+  variante du modèle sans rien dupliquer ; `inference.ts` (modèle ONNX U-Net
   ResNet-34 exécuté par `onnxruntime-node` sur CPU, prétraitement letterbox
-  identique à l'entraînement, un fichier par variante dans `storage/modeles/`
-  ou téléchargé depuis `PLAN3D_MODELE_URL` / `PLAN3D_MODELE_B_URL`, session
-  gardée en mémoire par variante), `segmentation.ts` (`ajouterEncre` : les traits
+  identique à l'entraînement, fichier dans `storage/modeles/` ou téléchargé
+  depuis `PLAN3D_MODELE_URL`, session gardée en mémoire, fichier illisible
+  supprimé et retéléchargé), `segmentation.ts` (`ajouterEncre` : les traits
   sombres de l'image — murs fins, fenêtres en double trait — complètent le
   masque du modèle, hors des murs déjà reconnus et après avoir écarté le
   texte, les cotes, les arcs de porte et les équipements courbes, et les

@@ -11,9 +11,8 @@ import { dimensionsParDefaut, extruderEnGlb } from "./extrusion";
  * fenêtres), extraction des pièces, extrusion en .glb, enregistrement comme
  * fichier plans-3d de l'application — le tout en quelques secondes sur CPU.
  * Aucune clé, aucun service tiers. Sans modèle installé, la génération échoue
- * avec un message explicite. Deux variantes partagent cette chaîne et ne
- * diffèrent que par leur fichier de modèle : « Solution PromoPro » et
- * « PromoPro — variante B » (second entraînement, bac à sable seulement).
+ * avec un message explicite. La fabrique permet d'exposer une autre variante
+ * du modèle (autre fichier, même chaîne) sans rien dupliquer.
  */
 
 function fournisseurInterne(code: Fournisseur, variante: VarianteModele): FournisseurPlan3d {
@@ -41,4 +40,3 @@ function fournisseurInterne(code: Fournisseur, variante: VarianteModele): Fourni
 }
 
 export const promopro = fournisseurInterne("PROMOPRO", "principal");
-export const promoproB = fournisseurInterne("PROMOPRO_B", "b");

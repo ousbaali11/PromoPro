@@ -508,7 +508,7 @@ export const demandesTma = pgTable("demandes_tma", {
 // ---------------------------------------------------------------------------
 export const fournisseursPlan3dConfig = pgTable("fournisseurs_plan3d_config", {
   id: id(),
-  fournisseur: text("fournisseur").notNull().unique(), // MELTFLEX | NEURAL4D
+  fournisseur: text("fournisseur").notNull().unique(), // GEMINI | NEURAL4D | PROMOPRO
   cleApiChiffree: text("cle_api_chiffree").notNull(),
   actif: boolean("actif").notNull().default(false),
   modifieParId: text("modifie_par_id").references(() => users.id),
