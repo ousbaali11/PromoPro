@@ -23,13 +23,23 @@ async function ouvrirFormulaire(browser: Browser, compte: keyof typeof COMPTES) 
   await page.goto(hrefP01);
   await page.getByRole("link", { name: "Envoyer une proposition" }).click();
   await page.locator('form[data-hydrated="true"]').first().waitFor();
-  await page.locator('select[name="clientId"]').evaluate((el) => {
-    const sel = el as HTMLSelectElement;
-    const opt = [...sel.options].find((o) => o.textContent?.includes("Naciri"));
-    if (!opt) throw new Error("Client de démo introuvable");
-    sel.value = opt.value;
-    sel.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  // Chaque commercial ne propose qu'à un client qu'il gère : Naciri pour COM1, un client créé à la volée pour COM2
+  if (compte === "COM1") {
+    await page.locator('select[name="clientId"]').evaluate((el) => {
+      const sel = el as HTMLSelectElement;
+      const opt = [...sel.options].find((o) => o.textContent?.includes("Naciri"));
+      if (!opt) throw new Error("Client de démo introuvable");
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  } else {
+    await page.locator('select[name="clientId"]').selectOption("__nouveau__");
+    const suffixe = Date.now().toString(36).toUpperCase().slice(-4);
+    await page.locator("#clientNom").fill(`Concurrent${suffixe}`);
+    await page.locator("#clientPrenom").fill("Rachid");
+    await page.locator("#clientTelephone1").fill("06 66 00 00 09");
+    await page.locator("#clientEmail").fill(`concurrent.${suffixe.toLowerCase()}@exemple.ma`);
+  }
   return { ctx, page };
 }
 

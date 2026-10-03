@@ -91,7 +91,7 @@ test("un commercial trouve le client de son collègue par CIN, nom ou date de na
   await expect(page.getByTestId("resultat-client")).toHaveCount(0);
   await rechercher(page, { piece: `AB${S}`.slice(0, 4) });
   await expect(page.getByTestId("recherche-criteres-invalides")).toBeVisible();
-  await rechercher(page, { nom: "Dou" });
+  await rechercher(page, { nom: `Doublon${S}`.slice(0, 9) });
   await expect(page.getByTestId("resultat-client")).toHaveCount(2);
 });
 

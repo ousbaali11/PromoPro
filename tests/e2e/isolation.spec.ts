@@ -95,6 +95,8 @@ test("mise en place : promoteur B, directions, commercial, client, bien vendu, p
   B.com.id = hrefModif!.split("/")[3];
   expect(B.com.id).toMatch(/^[0-9a-f-]{36}$/);
 
+  // Le client de B est créé par le commercial de B : seul le commercial qui gère un client peut lui proposer un bien
+  await loginAvec(page, B.com.identifiant, B.com.mdp, /\/dashboard$/);
   await page.goto("/dashboard/clients/nouveau");
   await page.getByLabel("Nom", { exact: true }).fill(B.clientNom);
   await page.getByLabel("Prénom").fill("Zineb");
